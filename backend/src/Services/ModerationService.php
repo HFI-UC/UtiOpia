@@ -14,7 +14,7 @@ final class ModerationService
     public function approve(int $messageId, array $actor): array
     {
         $this->acl->ensure($actor['role'], 'message:approve');
-        $this->pdo->prepare('UPDATE messages SET status = "approved", reviewed_by = ?, reviewed_at = NOW() WHERE id = ?')
+        $this->pdo->prepare('UPDATE messages SET status = "approved", reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP WHERE id = ?')
             ->execute([$actor['id'], $messageId]);
         $this->logger->log('message.approve', $actor['id'], ['message_id' => $messageId]);
         // 通知作者
@@ -29,7 +29,7 @@ final class ModerationService
     public function reject(int $messageId, array $actor, string $reason): array
     {
         $this->acl->ensure($actor['role'], 'message:reject');
-        $this->pdo->prepare('UPDATE messages SET status = "rejected", reject_reason = ?, reviewed_by = ?, reviewed_at = NOW() WHERE id = ?')
+        $this->pdo->prepare('UPDATE messages SET status = "rejected", reject_reason = ?, reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP WHERE id = ?')
             ->execute([$reason, $actor['id'], $messageId]);
         $this->logger->log('message.reject', $actor['id'], ['message_id' => $messageId, 'reason' => $reason]);
         // 通知作者

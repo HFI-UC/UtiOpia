@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit bootstrap="tests_bootstrap.php" colors="true">
+  <testsuites>
+    <testsuite name="UtiOpia Backend Tests">
+      <directory>tests</directory>
+    </testsuite>
+  </testsuites>
+  <php>
+    <env name="DB_HOST" value="154.37.213.151"/>
+    <env name="DB_PORT" value="3306"/>
+    <env name="DB_NAME" value="hi_hfiuc_org"/>
+    <env name="DB_USER" value="hi_hfiuc_org"/>
+    <env name="DB_PASS" value="bRfhiS8XyMdHPC3K"/>
+    <env name="JWT_SECRET" value="test_secret"/>
+    <env name="TURNSTILE_SECRET" value=""/>
+    <env name="COS_REGION" value=""/>
+    <env name="COS_APP_ID" value=""/>
+    <env name="COS_SECRET_ID" value=""/>
+    <env name="COS_SECRET_KEY" value=""/>
+    <env name="COS_BUCKET" value=""/>
+    <env name="CORS_ORIGIN" value="*"/>
+  </php>
+</phpunit>
+
+

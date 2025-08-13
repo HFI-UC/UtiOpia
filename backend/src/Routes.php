@@ -119,77 +119,109 @@ final class Routes
 
     public static function createMessage(Request $request, Response $response): Response
     {
-        [$body, $container, $user] = self::ctxAuth($request);
+        [$body, $container, $user] = self::ctxAuthOptional($request);
         /** @var TurnstileService $turnstile */
         $turnstile = $container->get(TurnstileService::class);
         $turnstile->assert($body['turnstile_token'] ?? '');
 
         $svc = $container->get(\UtiOpia\Services\MessageService::class);
-        $result = $svc->create($user['id'], $body);
+        $result = $svc->create((int)($user['id'] ?? 0), $body);
         return self::json($response, $result);
     }
 
     public static function updateMessage(Request $request, Response $response, array $args): Response
     {
-        [$body, $container, $user] = self::ctxAuth($request);
+        [$body, $container, $user] = self::ctxAuthOptional($request);
         /** @var TurnstileService $turnstile */
         $turnstile = $container->get(TurnstileService::class);
         $turnstile->assert($body['turnstile_token'] ?? '');
         $svc = $container->get(\UtiOpia\Services\MessageService::class);
-        $result = $svc->update((int)$args['id'], $user, $body);
-        return self::json($response, $result);
+        try {
+            $result = $svc->update((int)$args['id'], $user, $body);
+            return self::json($response, $result);
+        } catch (\Throwable $e) {
+            return self::json($response, ['error' => $e->getMessage()], 403);
+        }
     }
 
     public static function deleteMessage(Request $request, Response $response, array $args): Response
     {
-        [$body, $container, $user] = self::ctxAuth($request);
+        [$body, $container, $user] = self::ctxAuthOptional($request);
         /** @var TurnstileService $turnstile */
         $turnstile = $container->get(TurnstileService::class);
         $turnstile->assert($body['turnstile_token'] ?? '');
         $svc = $container->get(\UtiOpia\Services\MessageService::class);
-        $result = $svc->delete((int)$args['id'], $user);
-        return self::json($response, $result);
+        try {
+            $result = $svc->delete((int)$args['id'], $user, $body);
+            return self::json($response, $result);
+        } catch (\Throwable $e) {
+            return self::json($response, ['error' => $e->getMessage()], 403);
+        }
     }
 
     public static function listUsers(Request $request, Response $response): Response
     {
-        [, $container, $user] = self::ctxAuth($request);
-        $svc = $container->get(\UtiOpia\Services\UserService::class);
-        $result = $svc->list($user);
-        return self::json($response, $result);
+        [, $container, $user] = self::ctxAuthOptional($request);
+        try {
+            $svc = $container->get(\UtiOpia\Services\UserService::class);
+            $result = $svc->list($user);
+            return self::json($response, $result);
+        } catch (\Throwable $e) {
+            $msg = $e->getMessage();
+            $code = $msg === '权限不足' ? 403 : 400;
+            return self::json($response, ['error' => $msg], $code);
+        }
     }
 
     public static function updateUser(Request $request, Response $response, array $args): Response
     {
-        [$body, $container, $user] = self::ctxAuth($request);
+        [$body, $container, $user] = self::ctxAuthOptional($request);
         /** @var TurnstileService $turnstile */
         $turnstile = $container->get(TurnstileService::class);
         $turnstile->assert($body['turnstile_token'] ?? '');
-        $svc = $container->get(\UtiOpia\Services\UserService::class);
-        $result = $svc->update((int)$args['id'], $user, $body);
-        return self::json($response, $result);
+        try {
+            $svc = $container->get(\UtiOpia\Services\UserService::class);
+            $result = $svc->update((int)$args['id'], $user, $body);
+            return self::json($response, $result);
+        } catch (\Throwable $e) {
+            $msg = $e->getMessage();
+            $code = $msg === '权限不足' ? 403 : 400;
+            return self::json($response, ['error' => $msg], $code);
+        }
     }
 
     public static function banUser(Request $request, Response $response, array $args): Response
     {
-        [$body, $container, $user] = self::ctxAuth($request);
+        [$body, $container, $user] = self::ctxAuthOptional($request);
         /** @var TurnstileService $turnstile */
         $turnstile = $container->get(TurnstileService::class);
         $turnstile->assert($body['turnstile_token'] ?? '');
-        $svc = $container->get(\UtiOpia\Services\UserService::class);
-        $result = $svc->ban((int)$args['id'], $user);
-        return self::json($response, $result);
+        try {
+            $svc = $container->get(\UtiOpia\Services\UserService::class);
+            $result = $svc->ban((int)$args['id'], $user);
+            return self::json($response, $result);
+        } catch (\Throwable $e) {
+            $msg = $e->getMessage();
+            $code = $msg === '权限不足' ? 403 : 400;
+            return self::json($response, ['error' => $msg], $code);
+        }
     }
 
     public static function unbanUser(Request $request, Response $response, array $args): Response
     {
-        [$body, $container, $user] = self::ctxAuth($request);
+        [$body, $container, $user] = self::ctxAuthOptional($request);
         /** @var TurnstileService $turnstile */
         $turnstile = $container->get(TurnstileService::class);
         $turnstile->assert($body['turnstile_token'] ?? '');
-        $svc = $container->get(\UtiOpia\Services\UserService::class);
-        $result = $svc->unban((int)$args['id'], $user);
-        return self::json($response, $result);
+        try {
+            $svc = $container->get(\UtiOpia\Services\UserService::class);
+            $result = $svc->unban((int)$args['id'], $user);
+            return self::json($response, $result);
+        } catch (\Throwable $e) {
+            $msg = $e->getMessage();
+            $code = $msg === '权限不足' ? 403 : 400;
+            return self::json($response, ['error' => $msg], $code);
+        }
     }
 
     public static function createBan(Request $request, Response $response): Response
@@ -248,8 +280,12 @@ final class Routes
     {
         [$query, $container, $user] = self::ctxAuth($request, true);
         $svc = $container->get(\UtiOpia\Services\LogService::class);
-        $result = $svc->list($query, $user);
-        return self::json($response, $result);
+        try {
+            $result = $svc->list($query, $user);
+            return self::json($response, $result);
+        } catch (\Throwable $e) {
+            return self::json($response, ['error' => '权限不足'], 403);
+        }
     }
 
     private static function ctx(Request $request, bool $useQuery = false): array

@@ -80,7 +80,8 @@ final class UserService
         // 按阶段计算时长（示例：7/14/30/60/90 天）
         $days = [1 => 1, 2 => 3, 3 => 7, 4 => 30, 5 => 90][$stage];
         $expiresAt = (new \DateTimeImmutable("+{$days} days"))->format('Y-m-d H:i:s');
-        $stmt = $this->pdo->prepare('INSERT INTO bans(type, value, reason, created_by, created_at, updated_at, active, stage, expires_at) VALUES(?,?,?,?,NOW(),NOW(),1,?,?) ON DUPLICATE KEY UPDATE reason = VALUES(reason), updated_at = VALUES(updated_at), active = 1, stage = VALUES(stage), expires_at = VALUES(expires_at)');
+        // SQLite 兼容：UPSERT 语法
+        $stmt = $this->pdo->prepare('INSERT INTO bans(type, value, reason, created_by, created_at, updated_at, active, stage, expires_at) VALUES(?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,1,?,?) ON CONFLICT(type,value,active) DO UPDATE SET reason=excluded.reason, updated_at=CURRENT_TIMESTAMP, active=1, stage=excluded.stage, expires_at=excluded.expires_at');
         $stmt->execute([$type, $value, $reason, $actor['id'], $stage, $expiresAt]);
         $this->logger->log('ban.create', $actor['id'], ['type' => $type, 'value' => $value, 'reason' => $reason]);
         return ['ok' => true];
@@ -89,7 +90,7 @@ final class UserService
     public function removeBan(array $actor, string $type, string $value): array
     {
         $this->acl->ensure($actor['role'], 'ban:manage');
-        $stmt = $this->pdo->prepare('UPDATE bans SET active = 0, updated_at = NOW() WHERE type = ? AND value = ? AND active = 1');
+        $stmt = $this->pdo->prepare('UPDATE bans SET active = 0, updated_at = CURRENT_TIMESTAMP WHERE type = ? AND value = ? AND active = 1');
         $stmt->execute([$type, $value]);
         $this->logger->log('ban.remove', $actor['id'], ['type' => $type, 'value' => $value]);
         return ['ok' => true];

@@ -24,8 +24,10 @@
   },
   "scripts": {
     "start": "php -S 0.0.0.0:8080 -t public public/index.php",
-    "migrate": "php scripts/migrate.php"
+    "migrate": "php scripts/migrate.php",
+    "test": "vendor/bin/phpunit -c phpunit.xml --testdox"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^9.6"
   }
 }
-
-

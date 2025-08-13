@@ -72,14 +72,14 @@ final class MessageService
                 return ['error' => '当前身份已被封禁'];
             }
             $passHash = password_hash($anonPassphrase, PASSWORD_BCRYPT);
-            $stmt = $this->pdo->prepare('INSERT INTO messages(user_id, is_anonymous, anon_email, anon_student_id, anon_passphrase_hash, content, image_url, status, created_at) VALUES(NULL,1,?,?,?,?,?,"pending",NOW())');
+            $stmt = $this->pdo->prepare('INSERT INTO messages(user_id, is_anonymous, anon_email, anon_student_id, anon_passphrase_hash, content, image_url, status, created_at) VALUES(NULL,1,?,?,?,?,?,"pending",CURRENT_TIMESTAMP)');
             $stmt->execute([$anonEmail, $anonStudentId, $passHash, $content, $imageUrl]);
         } else {
             // 非匿名，仍可检查用户封禁
             $stmt = $this->pdo->prepare('SELECT banned FROM users WHERE id = ?');
             $stmt->execute([$userId]);
             if (($stmt->fetch()['banned'] ?? 0) == 1) return ['error' => '账号已被封禁'];
-            $this->pdo->prepare('INSERT INTO messages(user_id, is_anonymous, content, image_url, status, created_at) VALUES(?,0,?,?,"pending",NOW())')
+            $this->pdo->prepare('INSERT INTO messages(user_id, is_anonymous, content, image_url, status, created_at) VALUES(?,0,?,?,"pending",CURRENT_TIMESTAMP)')
                 ->execute([$userId, $content, $imageUrl]);
         }
         $id = (int)$this->pdo->lastInsertId();
@@ -93,7 +93,8 @@ final class MessageService
         $stmt->execute([$id]);
         $msg = $stmt->fetch();
         if (!$msg) return ['error' => '留言不存在'];
-        $isOwner = ((int)($msg['user_id'] ?? 0) === (int)$user['id']);
+        $userIdOfMsg = $msg['user_id'] ?? null;
+        $isOwner = ($userIdOfMsg !== null && (int)$userIdOfMsg > 0 && (int)$userIdOfMsg === (int)$user['id']);
         if (!$isOwner && (int)$msg['user_id'] === 0) {
             // 匿名留言，需要 passphrase 验证
             $pass = (string)($data['anon_passphrase'] ?? '');
@@ -113,15 +114,16 @@ final class MessageService
         return ['ok' => true];
     }
 
-    public function delete(int $id, array $user): array
+    public function delete(int $id, array $user, array $data): array
     {
         $stmt = $this->pdo->prepare('SELECT id, user_id, is_anonymous, anon_passphrase_hash FROM messages WHERE id = ?');
         $stmt->execute([$id]);
         $msg = $stmt->fetch();
         if (!$msg) return ['error' => '留言不存在'];
-        $isOwner = ((int)($msg['user_id'] ?? 0) === (int)$user['id']);
+        $userIdOfMsg = $msg['user_id'] ?? null;
+        $isOwner = ($userIdOfMsg !== null && (int)$userIdOfMsg > 0 && (int)$userIdOfMsg === (int)$user['id']);
         if (!$isOwner && (int)$msg['user_id'] === 0) {
-            $pass = (string)($_REQUEST['anon_passphrase'] ?? '');
+            $pass = (string)($data['anon_passphrase'] ?? '');
             if ($pass === '' || !password_verify($pass, (string)$msg['anon_passphrase_hash'])) {
                 return ['error' => '匿名口令错误'];
             }
@@ -137,7 +139,7 @@ final class MessageService
 
     private function isBanned(string $type, string $value): bool
     {
-        $stmt = $this->pdo->prepare('SELECT 1 FROM bans WHERE type = ? AND value = ? AND active = 1 AND (expires_at IS NULL OR expires_at > NOW()) LIMIT 1');
+        $stmt = $this->pdo->prepare('SELECT 1 FROM bans WHERE type = ? AND value = ? AND active = 1 AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP) LIMIT 1');
         $stmt->execute([$type, $value]);
         return (bool)$stmt->fetchColumn();
     }
