@@ -15,7 +15,7 @@
         <option :value="5">阶段5（90天）</option>
       </select>
       <input v-model="reason" placeholder="原因（可选）" />
-      <Turnstile @verified="t => token = t" />
+      
       <button @click="create">新增封禁</button>
       <button @click="remove">解除封禁</button>
       <p class="err" v-if="error">{{ error }}</p>
@@ -46,7 +46,7 @@
 import axios from 'axios'
 import { ref } from 'vue'
 import { useAuthStore } from '../stores/auth'
-import Turnstile from '../components/Turnstile.vue'
+ 
 
 const API = import.meta.env.VITE_API_BASE || 'http://localhost:8080/api'
 const auth = useAuthStore()
@@ -54,7 +54,7 @@ const type = ref<'email'|'student_id'>('email')
 const value = ref('')
 const stage = ref(1)
 const reason = ref('')
-const token = ref('')
+ 
 const error = ref('')
 const ok = ref('')
 const items = ref<any[]>([])
@@ -62,7 +62,7 @@ const items = ref<any[]>([])
 async function create() {
   try {
     error.value = ''; ok.value = ''
-    await axios.post(`${API}/bans`, { type: type.value, value: value.value, reason: reason.value, stage: stage.value, turnstile_token: token.value }, { headers: { Authorization: `Bearer ${auth.token}` } })
+    await axios.post(`${API}/bans`, { type: type.value, value: value.value, reason: reason.value, stage: stage.value }, { headers: { Authorization: `Bearer ${auth.token}` } })
     ok.value = '已封禁'
   } catch (e:any) {
     error.value = e.response?.data?.error || e.message
@@ -71,7 +71,7 @@ async function create() {
 async function remove() {
   try {
     error.value = ''; ok.value = ''
-    await axios.delete(`${API}/bans`, { data: { type: type.value, value: value.value, turnstile_token: token.value }, headers: { Authorization: `Bearer ${auth.token}` } as any })
+    await axios.delete(`${API}/bans`, { data: { type: type.value, value: value.value }, headers: { Authorization: `Bearer ${auth.token}` } as any })
     ok.value = '已解除'
   } catch (e:any) {
     error.value = e.response?.data?.error || e.message

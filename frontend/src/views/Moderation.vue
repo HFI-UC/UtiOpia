@@ -10,7 +10,7 @@
       </select>
       <button @click="refresh">刷新</button>
     </div>
-    <Turnstile @verified="t => token = t" />
+    
     <div v-for="m in items" :key="m.id" class="item">
       <p>{{ m.content }}</p>
       <img v-if="m.image_url" :src="m.image_url" />
@@ -29,12 +29,12 @@
 import axios from 'axios'
 import { ref } from 'vue'
 import { useAuthStore } from '../stores/auth'
-import Turnstile from '../components/Turnstile.vue'
+ 
 
 const API = import.meta.env.VITE_API_BASE || 'http://localhost:8080/api'
 const auth = useAuthStore()
 const items = ref<any[]>([])
-const token = ref('')
+ 
 const status = ref<'pending'|'rejected'|'approved'|'all'>('pending')
 const page = ref(1)
 const pageSize = ref(10)
@@ -59,12 +59,12 @@ function onFilter(){ fetch(true) }
 function refresh(){ fetch(true) }
 
 async function approve(id: number) {
-  await axios.post(`${API}/messages/${id}/approve`, { turnstile_token: token.value }, { headers: { Authorization: `Bearer ${auth.token}` } })
+  await axios.post(`${API}/messages/${id}/approve`, {}, { headers: { Authorization: `Bearer ${auth.token}` } })
   await fetch(true)
 }
 async function reject(id: number) {
   const reason = prompt('拒绝理由：') || ''
-  await axios.post(`${API}/messages/${id}/reject`, { reason, turnstile_token: token.value }, { headers: { Authorization: `Bearer ${auth.token}` } })
+  await axios.post(`${API}/messages/${id}/reject`, { reason }, { headers: { Authorization: `Bearer ${auth.token}` } })
   await fetch(true)
 }
 

@@ -96,11 +96,24 @@ class DummyMailer {
     public function sendUserBanStatus(string $to, string $nickname, bool $banned): bool { return true; }
 }
 }
+$container->set(\UtiOpia\Services\Mailer::class, function ($c) {
+    return new \UtiOpia\Services\Mailer($c->get('settings'), $c->get(\UtiOpia\Services\AuditLogger::class));
+});
 $container->set(\UtiOpia\Services\UserService::class, function ($c) {
-    return new \UtiOpia\Services\UserService($c->get(PDO::class), $c->get(\UtiOpia\Services\AuditLogger::class), $c->get(\UtiOpia\Services\ACL::class), new DummyMailer());
+    return new \UtiOpia\Services\UserService(
+        $c->get(PDO::class),
+        $c->get(\UtiOpia\Services\AuditLogger::class),
+        $c->get(\UtiOpia\Services\ACL::class),
+        $c->get(\UtiOpia\Services\Mailer::class)
+    );
 });
 $container->set(\UtiOpia\Services\ModerationService::class, function ($c) {
-    return new \UtiOpia\Services\ModerationService($c->get(PDO::class), $c->get(\UtiOpia\Services\AuditLogger::class), $c->get(\UtiOpia\Services\ACL::class), new DummyMailer());
+    return new \UtiOpia\Services\ModerationService(
+        $c->get(PDO::class),
+        $c->get(\UtiOpia\Services\AuditLogger::class),
+        $c->get(\UtiOpia\Services\ACL::class),
+        $c->get(\UtiOpia\Services\Mailer::class)
+    );
 });
 $container->set(\UtiOpia\Services\LogService::class, function ($c) {
     return new \UtiOpia\Services\LogService($c->get(PDO::class), $c->get(\UtiOpia\Services\ACL::class));

@@ -111,7 +111,7 @@ function pickFile(e: Event) {
 async function uploadViaCOS(file: File) {
   // 1. 获取预签名 URL
   const authHeaders: any = auth.token ? { Authorization: `Bearer ${auth.token}` } : {}
-  const res = await axios.post(`${API}/upload/presign`, { filename: file.name, turnstile_token: turnstileToken.value }, { headers: authHeaders })
+  const res = await axios.post(`${API}/upload/presign`, { filename: file.name }, { headers: authHeaders })
   if (res.data.error) throw new Error(res.data.error)
   const { upload_url, headers: uploadHeaders, public_url } = res.data
   // 2. 直传 COS

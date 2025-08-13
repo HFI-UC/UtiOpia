@@ -99,9 +99,6 @@ final class Routes
     public static function presignUpload(Request $request, Response $response): Response
     {
         [$body, $container, $user] = self::ctxAuthOptional($request);
-        /** @var TurnstileService $turnstile */
-        $turnstile = $container->get(TurnstileService::class);
-        $turnstile->assert($body['turnstile_token'] ?? '');
 
         /** @var COSService $cos */
         $cos = $container->get(COSService::class);
@@ -161,7 +158,7 @@ final class Routes
 
     public static function listUsers(Request $request, Response $response): Response
     {
-        [, $container, $user] = self::ctxAuthOptional($request);
+        [, $container, $user] = self::ctxAuth($request);
         try {
             $svc = $container->get(\UtiOpia\Services\UserService::class);
             $result = $svc->list($user);
@@ -176,9 +173,6 @@ final class Routes
     public static function updateUser(Request $request, Response $response, array $args): Response
     {
         [$body, $container, $user] = self::ctxAuthOptional($request);
-        /** @var TurnstileService $turnstile */
-        $turnstile = $container->get(TurnstileService::class);
-        $turnstile->assert($body['turnstile_token'] ?? '');
         try {
             $svc = $container->get(\UtiOpia\Services\UserService::class);
             $result = $svc->update((int)$args['id'], $user, $body);
@@ -193,9 +187,6 @@ final class Routes
     public static function banUser(Request $request, Response $response, array $args): Response
     {
         [$body, $container, $user] = self::ctxAuthOptional($request);
-        /** @var TurnstileService $turnstile */
-        $turnstile = $container->get(TurnstileService::class);
-        $turnstile->assert($body['turnstile_token'] ?? '');
         try {
             $svc = $container->get(\UtiOpia\Services\UserService::class);
             $result = $svc->ban((int)$args['id'], $user);
@@ -210,9 +201,6 @@ final class Routes
     public static function unbanUser(Request $request, Response $response, array $args): Response
     {
         [$body, $container, $user] = self::ctxAuthOptional($request);
-        /** @var TurnstileService $turnstile */
-        $turnstile = $container->get(TurnstileService::class);
-        $turnstile->assert($body['turnstile_token'] ?? '');
         try {
             $svc = $container->get(\UtiOpia\Services\UserService::class);
             $result = $svc->unban((int)$args['id'], $user);
@@ -227,9 +215,6 @@ final class Routes
     public static function createBan(Request $request, Response $response): Response
     {
         [$body, $container, $user] = self::ctxAuth($request);
-        /** @var TurnstileService $turnstile */
-        $turnstile = $container->get(TurnstileService::class);
-        $turnstile->assert($body['turnstile_token'] ?? '');
         $svc = $container->get(\UtiOpia\Services\UserService::class);
         $result = $svc->createBan($user, (string)($body['type'] ?? ''), (string)($body['value'] ?? ''), (string)($body['reason'] ?? ''));
         return self::json($response, $result);
@@ -238,9 +223,6 @@ final class Routes
     public static function removeBan(Request $request, Response $response): Response
     {
         [$body, $container, $user] = self::ctxAuth($request);
-        /** @var TurnstileService $turnstile */
-        $turnstile = $container->get(TurnstileService::class);
-        $turnstile->assert($body['turnstile_token'] ?? '');
         $svc = $container->get(\UtiOpia\Services\UserService::class);
         $result = $svc->removeBan($user, (string)($body['type'] ?? ''), (string)($body['value'] ?? ''));
         return self::json($response, $result);
@@ -257,9 +239,6 @@ final class Routes
     public static function approveMessage(Request $request, Response $response, array $args): Response
     {
         [$body, $container, $user] = self::ctxAuth($request);
-        /** @var TurnstileService $turnstile */
-        $turnstile = $container->get(TurnstileService::class);
-        $turnstile->assert($body['turnstile_token'] ?? '');
         $svc = $container->get(\UtiOpia\Services\ModerationService::class);
         $result = $svc->approve((int)$args['id'], $user);
         return self::json($response, $result);
@@ -268,9 +247,6 @@ final class Routes
     public static function rejectMessage(Request $request, Response $response, array $args): Response
     {
         [$body, $container, $user] = self::ctxAuth($request);
-        /** @var TurnstileService $turnstile */
-        $turnstile = $container->get(TurnstileService::class);
-        $turnstile->assert($body['turnstile_token'] ?? '');
         $svc = $container->get(\UtiOpia\Services\ModerationService::class);
         $result = $svc->reject((int)$args['id'], $user, $body['reason'] ?? '');
         return self::json($response, $result);

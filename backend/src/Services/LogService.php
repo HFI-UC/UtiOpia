@@ -31,8 +31,9 @@ final class LogService
         }
         $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
 
-        $sql = 'SELECT SQL_CALC_FOUND_ROWS id, action, user_id, meta, created_at FROM audit_logs ' . $whereSql . ' ORDER BY id DESC LIMIT :limit OFFSET :offset';
-        $stmt = $this->pdo->prepare($sql);
+        // Query items (compatible with SQLite and MySQL)
+        $sqlList = 'SELECT id, action, user_id, meta, created_at FROM audit_logs ' . $whereSql . ' ORDER BY id DESC LIMIT :limit OFFSET :offset';
+        $stmt = $this->pdo->prepare($sqlList);
         foreach ($params as $k => $v) { $stmt->bindValue($k, $v); }
         $stmt->bindValue(':limit', $pageSize, PDO::PARAM_INT);
         $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
@@ -44,7 +45,12 @@ final class LogService
                 $it['meta'] = $decoded === null ? $it['meta'] : $decoded;
             }
         }
-        $total = (int)$this->pdo->query('SELECT FOUND_ROWS()')->fetchColumn();
+        // Query total count separately to support SQLite
+        $sqlCount = 'SELECT COUNT(*) FROM audit_logs ' . $whereSql;
+        $stmtCount = $this->pdo->prepare($sqlCount);
+        foreach ($params as $k => $v) { $stmtCount->bindValue($k, $v); }
+        $stmtCount->execute();
+        $total = (int)$stmtCount->fetchColumn();
         return ['items' => $items, 'total' => $total, 'page' => $page, 'pageSize' => $pageSize];
     }
 }

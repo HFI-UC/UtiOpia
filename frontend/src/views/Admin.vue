@@ -6,7 +6,7 @@
       <input v-model="qStudent" placeholder="学号搜索" />
       <button @click="load">搜索</button>
     </div>
-    <Turnstile @verified="t => token = t" />
+    
     <table>
       <thead><tr><th>ID</th><th>邮箱</th><th>昵称</th><th>角色</th><th>状态</th><th>操作</th></tr></thead>
       <tbody>
@@ -38,16 +38,15 @@
 import axios from 'axios'
 import { ref, onMounted } from 'vue'
 import { useAuthStore } from '../stores/auth'
-import Turnstile from '../components/Turnstile.vue'
+ 
 
 const API = import.meta.env.VITE_API_BASE || 'http://localhost:8080/api'
 const auth = useAuthStore()
 const users = ref<any[]>([])
-let token = ''
 const qEmail = ref('')
 const qStudent = ref('')
 
-;(window as any).onTurnstile = (t: string) => token = t
+ 
 
 async function load() {
   const res = await axios.get(`${API}/users`, { headers: { Authorization: `Bearer ${auth.token}` } })
@@ -58,24 +57,24 @@ async function load() {
 }
 
 async function update(u: any) {
-  await axios.put(`${API}/users/${u.id}`, { role: u.role, turnstile_token: token }, { headers: { Authorization: `Bearer ${auth.token}` } })
+  await axios.put(`${API}/users/${u.id}`, { role: u.role }, { headers: { Authorization: `Bearer ${auth.token}` } })
   await load()
 }
 async function ban(u: any) {
-  await axios.post(`${API}/users/${u.id}/ban`, { turnstile_token: token }, { headers: { Authorization: `Bearer ${auth.token}` } })
+  await axios.post(`${API}/users/${u.id}/ban`, {}, { headers: { Authorization: `Bearer ${auth.token}` } })
   await load()
 }
 async function unban(u: any) {
-  await axios.post(`${API}/users/${u.id}/unban`, { turnstile_token: token }, { headers: { Authorization: `Bearer ${auth.token}` } })
+  await axios.post(`${API}/users/${u.id}/unban`, {}, { headers: { Authorization: `Bearer ${auth.token}` } })
   await load()
 }
 
 async function banEmail(email:string){
-  await axios.post(`${API}/bans`, { type:'email', value: email, stage: 3, turnstile_token: token }, { headers: { Authorization: `Bearer ${auth.token}` } })
+  await axios.post(`${API}/bans`, { type:'email', value: email, stage: 3 }, { headers: { Authorization: `Bearer ${auth.token}` } })
   await load()
 }
 async function banStudent(studentId:string){
-  await axios.post(`${API}/bans`, { type:'student_id', value: studentId, stage: 3, turnstile_token: token }, { headers: { Authorization: `Bearer ${auth.token}` } })
+  await axios.post(`${API}/bans`, { type:'student_id', value: studentId, stage: 3 }, { headers: { Authorization: `Bearer ${auth.token}` } })
   await load()
 }
 
