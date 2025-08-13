@@ -1,0 +1,296 @@
+<?php
+declare(strict_types=1);
+
+namespace UtiOpia;
+
+use Psr\Http\Message\ResponseInterface as Response;
+use Psr\Http\Message\ServerRequestInterface as Request;
+use Slim\App;
+use Slim\Routing\RouteCollectorProxy;
+use Psr\Container\ContainerInterface;
+use UtiOpia\Services\AuthService;
+use UtiOpia\Services\TurnstileService;
+use UtiOpia\Services\COSService;
+use UtiOpia\Services\ACL;
+use UtiOpia\Services\AuditLogger;
+
+final class Routes
+{
+    private static ContainerInterface $container;
+    public static function register(App $app): void
+    {
+        self::$container = $app->getContainer();
+        $app->get('/health', function (Request $request, Response $response) {
+            $response->getBody()->write(json_encode(['ok' => true, 'ts' => time()]));
+            return $response->withHeader('Content-Type', 'application/json');
+        });
+
+        $app->group('/api', function (RouteCollectorProxy $group) {
+            // Auth
+            $group->post('/register', [self::class, 'registerUser']);
+            $group->post('/login', [self::class, 'login']);
+            $group->get('/me', [self::class, 'me']);
+
+            // Presigned URL
+            $group->post('/upload/presign', [self::class, 'presignUpload']) ;
+
+            // Messages
+            $group->get('/messages', [self::class, 'listMessages']);
+            $group->post('/messages', [self::class, 'createMessage']);
+            $group->put('/messages/{id}', [self::class, 'updateMessage']);
+            $group->delete('/messages/{id}', [self::class, 'deleteMessage']);
+
+            // Admin: users
+            $group->get('/users', [self::class, 'listUsers']);
+            $group->put('/users/{id}', [self::class, 'updateUser']);
+            $group->post('/users/{id}/ban', [self::class, 'banUser']);
+            $group->post('/users/{id}/unban', [self::class, 'unbanUser']);
+
+            // Admin: anonymous bans by email/student_id
+            $group->post('/bans', [self::class, 'createBan']);
+            $group->delete('/bans', [self::class, 'removeBan']);
+            $group->get('/bans', [self::class, 'listBans']);
+
+            // Moderation
+            $group->post('/messages/{id}/approve', [self::class, 'approveMessage']);
+            $group->post('/messages/{id}/reject', [self::class, 'rejectMessage']);
+
+            // Audit logs
+            $group->get('/logs', [self::class, 'listLogs']);
+        });
+    }
+
+    // Handlers (thin). Business logic in services
+    public static function registerUser(Request $request, Response $response): Response
+    {
+        [$body, $container] = self::ctx($request);
+        /** @var TurnstileService $turnstile */
+        $turnstile = $container->get(TurnstileService::class);
+        $turnstile->assert($body['turnstile_token'] ?? '');
+
+        /** @var AuthService $auth */
+        $auth = $container->get(AuthService::class);
+        $result = $auth->register($body);
+        return self::json($response, $result);
+    }
+
+    public static function login(Request $request, Response $response): Response
+    {
+        [$body, $container] = self::ctx($request);
+        /** @var TurnstileService $turnstile */
+        $turnstile = $container->get(TurnstileService::class);
+        $turnstile->assert($body['turnstile_token'] ?? '');
+
+        /** @var AuthService $auth */
+        $auth = $container->get(AuthService::class);
+        $result = $auth->login($body['email'] ?? '', $body['password'] ?? '');
+        return self::json($response, $result);
+    }
+
+    public static function me(Request $request, Response $response): Response
+    {
+        [, $container, $user] = self::ctxAuth($request);
+        /** @var AuthService $auth */
+        $auth = $container->get(AuthService::class);
+        $detail = $auth->getUser((int)$user['id']);
+        return self::json($response, ['user' => $detail]);
+    }
+
+    public static function presignUpload(Request $request, Response $response): Response
+    {
+        [$body, $container, $user] = self::ctxAuthOptional($request);
+        /** @var TurnstileService $turnstile */
+        $turnstile = $container->get(TurnstileService::class);
+        $turnstile->assert($body['turnstile_token'] ?? '');
+
+        /** @var COSService $cos */
+        $cos = $container->get(COSService::class);
+        $result = $cos->generatePresignedPutUrl((int)($user['id'] ?? 0), $body['filename'] ?? '', 30);
+        return self::json($response, $result);
+    }
+
+    public static function listMessages(Request $request, Response $response): Response
+    {
+        [$query, $container, $user] = self::ctxAuthOptional($request, true);
+        $svc = $container->get(\UtiOpia\Services\MessageService::class);
+        $result = $svc->list($query, $user);
+        return self::json($response, $result);
+    }
+
+    public static function createMessage(Request $request, Response $response): Response
+    {
+        [$body, $container, $user] = self::ctxAuth($request);
+        /** @var TurnstileService $turnstile */
+        $turnstile = $container->get(TurnstileService::class);
+        $turnstile->assert($body['turnstile_token'] ?? '');
+
+        $svc = $container->get(\UtiOpia\Services\MessageService::class);
+        $result = $svc->create($user['id'], $body);
+        return self::json($response, $result);
+    }
+
+    public static function updateMessage(Request $request, Response $response, array $args): Response
+    {
+        [$body, $container, $user] = self::ctxAuth($request);
+        /** @var TurnstileService $turnstile */
+        $turnstile = $container->get(TurnstileService::class);
+        $turnstile->assert($body['turnstile_token'] ?? '');
+        $svc = $container->get(\UtiOpia\Services\MessageService::class);
+        $result = $svc->update((int)$args['id'], $user, $body);
+        return self::json($response, $result);
+    }
+
+    public static function deleteMessage(Request $request, Response $response, array $args): Response
+    {
+        [$body, $container, $user] = self::ctxAuth($request);
+        /** @var TurnstileService $turnstile */
+        $turnstile = $container->get(TurnstileService::class);
+        $turnstile->assert($body['turnstile_token'] ?? '');
+        $svc = $container->get(\UtiOpia\Services\MessageService::class);
+        $result = $svc->delete((int)$args['id'], $user);
+        return self::json($response, $result);
+    }
+
+    public static function listUsers(Request $request, Response $response): Response
+    {
+        [, $container, $user] = self::ctxAuth($request);
+        $svc = $container->get(\UtiOpia\Services\UserService::class);
+        $result = $svc->list($user);
+        return self::json($response, $result);
+    }
+
+    public static function updateUser(Request $request, Response $response, array $args): Response
+    {
+        [$body, $container, $user] = self::ctxAuth($request);
+        /** @var TurnstileService $turnstile */
+        $turnstile = $container->get(TurnstileService::class);
+        $turnstile->assert($body['turnstile_token'] ?? '');
+        $svc = $container->get(\UtiOpia\Services\UserService::class);
+        $result = $svc->update((int)$args['id'], $user, $body);
+        return self::json($response, $result);
+    }
+
+    public static function banUser(Request $request, Response $response, array $args): Response
+    {
+        [$body, $container, $user] = self::ctxAuth($request);
+        /** @var TurnstileService $turnstile */
+        $turnstile = $container->get(TurnstileService::class);
+        $turnstile->assert($body['turnstile_token'] ?? '');
+        $svc = $container->get(\UtiOpia\Services\UserService::class);
+        $result = $svc->ban((int)$args['id'], $user);
+        return self::json($response, $result);
+    }
+
+    public static function unbanUser(Request $request, Response $response, array $args): Response
+    {
+        [$body, $container, $user] = self::ctxAuth($request);
+        /** @var TurnstileService $turnstile */
+        $turnstile = $container->get(TurnstileService::class);
+        $turnstile->assert($body['turnstile_token'] ?? '');
+        $svc = $container->get(\UtiOpia\Services\UserService::class);
+        $result = $svc->unban((int)$args['id'], $user);
+        return self::json($response, $result);
+    }
+
+    public static function createBan(Request $request, Response $response): Response
+    {
+        [$body, $container, $user] = self::ctxAuth($request);
+        /** @var TurnstileService $turnstile */
+        $turnstile = $container->get(TurnstileService::class);
+        $turnstile->assert($body['turnstile_token'] ?? '');
+        $svc = $container->get(\UtiOpia\Services\UserService::class);
+        $result = $svc->createBan($user, (string)($body['type'] ?? ''), (string)($body['value'] ?? ''), (string)($body['reason'] ?? ''));
+        return self::json($response, $result);
+    }
+
+    public static function removeBan(Request $request, Response $response): Response
+    {
+        [$body, $container, $user] = self::ctxAuth($request);
+        /** @var TurnstileService $turnstile */
+        $turnstile = $container->get(TurnstileService::class);
+        $turnstile->assert($body['turnstile_token'] ?? '');
+        $svc = $container->get(\UtiOpia\Services\UserService::class);
+        $result = $svc->removeBan($user, (string)($body['type'] ?? ''), (string)($body['value'] ?? ''));
+        return self::json($response, $result);
+    }
+
+    public static function listBans(Request $request, Response $response): Response
+    {
+        [, $container, $user] = self::ctxAuth($request);
+        $svc = $container->get(\UtiOpia\Services\UserService::class);
+        $result = $svc->listBans($user);
+        return self::json($response, $result);
+    }
+
+    public static function approveMessage(Request $request, Response $response, array $args): Response
+    {
+        [$body, $container, $user] = self::ctxAuth($request);
+        /** @var TurnstileService $turnstile */
+        $turnstile = $container->get(TurnstileService::class);
+        $turnstile->assert($body['turnstile_token'] ?? '');
+        $svc = $container->get(\UtiOpia\Services\ModerationService::class);
+        $result = $svc->approve((int)$args['id'], $user);
+        return self::json($response, $result);
+    }
+
+    public static function rejectMessage(Request $request, Response $response, array $args): Response
+    {
+        [$body, $container, $user] = self::ctxAuth($request);
+        /** @var TurnstileService $turnstile */
+        $turnstile = $container->get(TurnstileService::class);
+        $turnstile->assert($body['turnstile_token'] ?? '');
+        $svc = $container->get(\UtiOpia\Services\ModerationService::class);
+        $result = $svc->reject((int)$args['id'], $user, $body['reason'] ?? '');
+        return self::json($response, $result);
+    }
+
+    public static function listLogs(Request $request, Response $response): Response
+    {
+        [$query, $container, $user] = self::ctxAuth($request, true);
+        $svc = $container->get(\UtiOpia\Services\LogService::class);
+        $result = $svc->list($query, $user);
+        return self::json($response, $result);
+    }
+
+    private static function ctx(Request $request, bool $useQuery = false): array
+    {
+        $container = self::$container;
+        $data = $useQuery ? $request->getQueryParams() : (array)($request->getParsedBody() ?? []);
+        return [$data, $container];
+    }
+
+    private static function ctxAuth(Request $request, bool $useQuery = false): array
+    {
+        [$data, $container] = self::ctx($request, $useQuery);
+        /** @var AuthService $auth */
+        $auth = $container->get(AuthService::class);
+        $user = $auth->mustUserFromRequest($request);
+        return [$data, $container, $user];
+    }
+
+    private static function ctxAuthOptional(Request $request, bool $useQuery = false): array
+    {
+        [$data, $container] = self::ctx($request, $useQuery);
+        $user = ['id' => 0, 'role' => 'user'];
+        try {
+            /** @var AuthService $auth */
+            $auth = $container->get(AuthService::class);
+            $user = $auth->mustUserFromRequest($request);
+        } catch (\Throwable) {
+            // guest
+        }
+        return [$data, $container, $user];
+    }
+
+    private static function json(Response $response, array $data, int $code = 200): Response
+    {
+        $status = $code;
+        if (isset($data['error']) && $code === 200) {
+            $status = 400;
+        }
+        $response->getBody()->write(json_encode($data, JSON_UNESCAPED_UNICODE));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus($status);
+    }
+}
+
+
