@@ -1,6 +1,6 @@
 <template>
   <div class="home">
-    <div class="composer">
+    <div class="composer" id="compose">
       <div class="row">
         <label><input type="checkbox" v-model="isAnonymous"/> 匿名发布</label>
       </div>
@@ -15,13 +15,13 @@
         <img v-if="imageUrl" :src="imageUrl" alt="preview" />
       </div>
       <Turnstile @verified="t => turnstileToken = t" />
-      <button :disabled="loading" @click="submit">发布</button>
+      <button class="primary" :disabled="loading" @click="submit">投递纸条</button>
       <p class="err" v-if="error">{{ error }}</p>
     </div>
 
     <div class="list">
       <div v-for="m in messages" :key="m.id" class="item">
-        <p>{{ m.content }}</p>
+        <p class="note">{{ m.content }}</p>
         <img v-if="m.image_url" :src="m.image_url" />
         <small>{{ m.created_at }} · {{ m.status }}</small>
         <div class="ops">
@@ -190,11 +190,13 @@ textarea { min-height: 80px; padding: 8px; border:1px solid #ddd; border-radius:
 .upload { display:flex; align-items:center; gap:8px; }
 .upload img { max-height: 80px; border-radius: 6px; }
 .list { max-width: 700px; margin: 16px auto; display:flex; flex-direction:column; gap:12px; }
-.item { border:1px solid #eee; border-radius: 8px; padding: 12px; }
+.item { border:1px solid #f0f0f0; border-radius: 12px; padding: 14px; background:#fff; box-shadow:0 6px 16px rgba(0,0,0,.04) }
+.note { font-size: 15px; line-height: 1.8; white-space: pre-wrap; }
 .ops { display:flex; gap:8px; margin-top:8px }
 .meta { color:#888; }
 .dlg-field { display:flex; flex-direction:column; gap:6px }
 .dlg-field input, .dlg-field textarea { width:100%; padding:8px; border:1px solid #ddd; border-radius:6px }
 .err { color: #c00; }
+.primary { background:#2f54eb; color:#fff; border:1px solid #2f54eb; }
 </style>
 

@@ -1,17 +1,17 @@
 <template>
   <div>
     <header class="header">
-      <h1>UtiOpia 留言墙</h1>
+      <h1>UtiOpia 小纸条</h1>
       <nav>
-        <router-link to="/">主页</router-link>
+        <router-link to="/">纸条</router-link>
+        <a href="#compose" @click.prevent="writeNote">写纸条</a>
         <router-link to="/moderation" v-if="me?.role !== 'user'">审核</router-link>
         <router-link to="/admin" v-if="me?.role === 'super_admin' || me?.role === 'moderator'">管理</router-link>
         <router-link to="/logs" v-if="me?.role === 'super_admin' || me?.role === 'moderator'">日志</router-link>
         <router-link to="/bans" v-if="me?.role === 'super_admin' || me?.role === 'moderator'">封禁</router-link>
       </nav>
       <div class="auth">
-        <span v-if="me">你好，{{ me.nickname }} ({{ me.role }})</span>
-        <router-link v-else to="/login">登录</router-link>
+        <router-link to="/login">登录</router-link>
       </div>
     </header>
     <router-view />
@@ -39,13 +39,20 @@ const toastRef = ref<InstanceType<typeof Toast> | null>(null)
   success: (t:string)=>toastRef.value?.push(t,'success'),
   error: (t:string)=>toastRef.value?.push(t,'error')
 }
+
+function writeNote() {
+  const el = document.querySelector('#compose')
+  if (el) el.scrollIntoView({ behavior: 'smooth' })
+}
 </script>
 
 <style scoped>
-.header { display:flex; align-items:center; justify-content:space-between; gap: 16px; padding: 10px 16px; border-bottom: 1px solid #eee; }
-nav { display:flex; gap: 12px; }
-a { text-decoration: none; color: #333 }
-a.router-link-active { font-weight: 700; }
+.header { position:sticky; top:0; backdrop-filter:saturate(180%) blur(8px); background:rgba(255,255,255,.8); display:flex; align-items:center; justify-content:space-between; gap: 16px; padding: 12px 20px; border-bottom: 1px solid #f0f0f0; }
+h1 { font-size:18px; letter-spacing:.5px; }
+nav { display:flex; gap: 14px; }
+a { text-decoration: none; color: #2a2a2a }
+a.router-link-active { font-weight: 700; color:#2f54eb }
+.auth a { padding:8px 12px; border:1px solid #2f54eb; color:#2f54eb; border-radius:8px; }
 </style>
 
 
