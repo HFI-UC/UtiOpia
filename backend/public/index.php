@@ -4,6 +4,7 @@ declare(strict_types=1);
 use Dotenv\Dotenv;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
+use Psr\Http\Server\RequestHandlerInterface as RequestHandler;
 use Slim\Factory\AppFactory;
 use UtiOpia\Middleware\ErrorMiddleware as UErrorMiddleware;
 use UtiOpia\Middleware\RequestLogMiddleware;
@@ -20,16 +21,20 @@ $app = AppFactory::create();
 $app->addBodyParsingMiddleware();
 $app->addRoutingMiddleware();
 
-// CORS
-$app->add(function (Request $request, Response $response, callable $next) {
-    $response = $response
+// CORS (Slim 4 style middleware)
+$app->add(function (Request $request, RequestHandler $handler): Response {
+    if ($request->getMethod() === 'OPTIONS') {
+        $preflight = new \Slim\Psr7\Response(204);
+        return $preflight
+            ->withHeader('Access-Control-Allow-Origin', $_ENV['CORS_ORIGIN'] ?? '*')
+            ->withHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+            ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    }
+    $response = $handler->handle($request);
+    return $response
         ->withHeader('Access-Control-Allow-Origin', $_ENV['CORS_ORIGIN'] ?? '*')
         ->withHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
         ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-    if ($request->getMethod() === 'OPTIONS') {
-        return $response;
-    }
-    return $next($request, $response);
 });
 
 // Dependencies
