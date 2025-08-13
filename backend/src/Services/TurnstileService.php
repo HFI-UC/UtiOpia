@@ -17,7 +17,15 @@ final class TurnstileService
             // In dev, allow pass but log
             return;
         }
-        $client = new Client();
+        $verify = $this->settings['turnstile']['verify_ssl'] ?? true;
+        $caBundle = trim((string)($this->settings['turnstile']['ca_bundle'] ?? ''));
+        $guzzleOpts = [
+            'verify' => $verify,
+        ];
+        if ($verify && $caBundle !== '') {
+            $guzzleOpts['verify'] = $caBundle; // path to CA bundle file
+        }
+        $client = new Client($guzzleOpts);
         $resp = $client->post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
             'form_params' => [
                 'secret' => $this->settings['turnstile']['secret'],

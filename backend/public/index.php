@@ -59,6 +59,10 @@ $container->set('settings', function () {
         ],
         'turnstile' => [
             'secret' => $_ENV['TURNSTILE_SECRET'] ?? '',
+            // 可选：SSL 验证控制
+            // TURNSTILE_VERIFY_SSL=false 可临时关闭验证；TURNSTILE_CA_BUNDLE 指定 CA 证书
+            'verify_ssl' => isset($_ENV['TURNSTILE_VERIFY_SSL']) ? (bool)filter_var($_ENV['TURNSTILE_VERIFY_SSL'], FILTER_VALIDATE_BOOL) : true,
+            'ca_bundle' => $_ENV['TURNSTILE_CA_BUNDLE'] ?? '',
         ],
         'smtp' => [
             'host' => $_ENV['SMTP_HOST'] ?? '',
