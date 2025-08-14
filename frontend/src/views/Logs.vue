@@ -15,6 +15,33 @@
           <div class="filter-card">
             <h3 class="filter-title">🔍 高级日志筛选</h3>
             
+            <!-- Search Bar -->
+            <div class="search-section">
+              <div class="search-wrapper">
+                <div class="search-input-wrapper">
+                  <span class="search-icon">🔍</span>
+                  <input 
+                    v-model="searchKeyword" 
+                    placeholder="搜索日志内容、操作类型、用户ID、IP地址..." 
+                    class="search-input"
+                    @input="onSearchInput"
+                  />
+                  <button 
+                    v-if="searchKeyword" 
+                    class="clear-search-btn"
+                    @click="clearSearch"
+                    title="清除搜索"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div class="search-stats" v-if="searchKeyword">
+                  <span class="search-results">找到 {{ searchResults.length }} 条匹配记录</span>
+                  <span class="search-keyword">关键词: "{{ searchKeyword }}"</span>
+                </div>
+              </div>
+            </div>
+            
             <!-- Basic Filters -->
             <div class="filter-controls">
               <div class="form-group">
@@ -158,11 +185,13 @@
                     <td class="log-id">#{{ log.id }}</td>
                     <td class="log-action">
                       <span class="action-badge" :class="getActionClass(log.action)">
-                        {{ log.action }}
+                        <span v-html="highlightText(log.action)"></span>
                       </span>
                     </td>
                     <td class="log-user">
-                      <span v-if="log.user_id" class="user-id">用户 #{{ log.user_id }}</span>
+                      <span v-if="log.user_id" class="user-id">
+                        <span v-html="highlightText(`用户 #${log.user_id}`)"></span>
+                      </span>
                       <span v-else class="system-action">系统</span>
                     </td>
                     <td class="log-meta">
@@ -202,7 +231,7 @@
                             <span class="meta-title">📊 详细信息 (JSON格式)</span>
                             <span class="meta-size">{{ getJsonSize(log.meta) }}</span>
                           </div>
-                          <pre class="meta-content">{{ formatJson(log.meta) }}</pre>
+                          <pre class="meta-content" v-html="highlightText(formatJson(log.meta))"></pre>
                         </div>
                         
                         <div 
@@ -214,7 +243,9 @@
                         </div>
                       </div>
                     </td>
-                    <td class="log-time">{{ formatTime(log.created_at) }}</td>
+                    <td class="log-time">
+                      <span v-html="highlightText(formatTime(log.created_at))"></span>
+                    </td>
         </tr>
       </tbody>
     </table>
@@ -263,6 +294,11 @@ const systemOnly = ref(false)
 const expandedMeta = ref(new Set<number>())
 const showAdvanced = ref(false)
 
+// Search functionality
+const searchKeyword = ref('')
+const searchResults = ref<any[]>([])
+const searchTimeout = ref<NodeJS.Timeout | null>(null)
+
 function pretty(v:any) { 
   try { 
     return JSON.stringify(v, null, 2) 
@@ -284,7 +320,8 @@ async function load() {
 }
 
 function applyAdvancedFilters() {
-  let filtered = [...allItems.value]
+  // Start with search results if search is active, otherwise use all items
+  let filtered = searchKeyword.value.trim() ? [...searchResults.value] : [...allItems.value]
 
   // Apply client-side filters
   if (userId.value) {
@@ -354,6 +391,8 @@ function clearFilters() {
   requestPath.value = ''
   hasTrace.value = false
   systemOnly.value = false
+  searchKeyword.value = ''
+  searchResults.value = []
   load()
 }
 
@@ -364,6 +403,84 @@ function toggleAdvanced() {
 // Watch filter changes and apply them automatically
 function onFilterChange() {
   applyAdvancedFilters()
+}
+
+// Search functionality
+function performSearch() {
+  if (!searchKeyword.value.trim()) {
+    searchResults.value = []
+    applyAdvancedFilters()
+    return
+  }
+
+  const keyword = searchKeyword.value.toLowerCase().trim()
+  const filtered = allItems.value.filter(log => {
+    // Search in action
+    if (log.action && log.action.toLowerCase().includes(keyword)) {
+      return true
+    }
+
+    // Search in user ID
+    if (log.user_id && log.user_id.toString().includes(keyword)) {
+      return true
+    }
+
+    // Search in formatted time
+    if (formatTime(log.created_at).toLowerCase().includes(keyword)) {
+      return true
+    }
+
+    // Search in meta data
+    if (log.meta) {
+      try {
+        const metaStr = JSON.stringify(log.meta).toLowerCase()
+        if (metaStr.includes(keyword)) {
+          return true
+        }
+      } catch (e) {
+        // If meta is not JSON, convert to string and search
+        if (String(log.meta).toLowerCase().includes(keyword)) {
+          return true
+        }
+      }
+    }
+
+    return false
+  })
+
+  searchResults.value = filtered
+  
+  // Apply additional filters on search results
+  const currentItems = items.value
+  items.value = filtered
+  applyAdvancedFilters()
+}
+
+function onSearchInput() {
+  // Debounce search to avoid too many searches while typing
+  if (searchTimeout.value) {
+    clearTimeout(searchTimeout.value)
+  }
+  
+  searchTimeout.value = setTimeout(() => {
+    performSearch()
+  }, 300)
+}
+
+function clearSearch() {
+  searchKeyword.value = ''
+  searchResults.value = []
+  applyAdvancedFilters()
+}
+
+function highlightText(text: string): string {
+  if (!searchKeyword.value.trim() || !text) {
+    return text
+  }
+  
+  const keyword = searchKeyword.value.trim()
+  const regex = new RegExp(`(${keyword})`, 'gi')
+  return text.replace(regex, '<mark class="highlight">$1</mark>')
 }
 
 // JSON formatting and copy functions
@@ -608,6 +725,110 @@ load()
   font-weight: 600;
   color: var(--text);
   margin: 0 0 20px 0;
+}
+
+/* Search Section */
+.search-section {
+  margin-bottom: 24px;
+}
+
+.search-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 16px;
+  z-index: 1;
+  font-size: 16px;
+  color: var(--text-secondary);
+}
+
+.search-input {
+  width: 100%;
+  padding: 16px 16px 16px 48px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: #fff;
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow-xs);
+}
+
+.search-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-100), var(--shadow-sm);
+  outline: none;
+}
+
+.search-input:hover {
+  border-color: var(--primary-300);
+  box-shadow: var(--shadow-sm);
+}
+
+.clear-search-btn {
+  position: absolute;
+  right: 12px;
+  padding: 8px;
+  border: none;
+  background: var(--danger-100);
+  color: var(--danger);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.clear-search-btn:hover {
+  background: var(--danger);
+  color: white;
+  transform: scale(1.1);
+}
+
+.search-stats {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--primary-50);
+  border: 1px solid var(--primary-200);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+}
+
+.search-results {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.search-keyword {
+  color: var(--text-secondary);
+  font-family: 'Monaco', 'Consolas', monospace;
+}
+
+/* Highlight */
+.highlight {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: white;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
 .filter-controls {
@@ -1093,6 +1314,30 @@ load()
     font-size: var(--font-size-base);
   }
   
+  .search-input {
+    padding: 14px 14px 14px 44px;
+    font-size: var(--font-size-sm);
+  }
+  
+  .search-icon {
+    left: 14px;
+    font-size: 14px;
+  }
+  
+  .clear-search-btn {
+    right: 10px;
+    width: 20px;
+    height: 20px;
+    font-size: 10px;
+  }
+  
+  .search-stats {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+    padding: 10px 12px;
+  }
+  
   .filter-controls,
   .date-filters {
     grid-template-columns: 1fr;
@@ -1181,6 +1426,28 @@ load()
   
   .filter-card {
     padding: 20px;
+  }
+  
+  .search-input {
+    padding: 12px 12px 12px 40px;
+    font-size: var(--font-size-sm);
+  }
+  
+  .search-icon {
+    left: 12px;
+    font-size: 13px;
+  }
+  
+  .clear-search-btn {
+    right: 8px;
+    width: 18px;
+    height: 18px;
+    font-size: 9px;
+  }
+  
+  .search-stats {
+    padding: 8px 10px;
+    font-size: var(--font-size-xs);
   }
   
   .table-header {
