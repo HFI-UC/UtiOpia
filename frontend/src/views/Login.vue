@@ -43,7 +43,7 @@
               <div class="form-group">
                 <label>🔒 安全验证</label>
                 <div class="turnstile-wrapper">
-                  <Turnstile @verified="t => token = t" />
+      <Turnstile @verified="t => token = t" />
                 </div>
               </div>
 
@@ -66,7 +66,7 @@
                 </div>
               </div>
             </div>
-          </form>
+    </form>
 
           <div class="card-footer">
             <p class="register-link">

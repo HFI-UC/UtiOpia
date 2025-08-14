@@ -7,7 +7,7 @@
         <p class="page-subtitle">审核用户提交的纸条内容，维护社区环境</p>
       </div>
     </div>
-
+    
     <div class="container">
       <div class="moderation-wrapper">
         <!-- Filter Section -->
@@ -118,7 +118,7 @@
               </button>
             </div>
           </div>
-        </div>
+      </div>
       </div>
     </div>
   </div>

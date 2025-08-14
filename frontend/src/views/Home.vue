@@ -76,45 +76,45 @@
     </div>
 
     <!-- Dialogs -->
-    <Dialog :open="showEdit" @close="showEdit=false" @confirm="doEdit">
+      <Dialog :open="showEdit" @close="showEdit=false" @confirm="doEdit">
       <template #title>✏️ 编辑纸条</template>
       <div class="dialog-content">
         <div class="form-group">
           <label>内容</label>
           <textarea v-model="formContent" rows="5" placeholder="写下你想说的话..."></textarea>
         </div>
-        <template v-if="current && !current.user_id && current.is_anonymous">
+          <template v-if="current && !current.user_id && current.is_anonymous">
           <div class="form-group">
             <label>身份口令</label>
             <input v-model="formPass" type="password" placeholder="用于验证匿名身份" />
           </div>
-        </template>
+          </template>
         <div class="form-group">
           <label>安全验证</label>
           <Turnstile @verified="t => turnstileToken = t" />
         </div>
-      </div>
-    </Dialog>
+        </div>
+      </Dialog>
 
-    <Dialog :open="showDelete" @close="showDelete=false" @confirm="doDelete">
+      <Dialog :open="showDelete" @close="showDelete=false" @confirm="doDelete">
       <template #title>🗑️ 删除纸条</template>
       <div class="dialog-content">
         <div class="delete-warning">
           <span class="warning-icon">⚠️</span>
           <p>确定删除这条纸条吗？该操作不可恢复。</p>
         </div>
-        <template v-if="current && !current.user_id && current.is_anonymous">
+          <template v-if="current && !current.user_id && current.is_anonymous">
           <div class="form-group">
             <label>身份口令</label>
             <input v-model="formPass" type="password" placeholder="用于验证匿名身份" />
           </div>
-        </template>
+          </template>
         <div class="form-group">
           <label>安全验证</label>
           <Turnstile @verified="t => turnstileToken = t" />
         </div>
-      </div>
-    </Dialog>
+        </div>
+      </Dialog>
   </div>
 </template>
 

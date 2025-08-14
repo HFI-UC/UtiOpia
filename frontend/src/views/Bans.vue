@@ -21,7 +21,7 @@
                   <select v-model="type" class="type-select">
                     <option value="email">📧 邮箱封禁</option>
                     <option value="student_id">🎓 学号封禁</option>
-                  </select>
+      </select>
                 </div>
                 <div class="form-group">
                   <label>🎯 封禁目标</label>
@@ -39,7 +39,7 @@
                     <option :value="3">阶段3 (30天)</option>
                     <option :value="4">阶段4 (60天)</option>
                     <option :value="5">阶段5 (90天)</option>
-                  </select>
+      </select>
                 </div>
               </div>
               
@@ -89,8 +89,8 @@
                   <span class="stat-label">生效中：</span>
                   <span class="stat-value">{{ activeCount }}</span>
                 </span>
-              </div>
-            </div>
+    </div>
+  </div>
 
             <div class="table-wrapper">
               <table class="bans-table">
@@ -106,7 +106,7 @@
                     <th>创建时间</th>
                   </tr>
                 </thead>
-                <tbody>
+      <tbody>
                   <tr v-for="b in items" :key="b.id" class="ban-row" :class="getBanClass(b)">
                     <td class="ban-id">#{{ b.id }}</td>
                     <td class="ban-type">
@@ -132,9 +132,9 @@
                       <span v-else class="no-reason">无原因</span>
                     </td>
                     <td class="ban-time">{{ formatTime(b.created_at) }}</td>
-                  </tr>
-                </tbody>
-              </table>
+        </tr>
+      </tbody>
+    </table>
 
               <div v-if="items.length === 0" class="empty-state">
                 <div class="empty-icon">🚫</div>
@@ -160,7 +160,7 @@ const type = ref<'email'|'student_id'>('email')
 const value = ref('')
 const stage = ref(1)
 const reason = ref('')
-
+ 
 const error = ref('')
 const ok = ref('')
 const items = ref<any[]>([])

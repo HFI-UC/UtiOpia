@@ -33,6 +33,7 @@ final class Routes
 
             // Presigned URL
             $group->post('/upload/presign', [self::class, 'presignUpload']) ;
+            $group->post('/upload/sts', [self::class, 'stsUpload']) ;
 
             // Messages
             $group->get('/messages', [self::class, 'listMessages']);
@@ -113,6 +114,20 @@ final class Routes
         $result = $cos->generatePresignedPutUrl((int)($user['id'] ?? 0), $body['filename'] ?? '', 30);
         $result['max_bytes'] = $max;
         return self::json($response, $result);
+    }
+
+    public static function stsUpload(Request $request, Response $response): Response
+    {
+        [$body, $container, $user] = self::ctxAuthOptional($request);
+        $filename = (string)($body['filename'] ?? '');
+        $size = (int)($body['size'] ?? 0);
+        $max = 5 * 1024 * 1024;
+        if ($filename === '') return self::json($response, ['error' => '缺少文件名']);
+        if ($size <= 0 || $size > $max) return self::json($response, ['error' => '文件大小不合法']);
+        /** @var COSService $cos */
+        $cos = $container->get(COSService::class);
+        $res = $cos->issueTempCredentials((int)($user['id'] ?? 0), $filename, $max);
+        return self::json($response, $res);
     }
 
     public static function listMessages(Request $request, Response $response): Response

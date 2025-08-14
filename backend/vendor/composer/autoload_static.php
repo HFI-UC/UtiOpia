@@ -43,6 +43,7 @@ class ComposerStaticInitfca58d40dbece37e9eb9ba1f493dce11
         'Q' => 
         array (
             'Qcloud\\Cos\\' => 11,
+            'QCloud\\COSSTS\\' => 14,
         ),
         'P' => 
         array (
@@ -124,6 +125,10 @@ class ComposerStaticInitfca58d40dbece37e9eb9ba1f493dce11
         'Qcloud\\Cos\\' => 
         array (
             0 => __DIR__ . '/..' . '/qcloud/cos-sdk-v5/src',
+        ),
+        'QCloud\\COSSTS\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/qcloud_sts/qcloud-sts-sdk/src',
         ),
         'Psr\\Log\\' => 
         array (

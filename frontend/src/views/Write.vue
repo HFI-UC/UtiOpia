@@ -94,7 +94,7 @@
                         </label></p>
                         <p class="upload-hint">支持 JPG、PNG 格式，最大 5MB</p>
                       </div>
-                    </div>
+      </div>
                     <div v-else class="upload-preview">
                       <img :src="imageUrl" alt="预览图" />
                       <div class="preview-overlay">
@@ -106,7 +106,7 @@
                           <input class="upload-input" type="file" accept="image/*" @change="pickFile"/>
                           <span>🔄</span>
                           重新选择
-                        </label>
+        </label>
                       </div>
                     </div>
                   </div>

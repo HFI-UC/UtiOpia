@@ -13,7 +13,9 @@
         <!-- Filter Section -->
         <div class="filter-section">
           <div class="filter-card">
-            <h3 class="filter-title">🔍 日志筛选</h3>
+            <h3 class="filter-title">🔍 高级日志筛选</h3>
+            
+            <!-- Basic Filters -->
             <div class="filter-controls">
               <div class="form-group">
                 <label>🏷️ 操作类型</label>
@@ -24,25 +26,92 @@
                 />
               </div>
               <div class="form-group">
-                <div class="checkbox-group">
-                  <input type="checkbox" id="onlyError" v-model="onlyError" />
-                  <label for="onlyError" class="checkbox-label">
-                    <span class="checkbox-icon">🚨</span>
-                    仅显示错误日志
-                  </label>
-                </div>
+                <label>👤 用户ID</label>
+                <input 
+                  v-model="userId" 
+                  placeholder="输入用户ID" 
+                  class="filter-input"
+                  type="number"
+                />
               </div>
-              <div class="filter-actions">
-                <button class="refresh-btn primary" @click="load">
-                  <span>🔄</span>
-                  刷新日志
-                </button>
-                <button class="clear-btn secondary" @click="clearFilters">
-                  <span>🗑️</span>
-                  清空筛选
-                </button>
+              <div class="form-group">
+                <label>🌐 IP地址</label>
+                <input 
+                  v-model="ipAddress" 
+                  placeholder="输入IP地址" 
+                  class="filter-input"
+                />
               </div>
             </div>
+
+            <!-- Date Range Filters -->
+            <div class="date-filters" v-show="showAdvanced">
+              <div class="form-group">
+                <label>📅 开始日期</label>
+                <input 
+                  v-model="startDate" 
+                  type="datetime-local"
+                  class="filter-input"
+                />
+              </div>
+              <div class="form-group">
+                <label>📅 结束日期</label>
+                <input 
+                  v-model="endDate" 
+                  type="datetime-local"
+                  class="filter-input"
+                />
+              </div>
+              <div class="form-group">
+                <label>🔗 请求路径</label>
+                <input 
+                  v-model="requestPath" 
+                  placeholder="输入请求路径，如 /api/login" 
+                  class="filter-input"
+                />
+              </div>
+            </div>
+
+            <!-- Advanced Options -->
+            <div class="advanced-filters">
+              <div class="checkbox-group">
+                <input type="checkbox" id="onlyError" v-model="onlyError" />
+                <label for="onlyError" class="checkbox-label">
+                  <span class="checkbox-icon">🚨</span>
+                  仅显示错误日志
+                </label>
+              </div>
+              <div class="checkbox-group" v-show="showAdvanced">
+                <input type="checkbox" id="hasTrace" v-model="hasTrace" />
+                <label for="hasTrace" class="checkbox-label">
+                  <span class="checkbox-icon">🐛</span>
+                  包含错误堆栈
+                </label>
+              </div>
+              <div class="checkbox-group" v-show="showAdvanced">
+                <input type="checkbox" id="systemOnly" v-model="systemOnly" />
+                <label for="systemOnly" class="checkbox-label">
+                  <span class="checkbox-icon">⚙️</span>
+                  仅系统操作
+                </label>
+              </div>
+            </div>
+
+            <div class="filter-actions">
+              <button class="refresh-btn primary" @click="load">
+                <span>🔄</span>
+                刷新日志
+              </button>
+              <button class="clear-btn secondary" @click="clearFilters">
+                <span>🗑️</span>
+                清空筛选
+              </button>
+              <button class="toggle-advanced-btn ghost" @click="toggleAdvanced">
+                <span>⚙️</span>
+                {{ showAdvanced ? '收起高级' : '展开高级' }}
+              </button>
+            </div>
+            
             <div class="filter-stats">
               <div class="stat-item">
                 <span class="stat-label">日志条数：</span>
@@ -51,6 +120,10 @@
               <div class="stat-item">
                 <span class="stat-label">筛选状态：</span>
                 <span class="stat-value">{{ getFilterStatus() }}</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">已展开条目：</span>
+                <span class="stat-value">{{ expandedMeta.size }}</span>
               </div>
             </div>
           </div>
@@ -71,7 +144,7 @@
 
             <div class="table-wrapper">
               <table class="logs-table">
-                <thead>
+      <thead>
                   <tr>
                     <th>ID</th>
                     <th>操作类型</th>
@@ -79,8 +152,8 @@
                     <th>详细信息</th>
                     <th>时间</th>
                   </tr>
-                </thead>
-                <tbody>
+      </thead>
+      <tbody>
                   <tr v-for="log in items" :key="log.id" class="log-row" :class="getLogClass(log)">
                     <td class="log-id">#{{ log.id }}</td>
                     <td class="log-action">
@@ -94,27 +167,57 @@
                     </td>
                     <td class="log-meta">
                       <div class="meta-wrapper">
-                        <button 
-                          class="meta-toggle" 
-                          @click="toggleMeta(log.id)"
-                          :class="{ 'expanded': expandedMeta.has(log.id) }"
-                        >
-                          {{ expandedMeta.has(log.id) ? '收起' : '展开' }}
-                        </button>
-                        <pre 
+                        <div class="meta-controls">
+                          <button 
+                            class="meta-toggle" 
+                            @click="toggleMeta(log.id)"
+                            :class="{ 'expanded': expandedMeta.has(log.id) }"
+                          >
+                            <span>{{ expandedMeta.has(log.id) ? '📄' : '📋' }}</span>
+                            {{ expandedMeta.has(log.id) ? '收起详情' : '展开详情' }}
+                          </button>
+                          <div class="copy-actions" v-show="expandedMeta.has(log.id)">
+                            <button 
+                              class="copy-btn"
+                              @click="copyToClipboard(pretty(log.meta), 'meta')"
+                              title="复制详细信息"
+                            >
+                              📋 复制JSON
+                            </button>
+                            <button 
+                              class="copy-btn"
+                              @click="copyFullLog(log)"
+                              title="复制完整日志"
+                            >
+                              📄 复制全部
+                            </button>
+                          </div>
+                        </div>
+                        
+                        <div 
                           v-show="expandedMeta.has(log.id)" 
-                          class="meta-content"
-                        >{{ pretty(log.meta) }}</pre>
+                          class="meta-expanded"
+                        >
+                          <div class="meta-header">
+                            <span class="meta-title">📊 详细信息 (JSON格式)</span>
+                            <span class="meta-size">{{ getJsonSize(log.meta) }}</span>
+                          </div>
+                          <pre class="meta-content">{{ formatJson(log.meta) }}</pre>
+                        </div>
+                        
                         <div 
                           v-show="!expandedMeta.has(log.id)" 
                           class="meta-preview"
-                        >{{ getMetaPreview(log.meta) }}</div>
+                        >
+                          <span class="preview-icon">💡</span>
+                          {{ getMetaPreview(log.meta) }}
+                        </div>
                       </div>
                     </td>
                     <td class="log-time">{{ formatTime(log.created_at) }}</td>
-                  </tr>
-                </tbody>
-              </table>
+        </tr>
+      </tbody>
+    </table>
 
               <div v-if="items.length === 0" class="empty-state">
                 <div class="empty-icon">📊</div>
@@ -135,15 +238,30 @@
 
 <script setup lang="ts">
 import axios from 'axios'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useAuthStore } from '../stores/auth'
 
 const API = import.meta.env.VITE_API_BASE || 'http://localhost:8080/api'
 const auth = useAuthStore()
 const items = ref<any[]>([])
+const allItems = ref<any[]>([])
+
+// Basic filters
 const action = ref('')
 const onlyError = ref(false)
+
+// Advanced filters
+const userId = ref('')
+const ipAddress = ref('')
+const startDate = ref('')
+const endDate = ref('')
+const requestPath = ref('')
+const hasTrace = ref(false)
+const systemOnly = ref(false)
+
+// UI state
 const expandedMeta = ref(new Set<number>())
+const showAdvanced = ref(false)
 
 function pretty(v:any) { 
   try { 
@@ -161,19 +279,175 @@ async function load() {
     }, 
     headers: { Authorization: `Bearer ${auth.token}` } 
   })
-  items.value = res.data.items || []
+  allItems.value = res.data.items || []
+  applyAdvancedFilters()
+}
+
+function applyAdvancedFilters() {
+  let filtered = [...allItems.value]
+
+  // Apply client-side filters
+  if (userId.value) {
+    filtered = filtered.filter(log => 
+      log.user_id && log.user_id.toString().includes(userId.value)
+    )
+  }
+
+  if (systemOnly.value) {
+    filtered = filtered.filter(log => !log.user_id)
+  }
+
+  if (ipAddress.value) {
+    filtered = filtered.filter(log => {
+      const meta = log.meta
+      if (typeof meta === 'object' && meta) {
+        return (
+          (meta.ip && meta.ip.includes(ipAddress.value)) ||
+          (meta.headers && meta.headers['Cf-Connecting-Ip'] && meta.headers['Cf-Connecting-Ip'].includes(ipAddress.value)) ||
+          (meta.headers && meta.headers['X-Forwarded-For'] && meta.headers['X-Forwarded-For'].includes(ipAddress.value))
+        )
+      }
+      return false
+    })
+  }
+
+  if (requestPath.value) {
+    filtered = filtered.filter(log => {
+      const meta = log.meta
+      if (typeof meta === 'object' && meta) {
+        return meta.path && meta.path.includes(requestPath.value)
+      }
+      return false
+    })
+  }
+
+  if (hasTrace.value) {
+    filtered = filtered.filter(log => {
+      const meta = log.meta
+      if (typeof meta === 'object' && meta) {
+        return meta.trace || meta.message
+      }
+      return false
+    })
+  }
+
+  if (startDate.value) {
+    const start = new Date(startDate.value)
+    filtered = filtered.filter(log => new Date(log.created_at) >= start)
+  }
+
+  if (endDate.value) {
+    const end = new Date(endDate.value)
+    filtered = filtered.filter(log => new Date(log.created_at) <= end)
+  }
+
+  items.value = filtered
 }
 
 function clearFilters() {
   action.value = ''
   onlyError.value = false
+  userId.value = ''
+  ipAddress.value = ''
+  startDate.value = ''
+  endDate.value = ''
+  requestPath.value = ''
+  hasTrace.value = false
+  systemOnly.value = false
   load()
+}
+
+function toggleAdvanced() {
+  showAdvanced.value = !showAdvanced.value
+}
+
+// Watch filter changes and apply them automatically
+function onFilterChange() {
+  applyAdvancedFilters()
+}
+
+// JSON formatting and copy functions
+function formatJson(data: any) {
+  try {
+    return JSON.stringify(data, null, 2)
+  } catch {
+    return String(data)
+  }
+}
+
+function getJsonSize(data: any) {
+  try {
+    const str = JSON.stringify(data)
+    const bytes = new Blob([str]).size
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
+    return `${Math.round(bytes / (1024 * 1024))} MB`
+  } catch {
+    return '未知大小'
+  }
+}
+
+async function copyToClipboard(text: string, type: string) {
+  try {
+    await navigator.clipboard.writeText(text)
+    showToast(`${type === 'meta' ? '详细信息' : '内容'}已复制到剪贴板`, 'success')
+  } catch (err) {
+    console.error('复制失败:', err)
+    showToast('复制失败，请手动选择文本', 'error')
+  }
+}
+
+function copyFullLog(log: any) {
+  const fullLog = {
+    id: log.id,
+    action: log.action,
+    user_id: log.user_id,
+    meta: log.meta,
+    created_at: log.created_at,
+    formatted_time: formatTime(log.created_at)
+  }
+  copyToClipboard(formatJson(fullLog), 'full')
+}
+
+function showToast(message: string, type: 'success' | 'error' = 'success') {
+  // Create a simple toast notification
+  const toast = document.createElement('div')
+  toast.className = `toast-notification toast-${type}`
+  toast.textContent = message
+  toast.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    background: ${type === 'success' ? '#10b981' : '#ef4444'};
+    color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 10000;
+    font-size: 14px;
+    font-weight: 500;
+    animation: slideIn 0.3s ease-out;
+  `
+  
+  document.body.appendChild(toast)
+  
+  setTimeout(() => {
+    toast.style.animation = 'slideOut 0.3s ease-in'
+    setTimeout(() => document.body.removeChild(toast), 300)
+  }, 3000)
 }
 
 function getFilterStatus() {
   const filters = []
   if (action.value) filters.push(`操作类型: ${action.value}`)
+  if (userId.value) filters.push(`用户ID: ${userId.value}`)
+  if (ipAddress.value) filters.push(`IP: ${ipAddress.value}`)
+  if (requestPath.value) filters.push(`路径: ${requestPath.value}`)
+  if (startDate.value) filters.push(`开始: ${new Date(startDate.value).toLocaleDateString()}`)
+  if (endDate.value) filters.push(`结束: ${new Date(endDate.value).toLocaleDateString()}`)
   if (onlyError.value) filters.push('仅错误')
+  if (hasTrace.value) filters.push('包含堆栈')
+  if (systemOnly.value) filters.push('仅系统')
   return filters.length > 0 ? filters.join(' + ') : '无筛选'
 }
 
@@ -248,6 +522,11 @@ function exportLogs() {
   link.click()
   document.body.removeChild(link)
 }
+
+// Watch for filter changes
+watch([userId, ipAddress, startDate, endDate, requestPath, hasTrace, systemOnly], () => {
+  onFilterChange()
+}, { deep: true })
 
 load()
 </script>
@@ -333,10 +612,30 @@ load()
 
 .filter-controls {
   display: grid;
-  grid-template-columns: 2fr 1fr auto;
+  grid-template-columns: repeat(3, 1fr);
   gap: 20px;
   align-items: end;
   margin-bottom: 20px;
+}
+
+.date-filters {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  align-items: end;
+  margin-bottom: 20px;
+}
+
+.advanced-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.advanced-filters .checkbox-group {
+  flex: 0 0 auto;
+  min-width: 200px;
 }
 
 .form-group {
@@ -407,7 +706,7 @@ load()
   gap: 12px;
 }
 
-.refresh-btn, .clear-btn {
+.refresh-btn, .clear-btn, .toggle-advanced-btn {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -419,9 +718,31 @@ load()
   white-space: nowrap;
 }
 
-.refresh-btn:hover, .clear-btn:hover {
+.refresh-btn:hover, .clear-btn:hover, .toggle-advanced-btn:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
+}
+
+.copy-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-solid);
+  border-radius: var(--radius-xs);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text);
+}
+
+.copy-btn:hover {
+  background: var(--primary-100);
+  border-color: var(--primary);
+  color: var(--primary);
+  transform: translateY(-1px);
 }
 
 .filter-stats {
@@ -613,25 +934,70 @@ load()
 
 /* Meta Section */
 .log-meta {
-  max-width: 300px;
+  max-width: 400px;
 }
 
 .meta-wrapper {
   display: flex;
   flex-direction: column;
+  gap: 12px;
+}
+
+.meta-controls {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
+  align-items: flex-start;
+}
+
+.copy-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.meta-expanded {
+  background: var(--bg-solid);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.meta-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--primary-50);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.meta-title {
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  color: var(--text);
+}
+
+.meta-size {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  font-family: 'Monaco', 'Consolas', monospace;
 }
 
 .meta-toggle {
   align-self: flex-start;
-  padding: 4px 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
   border: 1px solid var(--border);
   background: var(--bg-solid);
-  border-radius: var(--radius-xs);
-  font-size: var(--font-size-xs);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
+  color: var(--text);
 }
 
 .meta-toggle:hover {
@@ -646,24 +1012,38 @@ load()
 }
 
 .meta-content {
-  background: var(--bg-solid);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xs);
-  padding: 12px;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  padding: 16px;
   margin: 0;
   font-size: var(--font-size-xs);
   white-space: pre-wrap;
   word-break: break-word;
-  max-height: 200px;
+  max-height: 300px;
   overflow-y: auto;
   font-family: 'Monaco', 'Consolas', monospace;
+  line-height: 1.5;
+  border: none;
+  border-radius: 0;
 }
 
 .meta-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   color: var(--text-secondary);
   font-size: var(--font-size-xs);
   font-family: 'Monaco', 'Consolas', monospace;
   line-height: 1.4;
+  padding: 8px 12px;
+  background: var(--primary-50);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+}
+
+.preview-icon {
+  font-size: 14px;
+  flex-shrink: 0;
 }
 
 .log-time {
@@ -713,18 +1093,30 @@ load()
     font-size: var(--font-size-base);
   }
   
-  .filter-controls {
+  .filter-controls,
+  .date-filters {
     grid-template-columns: 1fr;
     gap: 16px;
   }
   
-  .filter-actions {
-    justify-content: stretch;
+  .advanced-filters {
+    flex-direction: column;
+    gap: 12px;
   }
   
-  .refresh-btn, .clear-btn {
+  .advanced-filters .checkbox-group {
+    min-width: auto;
+  }
+  
+  .filter-actions {
+    justify-content: stretch;
+    flex-wrap: wrap;
+  }
+  
+  .refresh-btn, .clear-btn, .toggle-advanced-btn {
     flex: 1;
     justify-content: center;
+    min-width: 120px;
   }
   
   .filter-stats {
@@ -748,11 +1140,31 @@ load()
   }
   
   .log-meta {
-    max-width: 200px;
+    max-width: 250px;
+  }
+  
+  .meta-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .copy-actions {
+    flex-direction: column;
+    gap: 6px;
+  }
+  
+  .copy-btn {
+    justify-content: center;
+    font-size: var(--font-size-xs);
   }
   
   .meta-content {
     max-height: 150px;
+    font-size: 11px;
+  }
+  
+  .meta-header {
+    padding: 8px 12px;
   }
 }
 
@@ -781,12 +1193,58 @@ load()
   }
   
   .log-meta {
-    max-width: 150px;
+    max-width: 180px;
+  }
+  
+  .meta-toggle {
+    padding: 6px 12px;
+    font-size: var(--font-size-xs);
+  }
+  
+  .copy-actions {
+    gap: 4px;
+  }
+  
+  .copy-btn {
+    padding: 4px 8px;
+    font-size: 10px;
   }
   
   .meta-content {
     padding: 8px;
     max-height: 100px;
+    font-size: 10px;
+  }
+  
+  .meta-header {
+    padding: 6px 8px;
+  }
+  
+  .meta-title {
+    font-size: var(--font-size-xs);
+  }
+}
+
+/* Toast Animation */
+@keyframes slideIn {
+  from {
+    transform: translateX(100%) scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOut {
+  from {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%) scale(0.8);
+    opacity: 0;
   }
 }
 </style>
