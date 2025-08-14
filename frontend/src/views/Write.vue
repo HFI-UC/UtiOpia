@@ -231,9 +231,9 @@ async function uploadViaCOS(file: File) {
   const authHeaders: any = auth.token ? { Authorization: `Bearer ${auth.token}` } : {}
   const res = await axios.post(`${API}/upload/presign`, { filename: file.name, size: file.size }, { headers: authHeaders })
   if (res.data.error) throw new Error(res.data.error)
-  const { upload_url, headers: uploadHeaders, public_url } = res.data
+  const { upload_url, headers: uploadHeaders, public_url, get_url } = res.data
   await fetch(upload_url, { method: 'PUT', headers: uploadHeaders, body: file })
-  imageUrl.value = public_url
+  imageUrl.value = get_url || public_url
 }
 
 async function submit() {

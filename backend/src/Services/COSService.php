@@ -51,6 +51,12 @@ final class COSService
             ],
         ], "+{$expiresSeconds} seconds");
         $url = (string)$signed;
+        // 生成用于读取的临时 GET 预签名链接，供前端预览使用
+        $previewUrl = $this->client->getObjectUrl(
+            $bucket,
+            $key,
+            "+{$expiresSeconds} seconds"
+        );
         $cosRegion = $this->settings['cos']['region'];
         $appId = $this->settings['cos']['appId'] ?? '';
         $bucket = $this->settings['cos']['bucket'];
@@ -63,10 +69,26 @@ final class COSService
             'key' => $key,
             'expires_in' => $expiresSeconds,
             'public_url' => $publicUrl,
+            'get_url' => $previewUrl,
             'headers' => [
                 'Content-Type' => $contentType,
             ]
         ];
+    }
+
+    /**
+     * 生成短期有效的 GET 预签名链接（默认30s）。
+     * 支持传入完整 COS URL 或者对象 Key。
+     */
+    public function generatePresignedGetUrl(string $urlOrKey, int $expiresSeconds = 30): string
+    {
+        $bucket = $this->settings['cos']['bucket'];
+        $key = $urlOrKey;
+        if (str_contains($urlOrKey, '://')) {
+            $path = parse_url($urlOrKey, PHP_URL_PATH) ?: '';
+            $key = ltrim($path, '/');
+        }
+        return $this->client->getObjectUrl($bucket, $key, "+{$expiresSeconds} seconds");
     }
 
     /**

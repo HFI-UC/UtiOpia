@@ -46,6 +46,20 @@ final class MessageService
         $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
         $items = $stmt->fetchAll();
+        // 将 image_url 替换为短期 GET 预签名，便于前端直接展示
+        try {
+            if (function_exists('app_container_get')) {
+                /** @var COSService $cos */
+                $cos = app_container_get(COSService::class);
+                foreach ($items as &$item) {
+                    $url = (string)($item['image_url'] ?? '');
+                    if ($url !== '') {
+                        $item['image_url'] = $cos->generatePresignedGetUrl($url, 30);
+                    }
+                }
+                unset($item);
+            }
+        } catch (\Throwable) {}
         $total = (int)$this->pdo->query('SELECT FOUND_ROWS()')->fetchColumn();
         return ['items' => $items, 'total' => $total, 'page' => $page, 'pageSize' => $pageSize];
     }
