@@ -34,6 +34,10 @@ final class MessageService
         if ($status !== 'all') {
             $where = 'WHERE status = :status';
         }
+        // 普通用户不显示软删除
+        if (!$canSeeSensitive) {
+            $where = $where === '' ? 'WHERE deleted_at IS NULL' : ($where . ' AND deleted_at IS NULL');
+        }
         $stmt = $this->pdo->prepare("SELECT SQL_CALC_FOUND_ROWS $cols FROM messages $where ORDER BY id DESC LIMIT :limit OFFSET :offset");
         if ($status !== 'all') {
             $stmt->bindValue(':status', $status);
@@ -159,8 +163,8 @@ final class MessageService
         } else {
             $this->acl->ensure($user['role'], 'message:delete');
         }
-        $this->pdo->prepare('DELETE FROM messages WHERE id = ?')->execute([$id]);
-        $this->logger->log('message.delete', (int)$user['id'], ['message_id' => $id]);
+        $this->pdo->prepare('UPDATE messages SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?')->execute([$id]);
+        $this->logger->log('message.delete', (int)$user['id'], ['message_id' => $id, 'soft' => true]);
         return ['ok' => true];
     }
 

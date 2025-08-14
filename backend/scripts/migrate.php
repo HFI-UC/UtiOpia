@@ -43,10 +43,12 @@ CREATE TABLE IF NOT EXISTS messages (
   reject_reason VARCHAR(255) NULL,
   reviewed_by INT UNSIGNED NULL,
   reviewed_at DATETIME NULL,
+  deleted_at DATETIME NULL,
   created_at DATETIME NOT NULL,
   INDEX idx_user_id(user_id),
   INDEX idx_anon_email(anon_email),
   INDEX idx_anon_student(anon_student_id),
+  INDEX idx_deleted_at(deleted_at),
   CONSTRAINT fk_messages_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 SQL;
