@@ -1,28 +1,5 @@
 <template>
   <div class="home">
-    <div class="composer" id="compose">
-      <div class="row" v-if="authed">
-        <label><input type="checkbox" v-model="isAnonymousMutable"/> 匿名发布</label>
-      </div>
-      <div v-if="isAnonymous && !authed" class="anon-grid">
-        <input v-model="anonEmail" placeholder="学校邮箱" />
-        <input v-model="anonStudentId" placeholder="学生号" />
-        <input v-model="anonPassphrase" type="password" placeholder="身份口令 (用于编辑/删除)" />
-      </div>
-      <textarea v-model="content" maxlength="500" placeholder="写点什么..."/>
-      <div class="upload" @dragover.prevent @drop.prevent="onDrop">
-        <label class="u-btn">
-          <input class="u-input" type="file" accept="image/*" @change="pickFile"/>
-          选择图片
-        </label>
-        <span class="u-hint">{{ fileName || '未选择文件' }}</span>
-        <img v-if="imageUrl" class="u-preview" :src="imageUrl" alt="preview" />
-      </div>
-      <Turnstile @verified="t => turnstileToken = t" />
-      <button class="primary" :disabled="loading" @click="submit">投递纸条</button>
-      <p class="err" v-if="error">{{ error }}</p>
-    </div>
-
     <div class="list">
       <div v-for="m in messages" :key="m.id" class="item">
         <p class="note">{{ m.content }}</p>

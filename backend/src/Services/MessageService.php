@@ -94,19 +94,23 @@ final class MessageService
         }
         $id = (int)$this->pdo->lastInsertId();
         $this->logger->log('message.create', $userId, ['message_id' => $id]);
-        // 邮件通知作者（仅实名用户有邮箱）。在 ModerationService 中会发通过/拒绝；这里发送“已提交待审核”。
-        $stmt = $this->pdo->prepare('SELECT email, nickname FROM users WHERE id = ?');
-        $stmt->execute([$userId]);
-        if ($u = $stmt->fetch()) {
-            try {
-                // 通过容器获取 Mailer（运行时存在 DI 容器）
-                if (function_exists('app_container_get')) {
-                    /** @var Mailer $mailer */
-                    $mailer = app_container_get(Mailer::class);
-                    $mailer->sendMessageSubmitted($u['email'], $u['nickname'], $id, $content);
+        // 邮件通知：提交后待审核
+        try {
+            if (function_exists('app_container_get')) {
+                /** @var Mailer $mailer */
+                $mailer = app_container_get(Mailer::class);
+                if ($userId > 0) {
+                    $stmt = $this->pdo->prepare('SELECT email, nickname FROM users WHERE id = ?');
+                    $stmt->execute([$userId]);
+                    if ($u = $stmt->fetch()) {
+                        $mailer->sendMessageSubmitted((string)$u['email'], (string)$u['nickname'], $id, $content);
+                    }
+                } else if ($isAnonymous && $anonEmail !== '') {
+                    // 游客匿名：发送到匿名邮箱
+                    $mailer->sendMessageSubmitted($anonEmail, '同学', $id, $content);
                 }
-            } catch (\Throwable) {}
-        }
+            }
+        } catch (\Throwable) {}
         return ['ok' => true, 'id' => $id];
     }
 

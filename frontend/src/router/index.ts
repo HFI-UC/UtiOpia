@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Home from '../views/Home.vue'
+import Write from '../views/Write.vue'
 import Login from '../views/Login.vue'
 import Moderation from '../views/Moderation.vue'
 import Admin from '../views/Admin.vue'
@@ -12,6 +13,7 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/', component: Home },
+    { path: '/write', component: Write },
     { path: '/login', component: Login },
     { path: '/register', component: Register },
     { path: '/moderation', component: Moderation, meta: { roles: ['moderator', 'super_admin'] } },
