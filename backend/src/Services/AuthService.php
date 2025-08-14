@@ -23,6 +23,7 @@ final class AuthService
         $email = trim((string)($data['email'] ?? ''));
         $password = (string)($data['password'] ?? '');
         $nickname = trim((string)($data['nickname'] ?? ''));
+        $studentId = trim((string)($data['student_id'] ?? ''));
         v::email()->assert($email);
         // 限制注册邮箱规则： /^[a-z]+\.[a-z]+20\d{2}@gdhfi\.com$/
         if (!preg_match('/^[a-z]+\.[a-z]+20\d{2}@gdhfi\.com$/', $email)) {
@@ -30,6 +31,9 @@ final class AuthService
         }
         v::stringType()->length(6)->assert($password);
         v::stringType()->length(1, 50)->assert($nickname);
+        if (!preg_match('/^GJ20\d{2}\d{4}$/', $studentId)) {
+            return ['error' => '学生号格式不正确'];
+        }
 
         $stmt = $this->pdo->prepare('SELECT id FROM users WHERE email = ? LIMIT 1');
         $stmt->execute([$email]);
@@ -39,8 +43,8 @@ final class AuthService
         }
 
         $hash = password_hash($password, PASSWORD_BCRYPT);
-        $this->pdo->prepare('INSERT INTO users(email, password_hash, nickname, role, banned, created_at) VALUES(?,?,?,?,?,NOW())')
-            ->execute([$email, $hash, $nickname, 'user', 0]);
+        $this->pdo->prepare('INSERT INTO users(email, password_hash, nickname, student_id, role, banned, created_at) VALUES(?,?,?,?,?,?,NOW())')
+            ->execute([$email, $hash, $nickname, $studentId, 'user', 0]);
         $userId = (int)$this->pdo->lastInsertId();
         $this->logger->log('auth.register.success', $userId, ['email' => $email]);
         return ['ok' => true];

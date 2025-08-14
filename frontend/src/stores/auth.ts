@@ -30,8 +30,8 @@ export const useAuthStore = defineStore('auth', {
         throw new Error(res.data.error || '登录失败')
       }
     },
-    async register(email: string, password: string, nickname: string, turnstile_token: string) {
-      const res = await axios.post(`${API}/register`, { email, password, nickname, turnstile_token })
+    async register(email: string, password: string, nickname: string, student_id: string, turnstile_token: string) {
+      const res = await axios.post(`${API}/register`, { email, password, nickname, student_id, turnstile_token })
       if (res.data.error) throw new Error(res.data.error)
     },
     async fetchMe() {

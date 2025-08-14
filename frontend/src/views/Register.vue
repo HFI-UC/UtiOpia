@@ -4,6 +4,8 @@
     <form @submit.prevent="onSubmit">
       <label>邮箱</label>
       <input v-model="email" type="email" required placeholder="学校邮箱"/>
+      <label>学生号</label>
+      <input v-model="studentId" required placeholder="如 GJ20120124" />
       <label>昵称</label>
       <input v-model="nickname" maxlength="50" required />
       <label>密码</label>
@@ -27,6 +29,7 @@ const password = ref('')
 const token = ref('')
 const loading = ref(false)
 const error = ref('')
+const studentId = ref('')
 const auth = useAuthStore()
 const router = useRouter()
 
@@ -34,11 +37,15 @@ async function onSubmit() {
   try {
     loading.value = true
     error.value = ''
-    const pattern = /^[a-z]+\.[a-z]+20\d{2}@gdhfi\.com$/
-    if (!pattern.test(email.value)) {
+    const emailPattern = /^[a-z]+\.[a-z]+20\d{2}@gdhfi\.com$/
+    if (!emailPattern.test(email.value)) {
       throw new Error('邮箱需符合学校规则')
     }
-    await auth.register(email.value, password.value, nickname.value, token.value)
+    const idPattern = /^GJ20\d{2}\d{4}$/
+    if (!idPattern.test(studentId.value)) {
+      throw new Error('学生号格式不正确')
+    }
+    await auth.register(email.value, password.value, nickname.value, studentId.value, token.value)
     await auth.login(email.value, password.value, token.value)
     router.push('/')
   } catch (e:any) {
