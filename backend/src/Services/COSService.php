@@ -30,14 +30,22 @@ final class COSService
         }
         $key = 'uploads/' . $userId . '/' . date('Ymd') . '/' . bin2hex(random_bytes(8)) . '-' . basename($filename);
         $bucket = $this->settings['cos']['bucket'];
-        // 使用 COS SDK 的 getObjectUrl 生成预签名 URL（支持指定 HTTP 方法）
-        // 使用 getObjectUrl 生成预签名，HTTP 方法通过 args 指定
-        $url = $this->client->getObjectUrl(
-            $bucket,
-            $key,
-            "+{$expiresSeconds} seconds",
-            ['Method' => 'PUT']
-        );
+        // 依据扩展名推断 Content-Type，并将其纳入签名，确保前端上传时与签名一致
+        $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+        $contentType = match ($ext) {
+            'jpg', 'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            default => 'application/octet-stream',
+        };
+        // 使用 COS SDK 的 getPresignedUrl 生成 PutObject 预签名 URL
+        $signed = $this->client->getPresignedUrl('putObject', [
+            'Bucket' => $bucket,
+            'Key' => $key,
+            'ContentType' => $contentType,
+        ], "+{$expiresSeconds} seconds");
+        $url = (string)$signed;
         $cosRegion = $this->settings['cos']['region'];
         $appId = $this->settings['cos']['appId'] ?? '';
         $bucket = $this->settings['cos']['bucket'];
@@ -51,7 +59,7 @@ final class COSService
             'expires_in' => $expiresSeconds,
             'public_url' => $publicUrl,
             'headers' => [
-                'Content-Type' => 'image/*'
+                'Content-Type' => $contentType,
             ]
         ];
     }
