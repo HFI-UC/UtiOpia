@@ -102,7 +102,16 @@ final class Routes
 
         /** @var COSService $cos */
         $cos = $container->get(COSService::class);
+        $size = (int)($body['size'] ?? 0);
+        $max = 5 * 1024 * 1024; // 5MB
+        if ($size <= 0) {
+            return self::json($response, ['error' => '缺少文件大小']);
+        }
+        if ($size > $max) {
+            return self::json($response, ['error' => '文件过大，最大 5MB']);
+        }
         $result = $cos->generatePresignedPutUrl((int)($user['id'] ?? 0), $body['filename'] ?? '', 30);
+        $result['max_bytes'] = $max;
         return self::json($response, $result);
     }
 

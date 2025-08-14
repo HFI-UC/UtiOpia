@@ -29,14 +29,14 @@ final class COSService
         }
         $key = 'uploads/' . $userId . '/' . date('Ymd') . '/' . bin2hex(random_bytes(8)) . '-' . basename($filename);
         $bucket = $this->settings['cos']['bucket'];
-        $cmd = $this->client->getCommand('putObject', [
-            'Bucket' => $bucket,
-            'Key' => $key,
-            'ACL' => 'public-read',
-            'ContentType' => 'image/*',
-        ]);
-        $request = $this->client->createPresignedRequest($cmd, "+{$expiresSeconds} seconds");
-        $url = (string)$request->getUri();
+        // 使用 COS SDK 的 getObjectUrl 生成预签名 URL（支持指定 HTTP 方法）
+        $url = $this->client->getObjectUrl(
+            $bucket,
+            $key,
+            "+{$expiresSeconds} seconds",
+            [], // 可在此传 query/headers 参与签名
+            'PUT'
+        );
         $cosRegion = $this->settings['cos']['region'];
         $appId = $this->settings['cos']['appId'] ?? '';
         $bucket = $this->settings['cos']['bucket'];

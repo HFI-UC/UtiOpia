@@ -49,6 +49,10 @@ const fileName = ref('')
 function pickFile(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
   if (!file) return
+  if (file.size > 5 * 1024 * 1024) {
+    alert('文件过大，最大 5MB')
+    return
+  }
   fileName.value = file.name
   uploadViaCOS(file)
 }
@@ -56,13 +60,17 @@ function pickFile(e: Event) {
 function onDrop(e: DragEvent) {
   const file = e.dataTransfer?.files?.[0]
   if (!file) return
+  if (file.size > 5 * 1024 * 1024) {
+    alert('文件过大，最大 5MB')
+    return
+  }
   fileName.value = file.name
   uploadViaCOS(file)
 }
 
 async function uploadViaCOS(file: File) {
   const authHeaders: any = auth.token ? { Authorization: `Bearer ${auth.token}` } : {}
-  const res = await axios.post(`${API}/upload/presign`, { filename: file.name }, { headers: authHeaders })
+  const res = await axios.post(`${API}/upload/presign`, { filename: file.name, size: file.size }, { headers: authHeaders })
   if (res.data.error) throw new Error(res.data.error)
   const { upload_url, headers: uploadHeaders, public_url } = res.data
   await fetch(upload_url, { method: 'PUT', headers: uploadHeaders, body: file })

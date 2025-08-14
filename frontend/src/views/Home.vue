@@ -102,7 +102,11 @@ function onDrop(e: DragEvent) {
 async function uploadViaCOS(file: File) {
   // 1. 获取预签名 URL
   const authHeaders: any = auth.token ? { Authorization: `Bearer ${auth.token}` } : {}
-  const res = await axios.post(`${API}/upload/presign`, { filename: file.name }, { headers: authHeaders })
+  if (file.size > 5 * 1024 * 1024) {
+    (window as any).$toast?.error('文件过大，最大 5MB')
+    return
+  }
+  const res = await axios.post(`${API}/upload/presign`, { filename: file.name, size: file.size }, { headers: authHeaders })
   if (res.data.error) throw new Error(res.data.error)
   const { upload_url, headers: uploadHeaders, public_url } = res.data
   // 2. 直传 COS
