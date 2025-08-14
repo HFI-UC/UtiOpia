@@ -15,7 +15,8 @@ final class COSService
         $cos = $settings['cos'];
         $this->client = new CosClient([
             'region' => $cos['region'],
-            'schema' => 'https',
+            'scheme' => 'https',
+            'appId' => $cos['appId'] ?? null,
             'credentials' => [
                 'secretId' => $cos['secretId'],
                 'secretKey' => $cos['secretKey'],
