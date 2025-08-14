@@ -4,7 +4,7 @@
       <div class="row" v-if="authed">
         <label><input type="checkbox" v-model="isAnonymousMutable"/> 匿名发布</label>
       </div>
-      <div v-if="isAnonymous" class="anon-grid">
+      <div v-if="isAnonymous && !authed" class="anon-grid">
         <input v-model="anonEmail" placeholder="学校邮箱" />
         <input v-model="anonStudentId" placeholder="学生号" />
         <input v-model="anonPassphrase" type="password" placeholder="身份口令 (用于编辑/删除)" />
@@ -138,9 +138,12 @@ async function submit() {
     loading.value = true
     const payload: any = { content: content.value, image_url: imageUrl.value, turnstile_token: turnstileToken.value, is_anonymous: isAnonymous.value }
     if (isAnonymous.value) {
+      // 未登录（游客）才需要匿名身份字段
+      if (!authed.value) {
       payload.anon_email = anonEmail.value
       payload.anon_student_id = anonStudentId.value
       payload.anon_passphrase = anonPassphrase.value
+      }
     }
     const headers: any = auth.token ? { Authorization: `Bearer ${auth.token}` } : {}
     const res = await axios.post(`${API}/messages`, payload, { headers })

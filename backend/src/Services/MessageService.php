@@ -27,8 +27,9 @@ final class MessageService
                 $status = 'approved';
             }
         }
-        $cols = 'id, user_id, content, image_url, status, created_at';
-        if ($canSeeSensitive) { $cols .= ', is_anonymous, anon_email, anon_student_id'; }
+        // Always include is_anonymous for client rendering; only privileged views can read anon_*
+        $cols = 'id, user_id, is_anonymous, content, image_url, status, created_at';
+        if ($canSeeSensitive) { $cols .= ', anon_email, anon_student_id'; }
         $where = '';
         if ($status !== 'all') {
             $where = 'WHERE status = :status';
@@ -58,22 +59,31 @@ final class MessageService
             v::url()->assert($imageUrl);
         }
         if ($isAnonymous) {
-            if (!preg_match('/^[a-z]+\.[a-z]+20\d{2}@gdhfi\.com$/', $anonEmail)) {
-                return ['error' => '邮箱格式不符合要求'];
+            if ($userId > 0) {
+                // 登录用户匿名发布：无需填写匿名字段
+                $stmt = $this->pdo->prepare('SELECT banned FROM users WHERE id = ?');
+                $stmt->execute([$userId]);
+                if (($stmt->fetch()['banned'] ?? 0) == 1) return ['error' => '账号已被封禁'];
+                $this->pdo->prepare('INSERT INTO messages(user_id, is_anonymous, content, image_url, status, created_at) VALUES(?,1,?,?,"pending",CURRENT_TIMESTAMP)')
+                    ->execute([$userId, $content, $imageUrl]);
+            } else {
+                // 游客匿名：仍需校验匿名信息
+                if (!preg_match('/^[a-z]+\.[a-z]+20\d{2}@gdhfi\.com$/', $anonEmail)) {
+                    return ['error' => '邮箱格式不符合要求'];
+                }
+                if (!preg_match('/^GJ20\d{2}\d{4}$/', $anonStudentId)) {
+                    return ['error' => '学生号格式不正确'];
+                }
+                if ($anonPassphrase === '') {
+                    return ['error' => '匿名口令必填'];
+                }
+                if ($this->isBanned('email', $anonEmail) || $this->isBanned('student_id', $anonStudentId)) {
+                    return ['error' => '当前身份已被封禁'];
+                }
+                $passHash = password_hash($anonPassphrase, PASSWORD_BCRYPT);
+                $stmt = $this->pdo->prepare('INSERT INTO messages(user_id, is_anonymous, anon_email, anon_student_id, anon_passphrase_hash, content, image_url, status, created_at) VALUES(NULL,1,?,?,?,?,?,"pending",CURRENT_TIMESTAMP)');
+                $stmt->execute([$anonEmail, $anonStudentId, $passHash, $content, $imageUrl]);
             }
-            if (!preg_match('/^GJ20\d{2}\d{4}$/', $anonStudentId)) {
-                return ['error' => '学生号格式不正确'];
-            }
-            if ($anonPassphrase === '') {
-                return ['error' => '匿名口令必填'];
-            }
-            // 检查是否被封禁
-            if ($this->isBanned('email', $anonEmail) || $this->isBanned('student_id', $anonStudentId)) {
-                return ['error' => '当前身份已被封禁'];
-            }
-            $passHash = password_hash($anonPassphrase, PASSWORD_BCRYPT);
-            $stmt = $this->pdo->prepare('INSERT INTO messages(user_id, is_anonymous, anon_email, anon_student_id, anon_passphrase_hash, content, image_url, status, created_at) VALUES(NULL,1,?,?,?,?,?,"pending",CURRENT_TIMESTAMP)');
-            $stmt->execute([$anonEmail, $anonStudentId, $passHash, $content, $imageUrl]);
         } else {
             // 非匿名，仍可检查用户封禁
             $stmt = $this->pdo->prepare('SELECT banned FROM users WHERE id = ?');
