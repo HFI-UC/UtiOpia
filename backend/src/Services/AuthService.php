@@ -73,7 +73,14 @@ final class AuthService
 
     public function mustUserFromRequest(Request $request): array
     {
-        $auth = $request->getHeaderLine('Authorization');
+		$auth = $request->getHeaderLine('Authorization');
+		// Fallbacks for servers (e.g., IIS/Apache) that place auth header in server vars
+		if ($auth === '' && isset($_SERVER['HTTP_AUTHORIZATION'])) {
+			$auth = (string)$_SERVER['HTTP_AUTHORIZATION'];
+		}
+		if ($auth === '' && isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+			$auth = (string)$_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
+		}
         if (!str_starts_with($auth, 'Bearer ')) {
             throw new \RuntimeException('未授权');
         }

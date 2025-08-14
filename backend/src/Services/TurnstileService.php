@@ -34,7 +34,10 @@ final class TurnstileService
         ]);
         $data = json_decode((string)$resp->getBody(), true);
         if (($data['success'] ?? false) !== true) {
-            throw new \RuntimeException('Turnstile 验证失败');
+            $codes = $data['error-codes'] ?? [];
+            $detail = is_array($codes) ? implode(',', $codes) : (string)$codes;
+            $msg = 'Turnstile 验证失败' . ($detail ? (': ' . $detail) : '');
+            throw new \RuntimeException($msg);
         }
     }
 }
