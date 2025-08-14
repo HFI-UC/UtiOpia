@@ -185,18 +185,17 @@ async function doDelete() {
 </script>
 
 <style scoped>
-.composer { display:flex; flex-direction:column; gap:8px; max-width:600px; margin:16px auto; }
-textarea { min-height: 80px; padding: 8px; border:1px solid #ddd; border-radius:6px; }
-.upload { display:flex; align-items:center; gap:8px; }
-.upload img { max-height: 80px; border-radius: 6px; }
-.list { max-width: 700px; margin: 16px auto; display:flex; flex-direction:column; gap:12px; }
-.item { border:1px solid #f0f0f0; border-radius: 12px; padding: 14px; background:#fff; box-shadow:0 6px 16px rgba(0,0,0,.04) }
-.note { font-size: 15px; line-height: 1.8; white-space: pre-wrap; }
-.ops { display:flex; gap:8px; margin-top:8px }
-.meta { color:#888; }
-.dlg-field { display:flex; flex-direction:column; gap:6px }
-.dlg-field input, .dlg-field textarea { width:100%; padding:8px; border:1px solid #ddd; border-radius:6px }
-.err { color: #c00; }
-.primary { background:#2f54eb; color:#fff; border:1px solid #2f54eb; }
+.composer { display:flex; flex-direction:column; gap:10px; max-width:680px; margin:20px auto; }
+textarea { min-height: 100px; }
+.upload { display:flex; align-items:center; gap:10px; }
+.upload img { max-height: 96px; border-radius: 10px; box-shadow: var(--shadow-sm); }
+.list { max-width: 760px; margin: 20px auto; display:flex; flex-direction:column; gap:14px; }
+.item { border:1px solid #f0f0f0; border-radius: var(--radius); padding: 16px; background:#fff; box-shadow: var(--shadow-sm); }
+.note { font-size: 15px; line-height: 1.9; white-space: pre-wrap; }
+.ops { display:flex; gap:8px; margin-top:10px }
+.meta { color: var(--muted); }
+.dlg-field { display:flex; flex-direction:column; gap:8px }
+.dlg-field input, .dlg-field textarea { width:100%; }
+.err { color: var(--danger); }
 </style>
 

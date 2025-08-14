@@ -1,20 +1,24 @@
 <template>
   <div>
     <header class="header">
-      <h1>UtiOpia 小纸条</h1>
-      <nav>
-        <router-link to="/">纸条</router-link>
-        <a href="#compose" @click.prevent="writeNote">写纸条</a>
-        <router-link to="/moderation" v-if="me?.role !== 'user'">审核</router-link>
-        <router-link to="/admin" v-if="me?.role === 'super_admin' || me?.role === 'moderator'">管理</router-link>
-        <router-link to="/logs" v-if="me?.role === 'super_admin' || me?.role === 'moderator'">日志</router-link>
-        <router-link to="/bans" v-if="me?.role === 'super_admin' || me?.role === 'moderator'">封禁</router-link>
-      </nav>
-      <div class="auth">
-        <router-link to="/login">登录</router-link>
+      <div class="inner">
+        <h1>UtiOpia 小纸条</h1>
+        <nav>
+          <router-link to="/">纸条</router-link>
+          <a href="#compose" @click.prevent="writeNote">写纸条</a>
+          <router-link to="/moderation" v-if="me?.role !== 'user'">审核</router-link>
+          <router-link to="/admin" v-if="me?.role === 'super_admin' || me?.role === 'moderator'">管理</router-link>
+          <router-link to="/logs" v-if="me?.role === 'super_admin' || me?.role === 'moderator'">日志</router-link>
+          <router-link to="/bans" v-if="me?.role === 'super_admin' || me?.role === 'moderator'">封禁</router-link>
+        </nav>
+        <div class="auth">
+          <router-link to="/login">登录</router-link>
+        </div>
       </div>
     </header>
-    <router-view />
+    <main class="container">
+      <router-view />
+    </main>
     <Toast ref="toastRef" />
   </div>
   </template>
