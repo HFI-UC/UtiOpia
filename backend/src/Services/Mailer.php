@@ -109,6 +109,53 @@ HTML;
 		return $this->send($to, $title, $this->baseTemplate($title, $content, $buttons));
 	}
 
+	/**
+	 * 更精细的模版：提交/通过/拒绝
+	 */
+	private function excerpt(string $text, int $len = 80): string
+	{
+		$text = trim(strip_tags($text));
+		if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+			return mb_strlen($text) > $len ? mb_substr($text, 0, $len) . '…' : $text;
+		}
+		return strlen($text) > $len ? substr($text, 0, $len) . '…' : $text;
+	}
+
+	public function sendMessageSubmitted(string $to, string $nickname, int $messageId, string $contentText): bool
+	{
+		$site = $this->settings['site'] ?? ['url' => ''];
+		$title = '已提交：留言等待审核';
+		$excerpt = $this->excerpt($contentText);
+		$content = '<p>亲爱的 <strong>' . htmlspecialchars($nickname) . '</strong>，您刚刚提交了一条留言，已进入审核队列。</p>'
+			. '<p><strong>内容摘要：</strong>' . htmlspecialchars($excerpt) . '</p>';
+		$buttons = [ ['text' => '查看留言墙', 'url' => (string)($site['url'] ?? '')] ];
+		return $this->send($to, $title, $this->baseTemplate($title, $content, $buttons));
+	}
+
+	public function sendMessageApproved(string $to, string $nickname, int $messageId, string $contentText): bool
+	{
+		$site = $this->settings['site'] ?? ['url' => ''];
+		$title = '已通过：留言审核通过';
+		$excerpt = $this->excerpt($contentText);
+		$content = '<p>亲爱的 <strong>' . htmlspecialchars($nickname) . '</strong>，您的留言已通过审核，现已对外展示。</p>'
+			. '<p><strong>内容摘要：</strong>' . htmlspecialchars($excerpt) . '</p>';
+		$buttons = [ ['text' => '查看留言', 'url' => (string)($site['url'] ?? '')] ];
+		return $this->send($to, $title, $this->baseTemplate($title, $content, $buttons));
+	}
+
+	public function sendMessageRejected(string $to, string $nickname, int $messageId, string $contentText, string $reason = ''): bool
+	{
+		$site = $this->settings['site'] ?? ['url' => ''];
+		$title = '未通过：留言审核结果';
+		$excerpt = $this->excerpt($contentText);
+		$reasonHtml = $reason !== '' ? '<p><strong>原因：</strong>' . htmlspecialchars($reason) . '</p>' : '';
+		$content = '<p>亲爱的 <strong>' . htmlspecialchars($nickname) . '</strong>，很抱歉，您的留言未通过审核。</p>'
+			. $reasonHtml
+			. '<p><strong>内容摘要：</strong>' . htmlspecialchars($excerpt) . '</p>';
+		$buttons = [ ['text' => '返回留言墙', 'url' => (string)($site['url'] ?? '')] ];
+		return $this->send($to, $title, $this->baseTemplate($title, $content, $buttons));
+	}
+
 	public function sendUserRoleChanged(string $to, string $nickname, string $newRole): bool
 	{
 		$title = '账户角色变更通知';

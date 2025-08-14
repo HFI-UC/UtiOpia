@@ -17,11 +17,11 @@ final class ModerationService
         $this->pdo->prepare('UPDATE messages SET status = "approved", reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP WHERE id = ?')
             ->execute([$actor['id'], $messageId]);
         $this->logger->log('message.approve', $actor['id'], ['message_id' => $messageId]);
-        // 通知作者
-        $stmt = $this->pdo->prepare('SELECT u.email, u.nickname FROM messages m JOIN users u ON m.user_id = u.id WHERE m.id = ?');
+        // 通知作者（模板：已通过）
+        $stmt = $this->pdo->prepare('SELECT u.email, u.nickname, m.content FROM messages m JOIN users u ON m.user_id = u.id WHERE m.id = ?');
         $stmt->execute([$messageId]);
         if ($u = $stmt->fetch()) {
-            $this->mailer->sendMessageStatusChange($u['email'], $u['nickname'], $messageId, 'approved');
+            $this->mailer->sendMessageApproved($u['email'], $u['nickname'], $messageId, (string)$u['content']);
         }
         return ['ok' => true];
     }
@@ -32,11 +32,11 @@ final class ModerationService
         $this->pdo->prepare('UPDATE messages SET status = "rejected", reject_reason = ?, reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP WHERE id = ?')
             ->execute([$reason, $actor['id'], $messageId]);
         $this->logger->log('message.reject', $actor['id'], ['message_id' => $messageId, 'reason' => $reason]);
-        // 通知作者
-        $stmt = $this->pdo->prepare('SELECT u.email, u.nickname FROM messages m JOIN users u ON m.user_id = u.id WHERE m.id = ?');
+        // 通知作者（模板：未通过）
+        $stmt = $this->pdo->prepare('SELECT u.email, u.nickname, m.content FROM messages m JOIN users u ON m.user_id = u.id WHERE m.id = ?');
         $stmt->execute([$messageId]);
         if ($u = $stmt->fetch()) {
-            $this->mailer->sendMessageStatusChange($u['email'], $u['nickname'], $messageId, 'rejected', $reason);
+            $this->mailer->sendMessageRejected($u['email'], $u['nickname'], $messageId, (string)$u['content'], $reason);
         }
         return ['ok' => true];
     }
