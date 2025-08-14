@@ -11,7 +11,7 @@
           <router-link to="/logs" v-if="me?.role === 'super_admin' || me?.role === 'moderator'">日志</router-link>
           <router-link to="/bans" v-if="me?.role === 'super_admin' || me?.role === 'moderator'">封禁</router-link>
         </nav>
-        <div class="auth">
+        <div class="auth" v-if="!auth.isAuthed">
           <router-link to="/login">登录</router-link>
         </div>
       </div>

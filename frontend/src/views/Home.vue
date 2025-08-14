@@ -1,8 +1,8 @@
 <template>
   <div class="home">
     <div class="composer" id="compose">
-      <div class="row">
-        <label><input type="checkbox" v-model="isAnonymous"/> 匿名发布</label>
+      <div class="row" v-if="authed">
+        <label><input type="checkbox" v-model="isAnonymousMutable"/> 匿名发布</label>
       </div>
       <div v-if="isAnonymous" class="anon-grid">
         <input v-model="anonEmail" placeholder="学校邮箱" />
@@ -10,9 +10,13 @@
         <input v-model="anonPassphrase" type="password" placeholder="身份口令 (用于编辑/删除)" />
       </div>
       <textarea v-model="content" maxlength="500" placeholder="写点什么..."/>
-      <div class="upload">
-        <input type="file" accept="image/*" @change="pickFile"/>
-        <img v-if="imageUrl" :src="imageUrl" alt="preview" />
+      <div class="upload" @dragover.prevent @drop.prevent="onDrop">
+        <label class="u-btn">
+          <input class="u-input" type="file" accept="image/*" @change="pickFile"/>
+          选择图片
+        </label>
+        <span class="u-hint">{{ fileName || '未选择文件' }}</span>
+        <img v-if="imageUrl" class="u-preview" :src="imageUrl" alt="preview" />
       </div>
       <Turnstile @verified="t => turnstileToken = t" />
       <button class="primary" :disabled="loading" @click="submit">投递纸条</button>
@@ -79,7 +83,9 @@ const pageSize = ref(10)
 const total = ref(0)
 const isLoading = ref(false)
 const isDone = ref(false)
-const isAnonymous = ref(false)
+const isAnonymousMutable = ref(false)
+const isAnonymous = computed(() => authed.value ? isAnonymousMutable.value : true)
+const fileName = ref('')
 const anonEmail = ref('')
 const anonStudentId = ref('')
 const anonPassphrase = ref('')
@@ -105,6 +111,14 @@ async function fetchMessages(reset=false) {
 function pickFile(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
   if (!file) return
+  fileName.value = file.name
+  uploadViaCOS(file)
+}
+
+function onDrop(e: DragEvent) {
+  const file = e.dataTransfer?.files?.[0]
+  if (!file) return
+  fileName.value = file.name
   uploadViaCOS(file)
 }
 
@@ -187,8 +201,12 @@ async function doDelete() {
 <style scoped>
 .composer { display:flex; flex-direction:column; gap:10px; max-width:680px; margin:20px auto; }
 textarea { min-height: 100px; }
-.upload { display:flex; align-items:center; gap:10px; }
-.upload img { max-height: 96px; border-radius: 10px; box-shadow: var(--shadow-sm); }
+.upload { display:flex; align-items:center; gap:10px; flex-wrap: wrap; }
+.upload .u-input { position:absolute; width:1px; height:1px; opacity:0; }
+.upload .u-btn { display:inline-block; padding:10px 14px; border-radius: var(--radius-sm); border:1px dashed var(--primary); color: var(--primary); cursor:pointer; background:#fff; }
+.upload .u-btn:hover { background: rgba(47,84,235,.06); }
+.upload .u-hint { color: var(--muted); }
+.upload .u-preview { max-height: 120px; border-radius: 10px; box-shadow: var(--shadow-sm); }
 .list { max-width: 760px; margin: 20px auto; display:flex; flex-direction:column; gap:14px; }
 .item { border:1px solid #f0f0f0; border-radius: var(--radius); padding: 16px; background:#fff; box-shadow: var(--shadow-sm); }
 .note { font-size: 15px; line-height: 1.9; white-space: pre-wrap; }
