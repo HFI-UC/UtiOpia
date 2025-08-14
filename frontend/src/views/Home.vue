@@ -50,7 +50,8 @@
             <div class="author-info">
               <span class="author-avatar">👤</span>
               <span class="author-name">
-                {{ m.user_id ? '实名用户' : '匿名用户' }}
+                <template v-if="m.user_id && m.user_email">{{ m.user_email }}</template>
+                <template v-else>{{ '匿名用户' }}</template>
               </span>
             </div>
             <div class="message-id">#{{ m.id }}</div>

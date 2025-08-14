@@ -82,7 +82,6 @@
 
               <div class="card-actions">
                 <button 
-                  v-if="m.status === 'pending'"
                   @click="approve(m.id)" 
                   class="action-btn approve-btn"
                 >
@@ -90,21 +89,12 @@
                   通过审核
                 </button>
                 <button 
-                  v-if="m.status === 'pending'"
                   @click="reject(m.id)" 
                   class="action-btn reject-btn"
                 >
                   <span>❌</span>
                   拒绝内容
                 </button>
-                <div v-else class="action-status">
-                  <span v-if="m.status === 'approved'" class="approved-text">
-                    ✅ 已通过审核
-                  </span>
-                  <span v-else-if="m.status === 'rejected'" class="rejected-text">
-                    ❌ 已拒绝
-                  </span>
-                </div>
               </div>
             </div>
 

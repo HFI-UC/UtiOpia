@@ -28,17 +28,18 @@ final class MessageService
             }
         }
         // Always include is_anonymous for client rendering; only privileged views can read anon_*
-        $cols = 'id, user_id, is_anonymous, content, image_url, status, created_at';
-        if ($canSeeSensitive) { $cols .= ', anon_email, anon_student_id'; }
+        $cols = 'm.id, m.user_id, m.is_anonymous, m.content, m.image_url, m.status, m.created_at, '
+              . 'CASE WHEN m.user_id IS NOT NULL AND m.user_id > 0 THEN u.email ELSE NULL END AS user_email';
+        if ($canSeeSensitive) { $cols .= ', m.anon_email, m.anon_student_id'; }
         $where = '';
         if ($status !== 'all') {
-            $where = 'WHERE status = :status';
+            $where = 'WHERE m.status = :status';
         }
         // 普通用户不显示软删除
         if (!$canSeeSensitive) {
-            $where = $where === '' ? 'WHERE deleted_at IS NULL' : ($where . ' AND deleted_at IS NULL');
+            $where = $where === '' ? 'WHERE m.deleted_at IS NULL' : ($where . ' AND m.deleted_at IS NULL');
         }
-        $stmt = $this->pdo->prepare("SELECT SQL_CALC_FOUND_ROWS $cols FROM messages $where ORDER BY id DESC LIMIT :limit OFFSET :offset");
+        $stmt = $this->pdo->prepare("SELECT SQL_CALC_FOUND_ROWS $cols FROM messages m LEFT JOIN users u ON m.user_id = u.id $where ORDER BY m.id DESC LIMIT :limit OFFSET :offset");
         if ($status !== 'all') {
             $stmt->bindValue(':status', $status);
         }
