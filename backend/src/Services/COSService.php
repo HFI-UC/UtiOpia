@@ -43,7 +43,11 @@ final class COSService
         $signed = $this->client->getPresignedUrl('putObject', [
             'Bucket' => $bucket,
             'Key' => $key,
-            'ContentType' => $contentType,
+            // COS SDK 预签名 putObject 要求 Body/SourceFile 非空，这里用空串占位避免真正上传内容参与签名
+            'Body' => '',
+            'Headers' => [
+                'Content-Type' => $contentType,
+            ],
         ], "+{$expiresSeconds} seconds");
         $url = (string)$signed;
         $cosRegion = $this->settings['cos']['region'];
