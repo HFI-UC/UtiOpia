@@ -6,7 +6,7 @@
         <nav>
           <router-link to="/">纸条</router-link>
           <router-link to="/write">写纸条</router-link>
-          <router-link to="/moderation" v-if="me?.role !== 'user'">审核</router-link>
+          <router-link to="/moderation" v-if="me?.role === 'super_admin' || me?.role === 'moderator'">审核</router-link>
           <router-link to="/admin" v-if="me?.role === 'super_admin' || me?.role === 'moderator'">管理</router-link>
           <router-link to="/logs" v-if="me?.role === 'super_admin' || me?.role === 'moderator'">日志</router-link>
           <router-link to="/bans" v-if="me?.role === 'super_admin' || me?.role === 'moderator'">封禁</router-link>
@@ -52,12 +52,15 @@ function writeNote() {
 </script>
 
 <style scoped>
-.header { position:sticky; top:0; backdrop-filter:saturate(180%) blur(8px); background:rgba(255,255,255,.8); display:flex; align-items:center; justify-content:space-between; gap: 16px; padding: 12px 20px; border-bottom: 1px solid #f0f0f0; }
-h1 { font-size:18px; letter-spacing:.5px; }
-nav { display:flex; gap: 14px; }
-a { text-decoration: none; color: #2a2a2a }
-a.router-link-active { font-weight: 700; color:#2f54eb }
-.auth a { padding:8px 12px; border:1px solid #2f54eb; color:#2f54eb; border-radius:8px; }
+/* App specific styles - global header styles are in global.css */
+.header {
+  /* Styles are handled by global .header class */
+}
+
+/* Override some specific styles if needed */
+.auth {
+  /* Ensure auth section displays properly */
+}
 </style>
 
 

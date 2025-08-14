@@ -80,9 +80,25 @@ final class UserService
         // 按阶段计算时长（示例：7/14/30/60/90 天）
         $days = [1 => 1, 2 => 3, 3 => 7, 4 => 30, 5 => 90][$stage];
         $expiresAt = (new \DateTimeImmutable("+{$days} days"))->format('Y-m-d H:i:s');
-        // SQLite 兼容：UPSERT 语法
-        $stmt = $this->pdo->prepare('INSERT INTO bans(type, value, reason, created_by, created_at, updated_at, active, stage, expires_at) VALUES(?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,1,?,?) ON CONFLICT(type,value,active) DO UPDATE SET reason=excluded.reason, updated_at=CURRENT_TIMESTAMP, active=1, stage=excluded.stage, expires_at=excluded.expires_at');
-        $stmt->execute([$type, $value, $reason, $actor['id'], $stage, $expiresAt]);
+        // 兼容 MySQL 与 SQLite 的 UPSERT
+        $driver = (string)$this->pdo->getAttribute(\PDO::ATTR_DRIVER_NAME);
+        if ($driver === 'mysql') {
+            // 需要在 MySQL 中为 (type,value,active) 建唯一索引（迁移脚本已包含）
+            $sql = 'INSERT INTO bans(type, value, reason, created_by, created_at, updated_at, active, stage, expires_at) '
+                 . 'VALUES(?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,1,?,?) '
+                 . 'ON DUPLICATE KEY UPDATE '
+                 . 'reason=VALUES(reason), updated_at=CURRENT_TIMESTAMP, active=1, stage=VALUES(stage), expires_at=VALUES(expires_at)';
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute([$type, $value, $reason, $actor['id'], $stage, $expiresAt]);
+        } else {
+            // SQLite: ON CONFLICT 语法
+            $sql = 'INSERT INTO bans(type, value, reason, created_by, created_at, updated_at, active, stage, expires_at) '
+                 . 'VALUES(?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,1,?,?) '
+                 . 'ON CONFLICT(type,value,active) DO UPDATE SET '
+                 . 'reason=excluded.reason, updated_at=CURRENT_TIMESTAMP, active=1, stage=excluded.stage, expires_at=excluded.expires_at';
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute([$type, $value, $reason, $actor['id'], $stage, $expiresAt]);
+        }
         $this->logger->log('ban.create', $actor['id'], ['type' => $type, 'value' => $value, 'reason' => $reason]);
         return ['ok' => true];
     }
