@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Turnstile } from '@/components/Turnstile'
-import { UserPlus, Mail, Lock, User, IdCard } from 'lucide-react'
+import { UserPlus, Mail, Lock, User, Contact } from 'lucide-react'
 
 export default function Register() {
   const navigate = useNavigate()
@@ -95,7 +95,7 @@ export default function Register() {
             <div className="space-y-2">
               <Label htmlFor="student-id">学生号</Label>
               <div className="relative">
-                <IdCard className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Contact className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="student-id"
                   type="text"
