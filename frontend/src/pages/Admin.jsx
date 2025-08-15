@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import api from '../lib/api';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +29,8 @@ const Admin = () => {
     rejectedMessages: 0,
     bannedUsers: 0
   });
+  const [users, setUsers] = useState([]);
+  const [updating, setUpdating] = useState(false);
 
   // 真实统计数据
   useEffect(() => {
@@ -48,6 +52,26 @@ const Admin = () => {
     };
     fetchStats();
   }, []);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const resp = await api.get('/users');
+        setUsers(resp?.data?.items || []);
+      } catch {}
+    };
+    fetchUsers();
+  }, []);
+
+  const updateUser = async (id, patch) => {
+    setUpdating(true);
+    try {
+      await api.put(`/users/${id}`, patch);
+      const resp = await api.get('/users');
+      setUsers(resp?.data?.items || []);
+    } catch {}
+    setUpdating(false);
+  };
 
   const StatCard = ({ title, value, icon: Icon, trend, trendValue, color = "blue" }) => (
     <Card>
@@ -225,33 +249,68 @@ const Admin = () => {
             <CardHeader>
               <CardTitle>用户管理</CardTitle>
               <CardDescription>
-                管理用户账户、权限和状态
+                管理用户账户、角色和封禁状态
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                    <p className="font-medium">用户权限管理</p>
-                    <p className="text-sm text-muted-foreground">设置用户角色和权限</p>
-                  </div>
-                  <Button variant="outline">管理权限</Button>
-                </div>
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                    <p className="font-medium">批量操作</p>
-                    <p className="text-sm text-muted-foreground">批量处理用户账户</p>
-                  </div>
-                  <Button variant="outline">批量操作</Button>
-                </div>
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                    <p className="font-medium">用户统计</p>
-                    <p className="text-sm text-muted-foreground">查看详细的用户统计数据</p>
-                  </div>
-                  <Button variant="outline">查看统计</Button>
-                </div>
+              <div className="overflow-auto rounded-md border">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left p-3">ID</th>
+                      <th className="text-left p-3">邮箱</th>
+                      <th className="text-left p-3">昵称</th>
+                      <th className="text-left p-3">角色</th>
+                      <th className="text-left p-3">封禁</th>
+                      <th className="text-left p-3">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map((u) => (
+                      <tr key={u.id} className="border-t">
+                        <td className="p-3">{u.id}</td>
+                        <td className="p-3 break-all">{u.email}</td>
+                        <td className="p-3">
+                          <Input
+                            defaultValue={u.nickname}
+                            onBlur={(e) => {
+                              const v = e.target.value;
+                              if (v !== u.nickname) updateUser(u.id, { nickname: v });
+                            }}
+                          />
+                        </td>
+                        <td className="p-3">
+                          <Select defaultValue={u.role} onValueChange={(v) => updateUser(u.id, { role: v })}>
+                            <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="user">user</SelectItem>
+                              <SelectItem value="moderator">moderator</SelectItem>
+                              <SelectItem value="super_admin">super_admin</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </td>
+                        <td className="p-3">
+                          {u.banned ? (
+                            <Badge variant="destructive">已封禁</Badge>
+                          ) : (
+                            <Badge variant="outline">正常</Badge>
+                          )}
+                        </td>
+                        <td className="p-3 space-x-2">
+                          {u.banned ? (
+                            <Button size="sm" variant="outline" onClick={async ()=>{ setUpdating(true); await api.post(`/users/${u.id}/unban`); const r=await api.get('/users'); setUsers(r?.data?.items||[]); setUpdating(false); }}>解封</Button>
+                          ) : (
+                            <Button size="sm" variant="destructive" onClick={async ()=>{ setUpdating(true); await api.post(`/users/${u.id}/ban`); const r=await api.get('/users'); setUsers(r?.data?.items||[]); setUpdating(false); }}>封禁</Button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
+              {users.length === 0 && (
+                <p className="text-sm text-muted-foreground mt-3">暂无数据</p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

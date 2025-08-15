@@ -20,7 +20,10 @@ final class StatsService
 
         // Totals
         $totalUsers = (int)$this->pdo->query('SELECT COUNT(*) FROM users')->fetchColumn();
+        $bannedUsers = (int)$this->pdo->query('SELECT COUNT(*) FROM users WHERE banned = 1')->fetchColumn();
         $totalMessages = (int)$this->pdo->query('SELECT COUNT(*) FROM messages WHERE deleted_at IS NULL OR deleted_at IS NULL')->fetchColumn();
+        $totalBans = (int)$this->pdo->query('SELECT COUNT(*) FROM bans')->fetchColumn();
+        $activeBans = (int)$this->pdo->query('SELECT COUNT(*) FROM bans WHERE active = 1')->fetchColumn();
 
         // Messages by status
         $statusCounts = [ 'pending' => 0, 'approved' => 0, 'rejected' => 0 ];
@@ -66,9 +69,19 @@ final class StatsService
 
         return [
             'info' => $info,
+            // Compatibility: keep totals for older clients
             'totals' => [
                 'users' => $totalUsers,
                 'messages' => $totalMessages,
+            ],
+            // OpenAPI-style grouped fields
+            'users' => [
+                'total' => $totalUsers,
+                'banned' => $bannedUsers,
+            ],
+            'bans' => [
+                'total' => $totalBans,
+                'active' => $activeBans,
             ],
             'messages' => [
                 'pending' => $statusCounts['pending'] ?? 0,
