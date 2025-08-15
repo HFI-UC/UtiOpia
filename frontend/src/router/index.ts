@@ -4,6 +4,7 @@ import Write from '../views/Write.vue'
 import Login from '../views/Login.vue'
 import Moderation from '../views/Moderation.vue'
 import Admin from '../views/Admin.vue'
+import Dashboard from '../views/Dashboard.vue'
 import Register from '../views/Register.vue'
 import Logs from '../views/Logs.vue'
 import Bans from '../views/Bans.vue'
@@ -18,6 +19,7 @@ const router = createRouter({
     { path: '/register', component: Register },
     { path: '/moderation', component: Moderation, meta: { roles: ['moderator', 'super_admin'] } },
     { path: '/admin', component: Admin, meta: { roles: ['moderator', 'super_admin'] } },
+    { path: '/dashboard', component: Dashboard, meta: { roles: ['moderator', 'super_admin'] } },
     { path: '/logs', component: Logs, meta: { roles: ['moderator', 'super_admin'] } },
     { path: '/bans', component: Bans, meta: { roles: ['moderator', 'super_admin'] } },
   ],

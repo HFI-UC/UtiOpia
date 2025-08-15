@@ -8,6 +8,7 @@
           <router-link to="/write">写纸条</router-link>
           <router-link to="/moderation" v-if="me?.role === 'super_admin' || me?.role === 'moderator'">审核</router-link>
           <router-link to="/admin" v-if="me?.role === 'super_admin' || me?.role === 'moderator'">管理</router-link>
+          <router-link to="/dashboard" v-if="me?.role === 'super_admin' || me?.role === 'moderator'">看板</router-link>
           <router-link to="/logs" v-if="me?.role === 'super_admin' || me?.role === 'moderator'">日志</router-link>
           <router-link to="/bans" v-if="me?.role === 'super_admin' || me?.role === 'moderator'">封禁</router-link>
         </nav>

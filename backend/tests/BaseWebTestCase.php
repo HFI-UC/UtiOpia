@@ -49,6 +49,8 @@ abstract class BaseWebTestCase extends TestCase
     {
         $pdo = $this->db();
         $hash = password_hash($password, PASSWORD_BCRYPT);
+        // 先尝试删除同邮箱以避免重复键失败（测试环境使用内存表）
+        try { $pdo->prepare('DELETE FROM users WHERE email = ?')->execute([$email]); } catch (Throwable) {}
         $stmt = $pdo->prepare('INSERT INTO users(email, password_hash, nickname, student_id, role, banned, created_at) VALUES(?,?,?,?,?,0,?)');
         $stmt->execute([$email, $hash, $nickname, null, $role, date('Y-m-d H:i:s')]);
         $id = (int)$pdo->lastInsertId();

@@ -75,7 +75,8 @@ final class UserService
         if ($type === 'email' && !preg_match('/^[a-z]+\.[a-z]+20\d{2}@gdhfi\.com$/', $value)) return ['error' => '邮箱格式不正确'];
         if ($type === 'student_id' && !preg_match('/^GJ20\d{2}\d{4}$/', $value)) return ['error' => '学生号格式不正确'];
         // 阶梯封禁 (1..5) 最长 90 天
-        $stage = (int)($_REQUEST['stage'] ?? 1);
+        // 从 $data 或 $_REQUEST 获取 stage（测试与路由传参皆可）
+        $stage = (int)($_REQUEST['stage'] ?? ($data['stage'] ?? 1));
         if ($stage < 1 || $stage > 5) $stage = 1;
         // 按阶段计算时长（示例：7/14/30/60/90 天）
         $days = [1 => 1, 2 => 3, 3 => 7, 4 => 30, 5 => 90][$stage];

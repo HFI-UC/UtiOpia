@@ -118,6 +118,9 @@ $container->set(\UtiOpia\Services\ModerationService::class, function ($c) {
 $container->set(\UtiOpia\Services\LogService::class, function ($c) {
     return new \UtiOpia\Services\LogService($c->get(PDO::class), $c->get(\UtiOpia\Services\ACL::class));
 });
+$container->set(\UtiOpia\Services\StatsService::class, function ($c) {
+    return new \UtiOpia\Services\StatsService($c->get(PDO::class), $c->get(\UtiOpia\Services\ACL::class), $c->get('settings'));
+});
 
 \UtiOpia\Routes::register($app);
 

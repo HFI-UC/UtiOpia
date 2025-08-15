@@ -58,6 +58,10 @@ final class Routes
 
             // Audit logs
             $group->get('/logs', [self::class, 'listLogs']);
+            // Stats
+            $group->get('/stats/overview', [self::class, 'statsOverview']);
+            $group->get('/stats/messages', [self::class, 'statsMessagesSeries']);
+            $group->get('/stats/audit', [self::class, 'statsAuditSeries']);
         });
     }
 
@@ -286,6 +290,32 @@ final class Routes
         } catch (\Throwable $e) {
             return self::json($response, ['error' => '权限不足'], 403);
         }
+    }
+
+    public static function statsOverview(Request $request, Response $response): Response
+    {
+        [, $container, $user] = self::ctxAuth($request);
+        $svc = $container->get(\UtiOpia\Services\StatsService::class);
+        $result = $svc->overview($user);
+        return self::json($response, $result);
+    }
+
+    public static function statsMessagesSeries(Request $request, Response $response): Response
+    {
+        [$query, $container, $user] = self::ctxAuth($request, true);
+        $days = (int)($query['days'] ?? 7);
+        $svc = $container->get(\UtiOpia\Services\StatsService::class);
+        $result = $svc->messagesSeries($user, $days);
+        return self::json($response, ['items' => $result]);
+    }
+
+    public static function statsAuditSeries(Request $request, Response $response): Response
+    {
+        [$query, $container, $user] = self::ctxAuth($request, true);
+        $days = (int)($query['days'] ?? 7);
+        $svc = $container->get(\UtiOpia\Services\StatsService::class);
+        $result = $svc->auditSeries($user, $days);
+        return self::json($response, ['items' => $result]);
     }
 
     private static function ctx(Request $request, bool $useQuery = false): array
