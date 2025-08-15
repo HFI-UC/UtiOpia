@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import JsonViewer from '../components/JsonViewer';
+import EnhancedLogViewer from '../components/EnhancedLogViewer';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon } from 'lucide-react';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
@@ -69,47 +70,47 @@ const metaToReadable = (meta) => {
   return keys.map(k => `${k}: ${typeof m[k] === 'object' ? JSON.stringify(m[k]) : String(m[k])}`).join(' | ');
 };
 
-const formatTime = (timestamp) => {
-  const date = new Date(timestamp);
-  return date.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  });
-};
-
-const getLevelBadge = (level) => {
-  const levelConfig = {
-    info: { variant: 'default', icon: CheckCircle },
-    warning: { variant: 'secondary', icon: AlertTriangle },
-    error: { variant: 'destructive', icon: XCircle }
+  const formatTime = (timestamp) => {
+    const date = new Date(timestamp);
+    return date.toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
   };
-  const config = levelConfig[level] || levelConfig.info;
-  const Icon = config.icon;
-  return (
-    <Badge variant={config.variant} className="flex items-center space-x-1">
-      <Icon className="w-3 h-3" />
-      <span>{level.toUpperCase()}</span>
-    </Badge>
-  );
-};
+
+  const getLevelBadge = (level) => {
+    const levelConfig = {
+      info: { variant: 'default', icon: CheckCircle },
+      warning: { variant: 'secondary', icon: AlertTriangle },
+      error: { variant: 'destructive', icon: XCircle }
+    };
+    const config = levelConfig[level] || levelConfig.info;
+    const Icon = config.icon;
+    return (
+      <Badge variant={config.variant} className="flex items-center space-x-1">
+        <Icon className="w-3 h-3" />
+        <span>{level.toUpperCase()}</span>
+      </Badge>
+    );
+  };
 
 const getCategoryIcon = (category) => {
   const icons = {
     auth: Shield,
     message: MessageSquare,
-    user: User,
+      user: User,
     ban: AlertTriangle,
-    system: Settings,
-  };
+      system: Settings,
+    };
   const Icon = icons[category] || Activity;
-  return <Icon className="w-4 h-4" />;
-};
+    return <Icon className="w-4 h-4" />;
+  };
 
-const getActionIcon = (action) => {
+  const getActionIcon = (action) => {
   if (!action) return <Activity className="w-4 h-4" />;
   if (action.endsWith('.failed') || action === 'error') return <XCircle className="w-4 h-4" />;
   if (action.includes('approve')) return <CheckCircle className="w-4 h-4" />;
@@ -372,10 +373,10 @@ const Logs = () => {
           <CardTitle className="flex items-center justify-between">
             <span>日志记录</span>
             <div className="flex items-center gap-2">
-              <Button onClick={exportLogs} variant="outline" size="sm">
-                <Download className="w-4 h-4 mr-2" />
-                导出日志
-              </Button>
+            <Button onClick={exportLogs} variant="outline" size="sm">
+              <Download className="w-4 h-4 mr-2" />
+              导出日志
+            </Button>
             </div>
           </CardTitle>
           <CardDescription>
@@ -420,7 +421,7 @@ const Logs = () => {
               </SelectContent>
             </Select>
           </div>
-          
+
           {/* 高级过滤器 */}
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
@@ -432,8 +433,8 @@ const Logs = () => {
                   onChange={(e) => setFilterUser(e.target.value)}
                   className="pl-10"
                 />
-              </div>
-            </div>
+                    </div>
+                      </div>
             <div className="flex-1">
               <div className="relative">
                 <Key className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -443,8 +444,8 @@ const Logs = () => {
                   onChange={(e) => setJsonSearchTerm(e.target.value)}
                   className="pl-10"
                 />
-              </div>
-            </div>
+                        </div>
+                      </div>
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" className="w-full md:w-[240px]">
@@ -697,13 +698,11 @@ const LogItem = ({ log, expandAll = false, jsonSearchTerm = '' }) => {
                 return <p className="text-xs text-muted-foreground">(无详情)</p>;
               }
               
-              // 使用 JsonViewer 组件
+              // 使用 EnhancedLogViewer 组件
               if (typeof data === 'object') {
                 return (
-                  <JsonViewer 
-                    data={data} 
-                    searchTerm={jsonSearchTerm}
-                    maxHeight="500px"
+                  <EnhancedLogViewer 
+                    data={data}
                   />
                 );
               }

@@ -18,7 +18,8 @@ final class LogService
         $pageSize = min(100, max(1, (int)($query['pageSize'] ?? 20)));
         $offset = ($page - 1) * $pageSize;
         $action = trim((string)($query['action'] ?? ''));
-        $onlyError = (int)($query['only_error'] ?? 0) === 1;
+        $onlyError = ((int)($query['only_error'] ?? 0) === 1) || ((int)($query['errorOnly'] ?? 0) === 1);
+        $q = trim((string)($query['q'] ?? ''));
 
         $where = [];
         $params = [];
@@ -27,7 +28,12 @@ final class LogService
             $params[':action'] = $action;
         }
         if ($onlyError) {
-            $where[] = 'action = "error"';
+            $where[] = '(action = "error" OR action LIKE "%.failed")';
+        }
+        if ($q !== '') {
+            $where[] = '(action LIKE :likeq OR CAST(user_id AS CHAR) = :q OR meta LIKE :likeq)';
+            $params[':likeq'] = '%' . $q . '%';
+            $params[':q'] = $q;
         }
         $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
 
