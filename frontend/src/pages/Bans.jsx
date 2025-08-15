@@ -32,7 +32,7 @@ import {
   Shield
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+ 
 
 const Bans = () => {
   const [bans, setBans] = useState([]);
