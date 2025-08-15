@@ -248,7 +248,8 @@ async function doEdit() {
   if (!current) return
   const body:any = { content: formContent.value, turnstile_token: turnstileToken.value }
   if (!current.user_id && current.is_anonymous) body.anon_passphrase = formPass.value
-  await axios.put(`${API}/messages/${current.id}`, body, { headers: { Authorization: `Bearer ${auth.token}` } })
+  const headers: any = auth.token ? { Authorization: `Bearer ${auth.token}` } : {}
+  await axios.put(`${API}/messages/${current.id}`, body, { headers })
   showEdit.value = false
   await fetchMessages()
 }
@@ -256,7 +257,8 @@ async function doDelete() {
   if (!current) return
   const body:any = { turnstile_token: turnstileToken.value }
   if (!current.user_id && current.is_anonymous) body.anon_passphrase = formPass.value
-  await axios.delete(`${API}/messages/${current.id}`, { data: body, headers: { Authorization: `Bearer ${auth.token}` } as any })
+  const headers: any = auth.token ? { Authorization: `Bearer ${auth.token}` } : {}
+  await axios.delete(`${API}/messages/${current.id}`, { data: body, headers } as any)
   showDelete.value = false
   await fetchMessages(true)
 }

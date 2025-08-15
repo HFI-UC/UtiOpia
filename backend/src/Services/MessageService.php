@@ -141,8 +141,9 @@ final class MessageService
         if (!$msg) return ['error' => '留言不存在'];
         $userIdOfMsg = $msg['user_id'] ?? null;
         $isOwner = ($userIdOfMsg !== null && (int)$userIdOfMsg > 0 && (int)$userIdOfMsg === (int)$user['id']);
-        if (!$isOwner && (int)$msg['user_id'] === 0) {
-            // 匿名留言，需要 passphrase 验证
+        $isAnonymous = ((int)($msg['is_anonymous'] ?? 0) === 1);
+        if ($isAnonymous && !$isOwner) {
+            // 匿名留言（无归属用户），允许凭匿名口令编辑
             $pass = (string)($data['anon_passphrase'] ?? '');
             if ($pass === '' || !password_verify($pass, (string)$msg['anon_passphrase_hash'])) {
                 return ['error' => '匿名口令错误'];
@@ -168,7 +169,8 @@ final class MessageService
         if (!$msg) return ['error' => '留言不存在'];
         $userIdOfMsg = $msg['user_id'] ?? null;
         $isOwner = ($userIdOfMsg !== null && (int)$userIdOfMsg > 0 && (int)$userIdOfMsg === (int)$user['id']);
-        if (!$isOwner && (int)$msg['user_id'] === 0) {
+        $isAnonymous = ((int)($msg['is_anonymous'] ?? 0) === 1);
+        if ($isAnonymous && !$isOwner) {
             $pass = (string)($data['anon_passphrase'] ?? '');
             if ($pass === '' || !password_verify($pass, (string)$msg['anon_passphrase_hash'])) {
                 return ['error' => '匿名口令错误'];

@@ -49,8 +49,8 @@ abstract class BaseWebTestCase extends TestCase
     {
         $pdo = $this->db();
         $hash = password_hash($password, PASSWORD_BCRYPT);
-        $stmt = $pdo->prepare('INSERT INTO users(email, password_hash, nickname, student_id, role, banned, created_at) VALUES(?,?,?,?,?,0,datetime("now"))');
-        $stmt->execute([$email, $hash, $nickname, null, $role]);
+        $stmt = $pdo->prepare('INSERT INTO users(email, password_hash, nickname, student_id, role, banned, created_at) VALUES(?,?,?,?,?,0,?)');
+        $stmt->execute([$email, $hash, $nickname, null, $role, date('Y-m-d H:i:s')]);
         $id = (int)$pdo->lastInsertId();
         return ['id' => $id, 'email' => $email, 'password' => $password, 'role' => $role];
     }
