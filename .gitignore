@@ -1,3 +1,5 @@
 .env
 /frontend-react/node_modules/
 /frontend-react/node_modules/
+/frontend-react/dist/
+*.zip
