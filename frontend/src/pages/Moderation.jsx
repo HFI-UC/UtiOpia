@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import api from '../lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,69 +23,30 @@ const Moderation = () => {
   const [reviewedMessages, setReviewedMessages] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // 模拟数据
+  // 加载真实数据
   useEffect(() => {
-    const mockPendingMessages = [
-      {
-        id: 1,
-        content: "今天天气真好，心情也很棒！希望大家都能有美好的一天。",
-        image_url: null,
-        user_email: "zhang.san2023@gdhfi.com",
-        user_id: 123,
-        is_anonymous: false,
-        created_at: "2024-01-15T10:30:00Z",
-        status: "pending"
-      },
-      {
-        id: 2,
-        content: "匿名分享一个小秘密：其实我很喜欢这个平台的设计，简洁而温馨。",
-        image_url: null,
-        user_email: null,
-        user_id: null,
-        is_anonymous: true,
-        created_at: "2024-01-15T09:15:00Z",
-        status: "pending"
-      },
-      {
-        id: 3,
-        content: "刚刚在图书馆学习，发现了一本很有趣的书，推荐给大家！",
-        image_url: "https://example.com/book.jpg",
-        user_email: "li.mei2023@gdhfi.com",
-        user_id: 124,
-        is_anonymous: false,
-        created_at: "2024-01-15T08:45:00Z",
-        status: "pending"
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [pendingResp, approvedResp, rejectedResp] = await Promise.all([
+          api.get('/messages', { params: { status: 'pending', pageSize: 50, page: 1 } }),
+          api.get('/messages', { params: { status: 'approved', pageSize: 10, page: 1 } }),
+          api.get('/messages', { params: { status: 'rejected', pageSize: 10, page: 1 } }),
+        ]);
+        setPendingMessages(pendingResp.data?.items || []);
+        const approvedItems = approvedResp.data?.items || [];
+        const rejectedItems = rejectedResp.data?.items || [];
+        setReviewedMessages([
+          ...approvedItems.map(it => ({ ...it, status: 'approved' })),
+          ...rejectedItems.map(it => ({ ...it, status: 'rejected' })),
+        ]);
+      } catch (e) {
+        toast.error('加载审核数据失败');
+      } finally {
+        setLoading(false);
       }
-    ];
-
-    const mockReviewedMessages = [
-      {
-        id: 4,
-        content: "分享一首喜欢的歌曲，希望能给大家带来好心情。",
-        user_email: "wang.lei2023@gdhfi.com",
-        user_id: 125,
-        is_anonymous: false,
-        created_at: "2024-01-14T16:20:00Z",
-        status: "approved",
-        reviewed_at: "2024-01-14T16:25:00Z",
-        reviewed_by: "admin"
-      },
-      {
-        id: 5,
-        content: "这是一条不当内容示例",
-        user_email: null,
-        user_id: null,
-        is_anonymous: true,
-        created_at: "2024-01-14T15:10:00Z",
-        status: "rejected",
-        reviewed_at: "2024-01-14T15:15:00Z",
-        reviewed_by: "admin",
-        reject_reason: "内容不当"
-      }
-    ];
-
-    setPendingMessages(mockPendingMessages);
-    setReviewedMessages(mockReviewedMessages);
+    };
+    fetchData();
   }, []);
 
   const formatTime = (dateStr) => {
@@ -101,53 +63,49 @@ const Moderation = () => {
   const handleApprove = async (messageId) => {
     setLoading(true);
     try {
-      // 模拟API调用
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await api.post(`/messages/${messageId}/approve`);
       const message = pendingMessages.find(m => m.id === messageId);
       if (message) {
         const approvedMessage = {
           ...message,
           status: 'approved',
           reviewed_at: new Date().toISOString(),
-          reviewed_by: 'admin'
+          reviewed_by: '你'
         };
-        
         setPendingMessages(prev => prev.filter(m => m.id !== messageId));
         setReviewedMessages(prev => [approvedMessage, ...prev]);
-        
-        toast.success('内容已通过审核');
       }
+      toast.success('内容已通过审核');
     } catch (error) {
-      toast.error('操作失败');
+      const msg = error.response?.data?.error || error.message || '操作失败';
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleReject = async (messageId, reason = '内容不当') => {
+  const handleReject = async (messageId, reason) => {
+    const rejectReason = reason || window.prompt('请输入拒绝理由', '内容不当');
+    if (!rejectReason) return;
     setLoading(true);
     try {
-      // 模拟API调用
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await api.post(`/messages/${messageId}/reject`, { reason: rejectReason });
       const message = pendingMessages.find(m => m.id === messageId);
       if (message) {
         const rejectedMessage = {
           ...message,
           status: 'rejected',
           reviewed_at: new Date().toISOString(),
-          reviewed_by: 'admin',
-          reject_reason: reason
+          reviewed_by: '你',
+          reject_reason: rejectReason
         };
-        
         setPendingMessages(prev => prev.filter(m => m.id !== messageId));
         setReviewedMessages(prev => [rejectedMessage, ...prev]);
-        
-        toast.success('内容已拒绝');
       }
+      toast.success('内容已拒绝');
     } catch (error) {
-      toast.error('操作失败');
+      const msg = error.response?.data?.error || error.message || '操作失败';
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -206,6 +164,26 @@ const Moderation = () => {
         <p className="text-sm leading-relaxed whitespace-pre-wrap">
           {message.content}
         </p>
+
+        {/* 匿名发布者信息（仅当后端返回字段时展示）*/}
+        {message.is_anonymous && (message.anon_email || message.anon_student_id) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+            {message.anon_email && (
+              <div className="flex items-center space-x-2 p-2 rounded-md border bg-muted/30">
+                <User className="w-3 h-3" />
+                <span className="text-muted-foreground">匿名邮箱：</span>
+                <span className="font-medium break-all">{message.anon_email}</span>
+              </div>
+            )}
+            {message.anon_student_id && (
+              <div className="flex items-center space-x-2 p-2 rounded-md border bg-muted/30">
+                <User className="w-3 h-3" />
+                <span className="text-muted-foreground">匿名学号：</span>
+                <span className="font-medium break-all">{message.anon_student_id}</span>
+              </div>
+            )}
+          </div>
+        )}
         
         {message.image_url && (
           <div className="rounded-lg overflow-hidden border">

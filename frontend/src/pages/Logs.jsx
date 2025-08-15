@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import api from '../lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,105 +28,52 @@ const Logs = () => {
   const [logs, setLogs] = useState([]);
   const [filteredLogs, setFilteredLogs] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState('all');
+  const [filterCategory, setFilterCategory] = useState('all');
   const [filterLevel, setFilterLevel] = useState('all');
 
-  // 模拟日志数据
+  // 加载真实日志数据
   useEffect(() => {
-    const mockLogs = [
-      {
-        id: 1,
-        timestamp: '2024-01-15T10:30:00Z',
-        level: 'info',
-        type: 'moderation',
-        action: 'approve_message',
-        user: 'admin',
-        target: '纸条 #123',
-        details: '审核通过用户提交的纸条内容',
-        ip: '192.168.1.100'
-      },
-      {
-        id: 2,
-        timestamp: '2024-01-15T10:25:00Z',
-        level: 'warning',
-        type: 'moderation',
-        action: 'reject_message',
-        user: 'admin',
-        target: '纸条 #122',
-        details: '拒绝不当内容，原因：违反社区规范',
-        ip: '192.168.1.100'
-      },
-      {
-        id: 3,
-        timestamp: '2024-01-15T10:20:00Z',
-        level: 'info',
-        type: 'user',
-        action: 'user_register',
-        user: 'system',
-        target: 'zhang.san2024@gdhfi.com',
-        details: '新用户注册成功',
-        ip: '192.168.1.101'
-      },
-      {
-        id: 4,
-        timestamp: '2024-01-15T10:15:00Z',
-        level: 'info',
-        type: 'user',
-        action: 'user_login',
-        user: 'system',
-        target: 'li.mei2023@gdhfi.com',
-        details: '用户登录成功',
-        ip: '192.168.1.102'
-      },
-      {
-        id: 5,
-        timestamp: '2024-01-15T10:10:00Z',
-        level: 'error',
-        type: 'system',
-        action: 'api_error',
-        user: 'system',
-        target: '/api/messages',
-        details: '数据库连接超时',
-        ip: '192.168.1.1'
-      },
-      {
-        id: 6,
-        timestamp: '2024-01-15T10:05:00Z',
-        level: 'info',
-        type: 'admin',
-        action: 'system_config',
-        user: 'super_admin',
-        target: '系统设置',
-        details: '更新了内容审核规则',
-        ip: '192.168.1.100'
-      },
-      {
-        id: 7,
-        timestamp: '2024-01-15T10:00:00Z',
-        level: 'warning',
-        type: 'security',
-        action: 'failed_login',
-        user: 'system',
-        target: 'unknown@example.com',
-        details: '登录失败，密码错误（连续3次）',
-        ip: '192.168.1.200'
-      },
-      {
-        id: 8,
-        timestamp: '2024-01-15T09:55:00Z',
-        level: 'info',
-        type: 'content',
-        action: 'message_create',
-        user: 'system',
-        target: '纸条 #124',
-        details: '用户提交新的纸条内容',
-        ip: '192.168.1.103'
+    const fetchLogs = async () => {
+      try {
+        const resp = await api.get('/logs', { params: { page: 1, pageSize: 50 } });
+        const items = resp?.data?.items || [];
+        const normalized = items.map(it => {
+          const action = String(it.action || '');
+          const prefix = action.includes('.') ? action.split('.')[0] : action;
+          const category = ['auth','message','user','ban'].includes(prefix) ? prefix : 'system';
+          let level = 'info';
+          if (action === 'error' || action.endsWith('.failed')) level = 'error';
+          else if (action.endsWith('.conflict') || action.endsWith('.banned')) level = 'warning';
+          const metaObj = typeof it.meta === 'string' ? safeParse(it.meta) : (it.meta || {});
+          return {
+            id: it.id,
+            timestamp: it.created_at,
+            level,
+            category,
+            action,
+            user: String(it.user_id ?? 'system'),
+            details: metaToReadable(metaObj),
+          };
+        });
+        setLogs(normalized);
+        setFilteredLogs(normalized);
+      } catch (e) {
+        // 静默失败
       }
-    ];
-
-    setLogs(mockLogs);
-    setFilteredLogs(mockLogs);
+    };
+    fetchLogs();
   }, []);
+
+  const safeParse = (s) => {
+    try { return JSON.parse(s); } catch { return {}; }
+  };
+
+  const metaToReadable = (meta) => {
+    if (!meta || typeof meta !== 'object') return '';
+    const keys = Object.keys(meta);
+    if (keys.length === 0) return '';
+    return keys.map(k => `${k}: ${typeof meta[k] === 'object' ? JSON.stringify(meta[k]) : String(meta[k])}`).join(' | ');
+  };
 
   // 过滤日志
   useEffect(() => {
@@ -133,16 +81,17 @@ const Logs = () => {
 
     // 搜索过滤
     if (searchTerm) {
-      filtered = filtered.filter(log => 
-        log.details.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.target.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.user.toLowerCase().includes(searchTerm.toLowerCase())
+      const q = searchTerm.toLowerCase();
+      filtered = filtered.filter(log =>
+        (log.details || '').toLowerCase().includes(q) ||
+        (log.action || '').toLowerCase().includes(q) ||
+        (log.user || '').toLowerCase().includes(q)
       );
     }
 
-    // 类型过滤
-    if (filterType !== 'all') {
-      filtered = filtered.filter(log => log.type === filterType);
+    // 分类过滤（基于 action 前缀：auth/message/user/ban/system）
+    if (filterCategory !== 'all') {
+      filtered = filtered.filter(log => log.category === filterCategory);
     }
 
     // 级别过滤
@@ -151,7 +100,7 @@ const Logs = () => {
     }
 
     setFilteredLogs(filtered);
-  }, [logs, searchTerm, filterType, filterLevel]);
+  }, [logs, searchTerm, filterCategory, filterLevel]);
 
   const formatTime = (timestamp) => {
     const date = new Date(timestamp);
@@ -183,37 +132,26 @@ const Logs = () => {
     );
   };
 
-  const getTypeIcon = (type) => {
-    const typeIcons = {
-      moderation: Shield,
+  const getCategoryIcon = (category) => {
+    const icons = {
+      auth: Shield,
+      message: MessageSquare,
       user: User,
+      ban: AlertTriangle,
       system: Settings,
-      admin: Settings,
-      security: Shield,
-      content: MessageSquare
     };
-    
-    const Icon = typeIcons[type] || Activity;
+    const Icon = icons[category] || Activity;
     return <Icon className="w-4 h-4" />;
   };
 
   const getActionIcon = (action) => {
-    const actionIcons = {
-      approve_message: CheckCircle,
-      reject_message: XCircle,
-      user_register: User,
-      user_login: User,
-      api_error: AlertTriangle,
-      system_config: Settings,
-      failed_login: Shield,
-      message_create: MessageSquare,
-      view: Eye,
-      edit: Edit,
-      delete: Trash2
-    };
-    
-    const Icon = actionIcons[action] || Activity;
-    return <Icon className="w-4 h-4" />;
+    if (!action) return <Activity className="w-4 h-4" />;
+    if (action.endsWith('.failed') || action === 'error') return <XCircle className="w-4 h-4" />;
+    if (action.includes('approve')) return <CheckCircle className="w-4 h-4" />;
+    if (action.includes('reject')) return <XCircle className="w-4 h-4" />;
+    if (action.includes('ban')) return <AlertTriangle className="w-4 h-4" />;
+    if (action.includes('login') || action.includes('register')) return <User className="w-4 h-4" />;
+    return <Activity className="w-4 h-4" />;
   };
 
   const exportLogs = () => {
@@ -336,18 +274,17 @@ const Logs = () => {
                 />
               </div>
             </div>
-            <Select value={filterType} onValueChange={setFilterType}>
+            <Select value={filterCategory} onValueChange={setFilterCategory}>
               <SelectTrigger className="w-full md:w-[180px]">
                 <SelectValue placeholder="选择类型" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">所有类型</SelectItem>
-                <SelectItem value="moderation">内容审核</SelectItem>
-                <SelectItem value="user">用户操作</SelectItem>
-                <SelectItem value="system">系统事件</SelectItem>
-                <SelectItem value="admin">管理操作</SelectItem>
-                <SelectItem value="security">安全事件</SelectItem>
-                <SelectItem value="content">内容操作</SelectItem>
+                <SelectItem value="all">所有分类</SelectItem>
+                <SelectItem value="auth">认证</SelectItem>
+                <SelectItem value="message">留言/审核</SelectItem>
+                <SelectItem value="user">用户</SelectItem>
+                <SelectItem value="ban">封禁</SelectItem>
+                <SelectItem value="system">系统</SelectItem>
               </SelectContent>
             </Select>
             <Select value={filterLevel} onValueChange={setFilterLevel}>
@@ -370,20 +307,22 @@ const Logs = () => {
                 <div className="flex items-start justify-between">
                   <div className="flex items-start space-x-3 flex-1">
                     <div className="flex items-center space-x-2 mt-1">
-                      {getTypeIcon(log.type)}
+                      {getCategoryIcon(log.category)}
                       {getActionIcon(log.action)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-2 mb-1">
-                        <span className="font-medium text-sm">{log.action.replace('_', ' ')}</span>
+                        <span className="font-medium text-sm">{log.action}</span>
                         {getLevelBadge(log.level)}
                         <Badge variant="outline" className="text-xs">
-                          {log.type}
+                          {log.category}
                         </Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground mb-2">
-                        {log.details}
-                      </p>
+                      {log.details && (
+                        <p className="text-sm text-muted-foreground mb-2">
+                          {log.details}
+                        </p>
+                      )}
                       <div className="flex items-center space-x-4 text-xs text-muted-foreground">
                         <div className="flex items-center space-x-1">
                           <Calendar className="w-3 h-3" />
@@ -392,12 +331,6 @@ const Logs = () => {
                         <div className="flex items-center space-x-1">
                           <User className="w-3 h-3" />
                           <span>{log.user}</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <span>目标: {log.target}</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <span>IP: {log.ip}</span>
                         </div>
                       </div>
                     </div>

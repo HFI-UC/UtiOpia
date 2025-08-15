@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import api from '../lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -45,65 +46,33 @@ const Bans = () => {
     type: 'temporary'
   });
 
-  // 模拟封禁数据
+  // 加载真实封禁数据
   useEffect(() => {
-    const mockBans = [
-      {
-        id: 1,
-        userEmail: 'bad.user2023@gdhfi.com',
-        userId: 101,
-        reason: '发布不当内容，违反社区规范',
-        type: 'temporary',
-        duration: 7,
-        createdAt: '2024-01-10T10:00:00Z',
-        expiresAt: '2024-01-17T10:00:00Z',
-        status: 'active',
-        createdBy: 'admin',
-        appealStatus: null
-      },
-      {
-        id: 2,
-        userEmail: 'spam.user2023@gdhfi.com',
-        userId: 102,
-        reason: '恶意刷屏，影响平台正常使用',
-        type: 'temporary',
-        duration: 3,
-        createdAt: '2024-01-12T15:30:00Z',
-        expiresAt: '2024-01-15T15:30:00Z',
-        status: 'expired',
-        createdBy: 'moderator',
-        appealStatus: null
-      },
-      {
-        id: 3,
-        userEmail: 'toxic.user2023@gdhfi.com',
-        userId: 103,
-        reason: '严重违规行为，永久封禁',
-        type: 'permanent',
-        duration: null,
-        createdAt: '2024-01-08T09:15:00Z',
-        expiresAt: null,
-        status: 'active',
-        createdBy: 'super_admin',
-        appealStatus: 'pending'
-      },
-      {
-        id: 4,
-        userEmail: 'temp.user2023@gdhfi.com',
-        userId: 104,
-        reason: '多次发布低质量内容',
-        type: 'temporary',
-        duration: 1,
-        createdAt: '2024-01-14T12:00:00Z',
-        expiresAt: '2024-01-15T12:00:00Z',
-        status: 'lifted',
-        createdBy: 'moderator',
-        appealStatus: 'approved'
+    const fetchBans = async () => {
+      try {
+        const resp = await api.get('/bans');
+        const items = resp?.data?.items || [];
+        // 适配后端字段到前端展示结构
+        const normalized = items.map(it => ({
+          id: it.id,
+          userEmail: it.type === 'email' ? it.value : it.value, // 仅作展示
+          userId: it.created_by || null,
+          reason: it.reason || '',
+          type: it.expires_at ? 'temporary' : 'permanent',
+          duration: null,
+          createdAt: it.created_at,
+          expiresAt: it.expires_at,
+          status: it.active ? 'active' : 'lifted',
+          createdBy: String(it.created_by || 'system'),
+          appealStatus: null,
+        }));
+        setBans(normalized);
+        setFilteredBans(normalized);
+      } catch (e) {
+        // 静默失败，页面仍可操作
       }
-    ];
-
-    setBans(mockBans);
-    setFilteredBans(mockBans);
+    };
+    fetchBans();
   }, []);
 
   // 过滤封禁记录
@@ -193,44 +162,48 @@ const Bans = () => {
     }
 
     try {
-      // 模拟API调用
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const ban = {
-        id: Date.now(),
-        userEmail: newBan.userEmail,
-        userId: Math.floor(Math.random() * 1000),
-        reason: newBan.reason,
-        type: newBan.type,
-        duration: newBan.type === 'permanent' ? null : parseInt(newBan.duration),
-        createdAt: new Date().toISOString(),
-        expiresAt: newBan.type === 'permanent' ? null : 
-          new Date(Date.now() + parseInt(newBan.duration) * 24 * 60 * 60 * 1000).toISOString(),
-        status: 'active',
-        createdBy: 'admin',
-        appealStatus: null
-      };
-      
-      setBans(prev => [ban, ...prev]);
+      // 后端仅支持类型 email 或 student_id，值为具体邮箱或学号
+      const type = newBan.userEmail.includes('@') ? 'email' : 'student_id';
+      await api.post('/bans', { type, value: newBan.userEmail, reason: newBan.reason });
+      // 重新拉取
+      const resp = await api.get('/bans');
+      const items = resp?.data?.items || [];
+      const normalized = items.map(it => ({
+        id: it.id,
+        userEmail: it.value,
+        userId: it.created_by || null,
+        reason: it.reason || '',
+        type: it.expires_at ? 'temporary' : 'permanent',
+        duration: null,
+        createdAt: it.created_at,
+        expiresAt: it.expires_at,
+        status: it.active ? 'active' : 'lifted',
+        createdBy: String(it.created_by || 'system'),
+        appealStatus: null,
+      }));
+      setBans(normalized);
       setShowAddDialog(false);
       setNewBan({ userEmail: '', reason: '', duration: '7', type: 'temporary' });
       toast.success('封禁记录已添加');
     } catch (error) {
-      toast.error('操作失败');
+      const msg = error.response?.data?.error || error.message || '操作失败';
+      toast.error(msg);
     }
   };
 
   const handleLiftBan = async (banId) => {
     try {
-      // 模拟API调用
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setBans(prev => prev.map(ban => 
-        ban.id === banId ? { ...ban, status: 'lifted' } : ban
+      const ban = bans.find(b => b.id === banId);
+      if (!ban) return;
+      const type = ban.userEmail.includes('@') ? 'email' : 'student_id';
+      await api.delete('/bans', { data: { type, value: ban.userEmail } });
+      setBans(prev => prev.map(b => 
+        b.id === banId ? { ...b, status: 'lifted' } : b
       ));
       toast.success('封禁已解除');
     } catch (error) {
-      toast.error('操作失败');
+      const msg = error.response?.data?.error || error.message || '操作失败';
+      toast.error(msg);
     }
   };
 

@@ -84,18 +84,27 @@ final class UserService
         // 兼容 MySQL 与 SQLite 的 UPSERT
         $driver = (string)$this->pdo->getAttribute(\PDO::ATTR_DRIVER_NAME);
         if ($driver === 'mysql') {
-            // 需要在 MySQL 中为 (type,value,active) 建唯一索引（迁移脚本已包含）
-            $sql = 'INSERT INTO bans(type, value, reason, created_by, created_at, updated_at, active, stage, expires_at) '
-                 . 'VALUES(?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,1,?,?) '
-                 . 'ON DUPLICATE KEY UPDATE '
-                 . 'reason=VALUES(reason), updated_at=CURRENT_TIMESTAMP, active=1, stage=VALUES(stage), expires_at=VALUES(expires_at)';
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->execute([$type, $value, $reason, $actor['id'], $stage, $expiresAt]);
+            // 激活新一条记录，保留历史 inactive。若存在 active 冲突，则先将现有 active 置为 inactive 并设置 slot
+            try {
+                $this->pdo->beginTransaction();
+                // 将现有 active 置为 inactive，并分配 slot（使用 id 作为 slot 保证唯一）
+                $this->pdo->prepare('UPDATE bans SET active = 0, updated_at = CURRENT_TIMESTAMP, slot = CASE WHEN slot = 0 THEN id ELSE slot END WHERE type = ? AND value = ? AND active = 1')
+                    ->execute([$type, $value]);
+                // 插入新的 active 记录（slot 默认为 0）
+                $sql = 'INSERT INTO bans(type, value, reason, created_by, created_at, updated_at, active, stage, expires_at, slot) '
+                     . 'VALUES(?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,1,?,?,0)';
+                $stmt = $this->pdo->prepare($sql);
+                $stmt->execute([$type, $value, $reason, $actor['id'], $stage, $expiresAt]);
+                $this->pdo->commit();
+            } catch (\Throwable $e) {
+                $this->pdo->rollBack();
+                return ['error' => '创建封禁失败: ' . $e->getMessage()];
+            }
         } else {
             // SQLite: ON CONFLICT 语法
-            $sql = 'INSERT INTO bans(type, value, reason, created_by, created_at, updated_at, active, stage, expires_at) '
-                 . 'VALUES(?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,1,?,?) '
-                 . 'ON CONFLICT(type,value,active) DO UPDATE SET '
+            $sql = 'INSERT INTO bans(type, value, reason, created_by, created_at, updated_at, active, stage, expires_at, slot) '
+                 . 'VALUES(?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,1,?,?,0) '
+                 . 'ON CONFLICT(type,value,active,slot) DO UPDATE SET '
                  . 'reason=excluded.reason, updated_at=CURRENT_TIMESTAMP, active=1, stage=excluded.stage, expires_at=excluded.expires_at';
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute([$type, $value, $reason, $actor['id'], $stage, $expiresAt]);
@@ -107,10 +116,18 @@ final class UserService
     public function removeBan(array $actor, string $type, string $value): array
     {
         $this->acl->ensure($actor['role'], 'ban:manage');
-        $stmt = $this->pdo->prepare('UPDATE bans SET active = 0, updated_at = CURRENT_TIMESTAMP WHERE type = ? AND value = ? AND active = 1');
-        $stmt->execute([$type, $value]);
-        $this->logger->log('ban.remove', $actor['id'], ['type' => $type, 'value' => $value]);
-        return ['ok' => true];
+        try {
+            $this->pdo->beginTransaction();
+            // 将现有 active 置为 inactive，并分配 slot（使用 id 作为 slot 保证唯一），不删除历史
+            $this->pdo->prepare('UPDATE bans SET active = 0, updated_at = CURRENT_TIMESTAMP, slot = CASE WHEN slot = 0 THEN id ELSE slot END WHERE type = ? AND value = ? AND active = 1')
+                ->execute([$type, $value]);
+            $this->logger->log('ban.remove', $actor['id'], ['type' => $type, 'value' => $value]);
+            $this->pdo->commit();
+            return ['ok' => true];
+        } catch (\Throwable $e) {
+            $this->pdo->rollBack();
+            return ['error' => '解除封禁失败: ' . $e->getMessage()];
+        }
     }
 
     public function listBans(array $actor): array

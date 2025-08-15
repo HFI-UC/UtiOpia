@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import api from '../lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,17 +28,25 @@ const Admin = () => {
     bannedUsers: 0
   });
 
-  // 模拟数据加载
+  // 真实统计数据
   useEffect(() => {
-    // 在实际项目中，这里应该调用API获取统计数据
-    setStats({
-      totalUsers: 156,
-      totalMessages: 423,
-      pendingMessages: 12,
-      approvedMessages: 389,
-      rejectedMessages: 22,
-      bannedUsers: 3
-    });
+    const fetchStats = async () => {
+      try {
+        const resp = await api.get('/stats/overview');
+        const data = resp?.data || {};
+        setStats({
+          totalUsers: data.totals?.users ?? data.users?.total ?? 0,
+          totalMessages: data.totals?.messages ?? data.messages?.total ?? 0,
+          pendingMessages: data.messages?.pending ?? 0,
+          approvedMessages: data.messages?.approved ?? 0,
+          rejectedMessages: data.messages?.rejected ?? 0,
+          bannedUsers: data.users?.banned ?? 0
+        });
+      } catch (_) {
+        // 静默失败
+      }
+    };
+    fetchStats();
   }, []);
 
   const StatCard = ({ title, value, icon: Icon, trend, trendValue, color = "blue" }) => (

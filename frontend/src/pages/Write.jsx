@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -44,6 +44,8 @@ const Write = () => {
   const [imagePreview, setImagePreview] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [stats, setStats] = useState({ today: null, week: null, total: null });
+  const [loadingStats, setLoadingStats] = useState(true);
 
   const isAuthenticated = !!token;
   const maxContentLength = 500;
@@ -151,6 +153,76 @@ const Write = () => {
       content: prev.content + emoji
     }));
   };
+
+  useEffect(() => {
+    const fetchPublishStats = async () => {
+      setLoadingStats(true);
+      try {
+        // Always get total approved count via list endpoint (public)
+        const totalReq = api.get('/messages', { params: { status: 'approved', pageSize: 1, page: 1 } });
+
+        // Prefer admin stats if permitted; otherwise fallback to client-aggregate
+        let todayCount = null;
+        let weekCount = null;
+
+        if (token) {
+          try {
+            const seriesResp = await api.get('/stats/messages', { params: { days: 7 } });
+            const items = seriesResp?.data?.items || [];
+            const todayStr = new Date().toISOString().slice(0, 10);
+            const todayItem = items.find(it => it.date === todayStr);
+            todayCount = todayItem ? (todayItem.total ?? todayItem.count ?? 0) : 0;
+            weekCount = items.reduce((sum, it) => sum + (it.total ?? it.count ?? 0), 0);
+          } catch (_) {
+            // No permission or error → fallback below
+          }
+        }
+
+        if (todayCount === null || weekCount === null) {
+          // Fallback: paginate approved messages until older than 7 days or max pages
+          const pageSize = 50;
+          const maxPages = 5;
+          let page = 1;
+          let done = false;
+          let today = 0;
+          let week = 0;
+          const now = new Date();
+          const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          const sevenDaysAgo = new Date(startOfToday.getTime() - 6 * 24 * 60 * 60 * 1000); // inclusive 7 days window
+
+          while (!done && page <= maxPages) {
+            const resp = await api.get('/messages', { params: { status: 'approved', pageSize, page } });
+            const items = resp?.data?.items || [];
+            if (items.length === 0) break;
+            for (const m of items) {
+              const createdAt = new Date(m.created_at);
+              if (isNaN(createdAt.getTime())) continue;
+              if (createdAt >= startOfToday) today += 1;
+              if (createdAt >= sevenDaysAgo) {
+                week += 1;
+              } else {
+                done = true;
+                break;
+              }
+            }
+            page += 1;
+          }
+          todayCount = today;
+          weekCount = week;
+        }
+
+        const totalResp = await totalReq;
+        const total = totalResp?.data?.total ?? null;
+        setStats({ today: todayCount, week: weekCount, total });
+      } catch (_) {
+        setStats({ today: null, week: null, total: null });
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+
+    fetchPublishStats();
+  }, [token]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -531,15 +603,15 @@ const Write = () => {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">今日发布</span>
-                <span className="font-medium">-</span>
+                <span className="font-medium">{loadingStats ? '…' : (stats.today ?? '-')}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">本周发布</span>
-                <span className="font-medium">-</span>
+                <span className="font-medium">{loadingStats ? '…' : (stats.week ?? '-')}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">总发布数</span>
-                <span className="font-medium">-</span>
+                <span className="font-medium">{loadingStats ? '…' : (stats.total ?? '-')}</span>
               </div>
             </CardContent>
           </Card>

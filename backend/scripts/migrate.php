@@ -90,6 +90,13 @@ foreach ($sql as $q) {
     $pdo->exec($q);
 }
 
+// Online migration: add slot column and switch unique index to (type,value,active,slot) to preserve history
+try { $pdo->exec("ALTER TABLE bans ADD COLUMN slot BIGINT UNSIGNED NOT NULL DEFAULT 0"); } catch (\Throwable $e) {}
+try { $pdo->exec("ALTER TABLE bans DROP INDEX uniq_type_value_active"); } catch (\Throwable $e) {}
+try { $pdo->exec("ALTER TABLE bans ADD UNIQUE KEY uniq_type_value_active_slot (type, value, active, slot)"); } catch (\Throwable $e) {}
+// Backfill: ensure inactive rows have distinct slot to avoid future conflicts
+try { $pdo->exec("UPDATE bans SET slot = id WHERE active = 0 AND slot = 0"); } catch (\Throwable $e) {}
+
 // Seed super admin if not exists
 $adminEmail = $_ENV['ADMIN_EMAIL'] ?? '';
 $adminPass = $_ENV['ADMIN_PASSWORD'] ?? '';
