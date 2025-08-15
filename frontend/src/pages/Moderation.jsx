@@ -264,7 +264,7 @@ const Moderation = () => {
                 封禁
               </Button>
             )}
-            <Button size="sm" variant="outline">
+            <Button size="sm" variant="outline" onClick={() => window.alert(`ID #${message.id}\n\n` + (message.content || ''))}>
               <Eye className="w-4 h-4 mr-1" />
               详情
             </Button>

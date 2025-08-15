@@ -207,6 +207,39 @@ const Bans = () => {
     }
   };
 
+  const openEdit = (ban) => {
+    const value = ban.userEmail;
+    const type = value.includes('@') ? 'email' : 'student_id';
+    const reason = window.prompt('修改封禁原因（留空不变）', ban.reason || '');
+    if (reason === null) return;
+    (async () => {
+      try {
+        await api.delete('/bans', { data: { type, value } });
+        await api.post('/bans', { type, value, reason: reason || '' });
+        const resp = await api.get('/bans');
+        const items = resp?.data?.items || [];
+        const normalized = items.map(it => ({
+          id: it.id,
+          userEmail: it.value,
+          userId: it.created_by || null,
+          reason: it.reason || '',
+          type: it.expires_at ? 'temporary' : 'permanent',
+          duration: null,
+          createdAt: it.created_at,
+          expiresAt: it.expires_at,
+          status: it.active ? 'active' : 'lifted',
+          createdBy: String(it.created_by || 'system'),
+          appealStatus: null,
+        }));
+        setBans(normalized);
+        toast.success('已更新封禁');
+      } catch (e) {
+        const msg = e.response?.data?.error || e.message || '更新失败';
+        toast.error(msg);
+      }
+    })();
+  };
+
   return (
     <div className="max-w-7xl mx-auto space-y-8">
       {/* Header */}
@@ -454,7 +487,7 @@ const Bans = () => {
                         解除封禁
                       </Button>
                     )}
-                    <Button size="sm" variant="outline">
+                    <Button size="sm" variant="outline" onClick={() => openEdit(ban)}>
                       <Edit className="w-4 h-4 mr-1" />
                       编辑
                     </Button>

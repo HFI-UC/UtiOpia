@@ -29,6 +29,7 @@ final class MessageService
         }
         // Always include is_anonymous for client rendering; only privileged views can read anon_*
         $cols = 'm.id, m.user_id, m.is_anonymous, m.content, m.image_url, m.status, m.created_at, '
+              . 'm.reject_reason, m.reviewed_at, m.reviewed_by, '
               . 'CASE WHEN m.user_id IS NOT NULL AND m.user_id > 0 THEN u.email ELSE NULL END AS user_email';
         if ($canSeeSensitive) { $cols .= ', m.anon_email, m.anon_student_id'; }
         $where = '';
