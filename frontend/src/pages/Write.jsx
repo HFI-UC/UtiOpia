@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
   Loader2, 
   Send, 
@@ -46,6 +47,7 @@ const Write = () => {
   const [isDragOver, setIsDragOver] = useState(false);
   const [stats, setStats] = useState({ today: null, week: null, total: null });
   const [loadingStats, setLoadingStats] = useState(true);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const isAuthenticated = !!token;
   const maxContentLength = 500;
@@ -247,8 +249,8 @@ const Write = () => {
     
     // 如果是已登录用户的实名发布，需要确认
     if (!formData.isAnonymous && isAuthenticated) {
-      const confirmed = window.confirm('你将以实名发布。其他用户可以看到"由你发布"的标识。是否继续？');
-      if (!confirmed) return;
+      setConfirmOpen(true);
+      return;
     }
 
     try {
@@ -617,6 +619,19 @@ const Write = () => {
           </Card>
         </div>
       </div>
+      {/* Confirm Modal */}
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>确认实名发布</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">你将以实名发布，其他用户可看到“由你发布”的标识。是否继续？</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={()=>setConfirmOpen(false)}>取消</Button>
+            <Button onClick={async ()=>{ setConfirmOpen(false); try { await createMessage({ content: formData.content, image_url: formData.imageUrl, turnstile_token: turnstileToken, is_anonymous: false }); toast.success('纸条发布成功，正在等待审核！'); navigate('/'); } catch {} }}>确认</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

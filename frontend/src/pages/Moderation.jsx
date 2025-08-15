@@ -25,6 +25,9 @@ const Moderation = () => {
   const [reviewedMessages, setReviewedMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [detail, setDetail] = useState(null);
+  const [trail, setTrail] = useState([]);
+  const [rejectDialog, setRejectDialog] = useState({ open: false, id: null, text: '' });
+  const [banDialog, setBanDialog] = useState({ open: false, choice: null, options: [], reason: '' });
 
   // 加载真实数据
   useEffect(() => {
@@ -52,6 +55,25 @@ const Moderation = () => {
     fetchData();
   }, []);
 
+  // Load audit trail when opening detail
+  useEffect(() => {
+    const loadTrail = async () => {
+      if (!detail) return;
+      try {
+        const r = await api.get('/logs', { params: { page: 1, pageSize: 50 } });
+        const items = r?.data?.items || [];
+        const related = items.filter(it => {
+          try {
+            const meta = typeof it.meta === 'string' ? JSON.parse(it.meta) : it.meta;
+            return meta && Number(meta.message_id) === Number(detail.id);
+          } catch { return false; }
+        });
+        setTrail(related);
+      } catch { setTrail([]); }
+    };
+    loadTrail();
+  }, [detail]);
+
   const formatTime = (dateStr) => {
     const date = new Date(dateStr);
     return date.toLocaleString('zh-CN', {
@@ -73,19 +95,7 @@ const Moderation = () => {
       toast.error('无可封禁的标识');
       return;
     }
-    let choice = options[0];
-    if (options.length > 1) {
-      const pick = window.prompt(`输入 1 选择${options[0].label}${options[1] ? `，输入 2 选择${options[1].label}` : ''}`,'1');
-      if (pick === '2' && options[1]) choice = options[1];
-    }
-    const reason = window.prompt('封禁原因（可选）','');
-    try {
-      await api.post('/bans', { type: choice.type, value: choice.value, reason: reason || '' });
-      toast.success('封禁成功');
-    } catch (e) {
-      const msg = e.response?.data?.error || e.message || '封禁失败';
-      toast.error(msg);
-    }
+    setBanDialog({ open: true, choice: options[0], options, reason: '' });
   };
 
   const handleApprove = async (messageId) => {
@@ -113,8 +123,8 @@ const Moderation = () => {
   };
 
   const handleReject = async (messageId, reason) => {
-    const rejectReason = reason || window.prompt('请输入拒绝理由', '内容不当');
-    if (!rejectReason) return;
+    const rejectReason = reason;
+    if (!rejectReason) { setRejectDialog({ open: true, id: messageId, text: '' }); return; }
     setLoading(true);
     try {
       await api.post(`/messages/${messageId}/reject`, { reason: rejectReason });
@@ -413,7 +423,7 @@ const Moderation = () => {
       </Tabs>
 
       {/* Detail Modal */}
-      <Dialog open={!!detail} onOpenChange={(o)=>{ if(!o) setDetail(null); }}>
+      <Dialog open={!!detail} onOpenChange={(o)=>{ if(!o){ setDetail(null); setTrail([]);} }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>纸条详情 #{detail?.id}</DialogTitle>
@@ -459,6 +469,24 @@ const Moderation = () => {
                 <span className="text-sm text-red-700">拒绝原因：{detail.reject_reason}</span>
               </div>
             )}
+            {/* 审计轨迹 */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium">审计轨迹</p>
+              <div className="rounded-md border bg-muted/30 p-3 max-h-48 overflow-auto text-xs">
+                {trail.length === 0 ? (
+                  <p className="text-muted-foreground">无相关记录</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {trail.map((it) => (
+                      <li key={it.id} className="flex items-start justify-between">
+                        <span className="break-all">{it.action}</span>
+                        <span className="text-muted-foreground ml-2 whitespace-nowrap">{formatTime(it.created_at)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
           </div>
           <DialogFooter className="justify-between">
             <div className="text-xs text-muted-foreground">审核人：{detail?.reviewed_by || '-'} {detail?.reviewed_at ? `· ${formatTime(detail.reviewed_at)}` : ''}</div>
@@ -469,6 +497,73 @@ const Moderation = () => {
                 <Button size="sm" variant="outline" onClick={()=>detail && handleQuickBan(detail)} disabled={loading}><Ban className="w-4 h-4 mr-1"/>封禁</Button>
               )}
             </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject Modal */}
+      <Dialog open={rejectDialog.open} onOpenChange={(o)=> setRejectDialog(prev => ({ ...prev, open: o }))}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>请输入拒绝理由</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <textarea className="w-full border rounded-md p-2 text-sm" rows={4} placeholder="内容不当" value={rejectDialog.text} onChange={(e)=> setRejectDialog(prev => ({ ...prev, text: e.target.value }))} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={()=> setRejectDialog({ open: false, id: null, text: '' })}>取消</Button>
+            <Button onClick={async ()=>{
+              if (!rejectDialog.id || !rejectDialog.text) return;
+              setLoading(true);
+              try {
+                await api.post(`/messages/${rejectDialog.id}/reject`, { reason: rejectDialog.text });
+                const message = pendingMessages.find(m => m.id === rejectDialog.id);
+                if (message) {
+                  const rejectedMessage = { ...message, status: 'rejected', reviewed_at: new Date().toISOString(), reviewed_by: '你', reject_reason: rejectDialog.text };
+                  setPendingMessages(prev => prev.filter(m => m.id !== rejectDialog.id));
+                  setReviewedMessages(prev => [rejectedMessage, ...prev]);
+                }
+                toast.success('内容已拒绝');
+              } catch (error) {
+                const msg = error.response?.data?.error || error.message || '操作失败';
+                toast.error(msg);
+              } finally {
+                setLoading(false);
+                setRejectDialog({ open: false, id: null, text: '' });
+              }
+            }}>确认</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Ban Modal */}
+      <Dialog open={banDialog.open} onOpenChange={(o)=> setBanDialog(prev => ({ ...prev, open: o }))}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>封禁目标与原因</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              {banDialog.options.map(opt => (
+                <Button key={opt.value} variant={banDialog.choice?.value===opt.value?'default':'outline'} className="w-full justify-start" onClick={()=> setBanDialog(prev => ({ ...prev, choice: opt }))}>{opt.label}</Button>
+              ))}
+            </div>
+            <textarea className="w-full border rounded-md p-2 text-sm" rows={3} placeholder="封禁原因（可选）" value={banDialog.reason} onChange={(e)=> setBanDialog(prev => ({ ...prev, reason: e.target.value }))} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={()=> setBanDialog({ open: false, choice: null, options: [], reason: '' })}>取消</Button>
+            <Button onClick={async ()=>{
+              if (!banDialog.choice) return;
+              try {
+                await api.post('/bans', { type: banDialog.choice.type, value: banDialog.choice.value, reason: banDialog.reason });
+                toast.success('封禁成功');
+              } catch (e) {
+                const msg = e.response?.data?.error || e.message || '封禁失败';
+                toast.error(msg);
+              } finally {
+                setBanDialog({ open: false, choice: null, options: [], reason: '' });
+              }
+            }}>确认</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

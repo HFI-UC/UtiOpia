@@ -24,9 +24,20 @@ import {
   Trash2,
   ChevronDown,
   ChevronRight,
-  Copy
+  Copy,
+  Clock,
+  Globe,
+  Key,
+  RefreshCw,
+  Hash
 } from 'lucide-react';
 import { toast } from 'sonner';
+import JsonViewer from '../components/JsonViewer';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { CalendarIcon } from 'lucide-react';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { format, subDays } from 'date-fns';
+import { zhCN } from 'date-fns/locale';
 
 // Helpers (module scope)
 const safeParse = (s) => {
@@ -114,13 +125,24 @@ const Logs = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterLevel, setFilterLevel] = useState('all');
+  const [filterUser, setFilterUser] = useState('');
+  const [dateRange, setDateRange] = useState({ from: null, to: null });
+  const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [expandAll, setExpandAll] = useState(false);
+  const [jsonSearchTerm, setJsonSearchTerm] = useState('');
 
   // 加载真实日志数据
   useEffect(() => {
     const fetchLogs = async () => {
+      setLoading(true);
       try {
-        const resp = await api.get('/logs', { params: { page: 1, pageSize: 50 } });
+        const resp = await api.get('/logs', { params: { page, pageSize: 100 } });
         const items = resp?.data?.items || [];
+        const total = resp?.data?.total || 0;
+        setTotalPages(Math.ceil(total / 100));
+        
         const normalized = items.map(it => {
           const action = String(it.action || '');
           const prefix = action.includes('.') ? action.split('.')[0] : action;
@@ -128,7 +150,18 @@ const Logs = () => {
           let level = 'info';
           if (action === 'error' || action.endsWith('.failed')) level = 'error';
           else if (action.endsWith('.conflict') || action.endsWith('.banned')) level = 'warning';
-          const metaObj = typeof it.meta === 'string' ? safeParse(it.meta) : (it.meta || {});
+          
+          // 强化的 meta 解析
+          let metaObj = {};
+          if (typeof it.meta === 'string') {
+            metaObj = safeDecode(it.meta);
+          } else if (it.meta) {
+            metaObj = it.meta;
+          }
+          
+          // 提取关键信息
+          const extractedInfo = extractKeyInfo(metaObj);
+          
           return {
             id: it.id,
             timestamp: it.created_at,
@@ -138,32 +171,68 @@ const Logs = () => {
             user: String(it.user_id ?? 'system'),
             details: metaToReadable(metaObj),
             meta: metaObj,
+            ...extractedInfo
           };
         });
         setLogs(normalized);
         setFilteredLogs(normalized);
       } catch (e) {
-        // 静默失败
+        toast.error('加载日志失败');
+      } finally {
+        setLoading(false);
       }
     };
     fetchLogs();
-  }, []);
+  }, [page]);
+  
+  // 提取关键信息
+  const extractKeyInfo = (meta) => {
+    const info = {};
+    if (typeof meta === 'object' && meta !== null) {
+      // 提取 IP 地址
+      info.ip = meta.ip || meta.IP || meta.client_ip || meta.user_ip || null;
+      // 提取请求方法
+      info.method = meta.method || meta.http_method || null;
+      // 提取路径
+      info.path = meta.path || meta.url || meta.endpoint || null;
+      // 提取邮箱
+      info.email = meta.email || meta.user_email || null;
+      // 提取用户名
+      info.username = meta.username || meta.user_name || meta.name || null;
+      // 提取留言ID
+      info.messageId = meta.message_id || meta.messageId || meta.id || null;
+      // 提取错误信息
+      info.error = meta.error || meta.message || meta.reason || null;
+    }
+    return info;
+  };
 
   // 过滤日志
   useEffect(() => {
     let filtered = logs;
 
-    // 搜索过滤
+    // 搜索过滤（增强版）
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
-      filtered = filtered.filter(log =>
-        (log.details || '').toLowerCase().includes(q) ||
-        (log.action || '').toLowerCase().includes(q) ||
-        (log.user || '').toLowerCase().includes(q)
-      );
+      filtered = filtered.filter(log => {
+        // 搜索所有字段
+        const searchableText = [
+          log.details,
+          log.action,
+          log.user,
+          log.ip,
+          log.email,
+          log.username,
+          log.error,
+          log.path,
+          JSON.stringify(log.meta)
+        ].filter(Boolean).join(' ').toLowerCase();
+        
+        return searchableText.includes(q);
+      });
     }
 
-    // 分类过滤（基于 action 前缀：auth/message/user/ban/system）
+    // 分类过滤
     if (filterCategory !== 'all') {
       filtered = filtered.filter(log => log.category === filterCategory);
     }
@@ -172,9 +241,38 @@ const Logs = () => {
     if (filterLevel !== 'all') {
       filtered = filtered.filter(log => log.level === filterLevel);
     }
+    
+    // 用户过滤
+    if (filterUser) {
+      const userQuery = filterUser.toLowerCase();
+      filtered = filtered.filter(log => 
+        log.user.toLowerCase().includes(userQuery) ||
+        (log.username && log.username.toLowerCase().includes(userQuery)) ||
+        (log.email && log.email.toLowerCase().includes(userQuery))
+      );
+    }
+    
+    // 日期范围过滤
+    if (dateRange.from) {
+      filtered = filtered.filter(log => {
+        const logDate = new Date(log.timestamp);
+        if (dateRange.from && logDate < dateRange.from) return false;
+        if (dateRange.to && logDate > dateRange.to) return false;
+        return true;
+      });
+    }
+
+    // JSON 内容搜索
+    if (jsonSearchTerm) {
+      const jsonQuery = jsonSearchTerm.toLowerCase();
+      filtered = filtered.filter(log => {
+        const metaStr = JSON.stringify(log.meta).toLowerCase();
+        return metaStr.includes(jsonQuery);
+      });
+    }
 
     setFilteredLogs(filtered);
-  }, [logs, searchTerm, filterCategory, filterLevel]);
+  }, [logs, searchTerm, filterCategory, filterLevel, filterUser, dateRange, jsonSearchTerm]);
 
 
   const exportLogs = () => {
@@ -322,12 +420,139 @@ const Logs = () => {
               </SelectContent>
             </Select>
           </div>
+          
+          {/* 高级过滤器 */}
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="按用户过滤..."
+                  value={filterUser}
+                  onChange={(e) => setFilterUser(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            <div className="flex-1">
+              <div className="relative">
+                <Key className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="在JSON中搜索..."
+                  value={jsonSearchTerm}
+                  onChange={(e) => setJsonSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full md:w-[240px]">
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateRange.from ? (
+                    dateRange.to ? (
+                      <>
+                        {format(dateRange.from, "MM/dd", { locale: zhCN })} -{" "}
+                        {format(dateRange.to, "MM/dd", { locale: zhCN })}
+                      </>
+                    ) : (
+                      format(dateRange.from, "MM/dd", { locale: zhCN })
+                    )
+                  ) : (
+                    "选择日期范围"
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <div className="p-3 space-y-2">
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDateRange({ from: new Date(), to: new Date() })}
+                    >
+                      今天
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDateRange({ from: subDays(new Date(), 7), to: new Date() })}
+                    >
+                      最近7天
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDateRange({ from: subDays(new Date(), 30), to: new Date() })}
+                    >
+                      最近30天
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDateRange({ from: null, to: null })}
+                    >
+                      清除
+                    </Button>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* 工具栏 */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">
+                显示 {filteredLogs.length} / {logs.length} 条
+              </Badge>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setExpandAll(!expandAll)}
+              >
+                {expandAll ? '全部收起' : '全部展开'}
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              {page > 1 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(page - 1)}
+                  disabled={loading}
+                >
+                  上一页
+                </Button>
+              )}
+              <span className="text-sm text-muted-foreground">
+                第 {page} / {totalPages} 页
+              </span>
+              {page < totalPages && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(page + 1)}
+                  disabled={loading}
+                >
+                  下一页
+                </Button>
+              )}
+            </div>
+          </div>
 
           {/* Logs List */}
           <div className="space-y-3">
-            {filteredLogs.map((log) => (
-              <LogItem key={log.id} log={log} />
-            ))}
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
+                <span className="ml-2 text-muted-foreground">加载中...</span>
+              </div>
+            ) : (
+              filteredLogs.map((log) => (
+                <LogItem key={log.id} log={log} expandAll={expandAll} jsonSearchTerm={jsonSearchTerm} />
+              ))
+            )}
 
             {filteredLogs.length === 0 && (
               <div className="text-center py-8">
@@ -345,8 +570,12 @@ const Logs = () => {
   );
 };
 
-const LogItem = ({ log }) => {
-  const [open, setOpen] = useState(false);
+const LogItem = ({ log, expandAll = false, jsonSearchTerm = '' }) => {
+  const [open, setOpen] = useState(expandAll);
+  
+  useEffect(() => {
+    setOpen(expandAll);
+  }, [expandAll]);
 
   const copyJson = async () => {
     try {
@@ -368,17 +597,56 @@ const LogItem = ({ log }) => {
               {getCategoryIcon(log.category)}
               {getActionIcon(log.action)}
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center space-x-2 mb-1">
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <div className="flex items-center space-x-2 mb-1 flex-wrap">
                 <span className="font-medium text-sm break-all">{log.action}</span>
                 {getLevelBadge(log.level)}
                 <Badge variant="outline" className="text-xs">
                   {log.category}
                 </Badge>
               </div>
+              
+              {/* 关键信息标签 */}
+              <div className="flex flex-wrap gap-1 mb-2">
+                {log.ip && (
+                  <Badge variant="secondary" className="text-xs">
+                    <Globe className="w-3 h-3 mr-1" />
+                    {log.ip}
+                  </Badge>
+                )}
+                {log.email && (
+                  <Badge variant="secondary" className="text-xs">
+                    <User className="w-3 h-3 mr-1" />
+                    {log.email}
+                  </Badge>
+                )}
+                {log.username && (
+                  <Badge variant="secondary" className="text-xs">
+                    <User className="w-3 h-3 mr-1" />
+                    {log.username}
+                  </Badge>
+                )}
+                {log.method && (
+                  <Badge variant="secondary" className="text-xs">
+                    {log.method}
+                  </Badge>
+                )}
+                {log.messageId && (
+                  <Badge variant="secondary" className="text-xs">
+                    <Hash className="w-3 h-3 mr-1" />
+                    {log.messageId}
+                  </Badge>
+                )}
+              </div>
+              
               {log.details && (
-                <div className="text-sm text-muted-foreground line-clamp-2 break-words whitespace-normal">
+                <div className="text-sm text-muted-foreground line-clamp-2 break-words whitespace-normal overflow-hidden">
                   {log.details}
+                </div>
+              )}
+              {log.error && (
+                <div className="text-sm text-red-600 dark:text-red-400 line-clamp-1 break-words mt-1">
+                  错误: {log.error}
                 </div>
               )}
               <div className="flex items-center space-x-4 text-xs text-muted-foreground mt-2">
@@ -390,6 +658,12 @@ const LogItem = ({ log }) => {
                   <User className="w-3 h-3" />
                   <span>{log.user}</span>
                 </div>
+                {log.path && (
+                  <div className="flex items-center space-x-1">
+                    <Globe className="w-3 h-3" />
+                    <span className="truncate max-w-[200px]">{log.path}</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -403,22 +677,44 @@ const LogItem = ({ log }) => {
       {/* Body */}
       {open && (
         <div className="px-4 pb-4">
-          <div className="rounded-md border bg-muted/30 p-3 overflow-auto">
+          <div className="rounded-md border bg-muted/30 p-3">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-muted-foreground">meta</span>
-              <Button variant="outline" size="sm" onClick={copyJson}>
-                <Copy className="w-4 h-4 mr-1" /> 复制JSON
-              </Button>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground font-medium">详细数据</span>
+                <Badge variant="secondary" className="text-xs">
+                  {typeof log.meta === 'object' ? Object.keys(log.meta).length : 0} 个字段
+                </Badge>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={copyJson}>
+                  <Copy className="w-4 h-4 mr-1" /> 复制JSON
+                </Button>
+              </div>
             </div>
             {(() => {
               const data = safeDecode(log.meta);
               if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
                 return <p className="text-xs text-muted-foreground">(无详情)</p>;
               }
+              
+              // 使用 JsonViewer 组件
+              if (typeof data === 'object') {
+                return (
+                  <JsonViewer 
+                    data={data} 
+                    searchTerm={jsonSearchTerm}
+                    maxHeight="500px"
+                  />
+                );
+              }
+              
+              // 如果是字符串，显示为原始文本
               return (
-                <pre className="whitespace-pre-wrap break-words text-xs font-mono leading-relaxed max-h-80">
-{typeof data === 'string' ? data : JSON.stringify(data, null, 2)}
-                </pre>
+                <div className="overflow-auto max-h-80">
+                  <pre className="whitespace-pre-wrap break-words text-xs font-mono leading-relaxed">
+                    {data}
+                  </pre>
+                </div>
               );
             })()}
           </div>
