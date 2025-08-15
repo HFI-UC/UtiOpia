@@ -1,143 +1,16 @@
-# UtiOpia 小纸条 - React 重写版
+## UtiOpia Frontend
 
-这是对原有 Vue.js 项目的完全重写版本，使用 React + TypeScript + Tailwind CSS + shadcn/ui 构建，保持了原有的业务逻辑和 API 交互，但采用了全新的现代化设计风格。
+运行：
 
-## 🎨 设计特色
+1. 复制 `.env.example` 为 `.env.local` 并设置：
+   - `VITE_API_BASE=http://localhost:8080/api`
+   - `VITE_TURNSTILE_SITE_KEY=你的站点 key`
 
-- **现代化 UI**: 采用 shadcn/ui 组件库，提供一致的设计语言
-- **渐变色彩**: 使用紫色到粉色的渐变主题，营造温馨氛围
-- **响应式设计**: 完美适配桌面和移动设备
-- **流畅交互**: 丰富的动画效果和交互反馈
-- **直观导航**: 清晰的页面结构和导航体验
-
-## 🚀 技术栈
-
-- **React 18**: 现代化的前端框架
-- **Vite**: 快速的构建工具
-- **Tailwind CSS**: 实用优先的 CSS 框架
-- **shadcn/ui**: 高质量的 React 组件库
-- **Zustand**: 轻量级状态管理
-- **React Router**: 客户端路由
-- **Lucide React**: 美观的图标库
-- **Recharts**: 数据可视化图表
-- **Axios**: HTTP 客户端
-- **Sonner**: 优雅的通知组件
-
-## 📱 功能特性
-
-### 用户功能
-- **用户注册/登录**: 支持学校邮箱验证
-- **纸条发布**: 支持文字和图片内容
-- **匿名发布**: 保护用户隐私
-- **内容浏览**: 查看所有已审核的纸条
-- **安全验证**: 集成 Cloudflare Turnstile
-
-### 管理功能
-- **内容审核**: 审核用户提交的纸条
-- **用户管理**: 管理用户账户和权限
-- **封禁管理**: 处理违规用户
-- **数据统计**: 查看平台运营数据
-- **操作日志**: 记录系统操作历史
-
-## 🏗️ 项目结构
-
-```
-src/
-├── components/          # 可复用组件
-│   ├── ui/             # shadcn/ui 基础组件
-│   ├── Navbar.jsx      # 导航栏
-│   ├── ProtectedRoute.jsx  # 路由保护
-│   └── Turnstile.jsx   # 验证组件
-├── pages/              # 页面组件
-│   ├── Home.jsx        # 首页
-│   ├── Login.jsx       # 登录页
-│   ├── Register.jsx    # 注册页
-│   ├── Write.jsx       # 写纸条页
-│   ├── Admin.jsx       # 系统管理
-│   ├── Moderation.jsx  # 内容审核
-│   ├── Dashboard.jsx   # 数据仪表板
-│   ├── Logs.jsx        # 操作日志
-│   └── Bans.jsx        # 封禁管理
-├── stores/             # 状态管理
-│   ├── authStore.js    # 认证状态
-│   └── messagesStore.js # 消息状态
-├── lib/                # 工具库
-│   ├── api.js          # API 配置
-│   └── utils.js        # 工具函数
-└── App.jsx             # 主应用组件
-```
-
-## 🔧 开发指南
-
-### 安装依赖
+2. 安装与启动：
 ```bash
-pnpm install
+npm i
+npm run dev
 ```
 
-### 启动开发服务器
-```bash
-pnpm run dev
-```
 
-### 构建生产版本
-```bash
-pnpm run build
-```
-
-### 预览生产版本
-```bash
-pnpm run preview
-```
-
-## 🌟 核心改进
-
-### 1. 视觉设计
-- 从原有的简单界面升级为现代化设计
-- 统一的色彩系统和视觉语言
-- 更好的信息层次和布局结构
-
-### 2. 用户体验
-- 流畅的页面切换和加载状态
-- 直观的表单验证和错误提示
-- 响应式设计适配各种设备
-
-### 3. 代码质量
-- 组件化架构，提高代码复用性
-- 类型安全的状态管理
-- 清晰的项目结构和命名规范
-
-### 4. 性能优化
-- 代码分割和懒加载
-- 优化的构建配置
-- 高效的状态管理
-
-## 🔗 API 兼容性
-
-项目完全兼容原有的后端 API 接口：
-
-- **认证接口**: `/api/auth/login`, `/api/auth/register`
-- **消息接口**: `/api/messages/*`
-- **文件上传**: `/api/upload/*`
-- **管理接口**: `/api/admin/*`
-
-所有的业务逻辑和数据交互保持不变，确保无缝迁移。
-
-## 📝 部署说明
-
-1. 构建项目：`pnpm run build`
-2. 将 `dist` 目录部署到静态文件服务器
-3. 配置反向代理将 API 请求转发到后端服务
-4. 确保 CORS 配置正确
-
-## 🎯 未来规划
-
-- [ ] 添加暗色主题支持
-- [ ] 实现 PWA 功能
-- [ ] 添加更多图表和统计功能
-- [ ] 优化移动端体验
-- [ ] 添加国际化支持
-
-## 📄 许可证
-
-本项目采用 MIT 许可证。
-
+"# UtiOpia-Frontend" 
