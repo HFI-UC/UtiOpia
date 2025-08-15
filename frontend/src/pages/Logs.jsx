@@ -28,6 +28,68 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+// Helpers (module scope)
+const safeParse = (s) => {
+  try { return JSON.parse(s); } catch { return {}; }
+};
+
+const metaToReadable = (meta) => {
+  if (!meta || typeof meta !== 'object') return '';
+  const keys = Object.keys(meta);
+  if (keys.length === 0) return '';
+  return keys.map(k => `${k}: ${typeof meta[k] === 'object' ? JSON.stringify(meta[k]) : String(meta[k])}`).join(' | ');
+};
+
+const formatTime = (timestamp) => {
+  const date = new Date(timestamp);
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
+};
+
+const getLevelBadge = (level) => {
+  const levelConfig = {
+    info: { variant: 'default', icon: CheckCircle },
+    warning: { variant: 'secondary', icon: AlertTriangle },
+    error: { variant: 'destructive', icon: XCircle }
+  };
+  const config = levelConfig[level] || levelConfig.info;
+  const Icon = config.icon;
+  return (
+    <Badge variant={config.variant} className="flex items-center space-x-1">
+      <Icon className="w-3 h-3" />
+      <span>{level.toUpperCase()}</span>
+    </Badge>
+  );
+};
+
+const getCategoryIcon = (category) => {
+  const icons = {
+    auth: Shield,
+    message: MessageSquare,
+    user: User,
+    ban: AlertTriangle,
+    system: Settings,
+  };
+  const Icon = icons[category] || Activity;
+  return <Icon className="w-4 h-4" />;
+};
+
+const getActionIcon = (action) => {
+  if (!action) return <Activity className="w-4 h-4" />;
+  if (action.endsWith('.failed') || action === 'error') return <XCircle className="w-4 h-4" />;
+  if (action.includes('approve')) return <CheckCircle className="w-4 h-4" />;
+  if (action.includes('reject')) return <XCircle className="w-4 h-4" />;
+  if (action.includes('ban')) return <AlertTriangle className="w-4 h-4" />;
+  if (action.includes('login') || action.includes('register')) return <User className="w-4 h-4" />;
+  return <Activity className="w-4 h-4" />;
+};
+
 const Logs = () => {
   const [logs, setLogs] = useState([]);
   const [filteredLogs, setFilteredLogs] = useState([]);
@@ -69,17 +131,6 @@ const Logs = () => {
     fetchLogs();
   }, []);
 
-  const safeParse = (s) => {
-    try { return JSON.parse(s); } catch { return {}; }
-  };
-
-  const metaToReadable = (meta) => {
-    if (!meta || typeof meta !== 'object') return '';
-    const keys = Object.keys(meta);
-    if (keys.length === 0) return '';
-    return keys.map(k => `${k}: ${typeof meta[k] === 'object' ? JSON.stringify(meta[k]) : String(meta[k])}`).join(' | ');
-  };
-
   // 过滤日志
   useEffect(() => {
     let filtered = logs;
@@ -107,57 +158,6 @@ const Logs = () => {
     setFilteredLogs(filtered);
   }, [logs, searchTerm, filterCategory, filterLevel]);
 
-  const formatTime = (timestamp) => {
-    const date = new Date(timestamp);
-    return date.toLocaleString('zh-CN', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
-  };
-
-  const getLevelBadge = (level) => {
-    const levelConfig = {
-      info: { variant: 'default', icon: CheckCircle },
-      warning: { variant: 'secondary', icon: AlertTriangle },
-      error: { variant: 'destructive', icon: XCircle }
-    };
-    
-    const config = levelConfig[level] || levelConfig.info;
-    const Icon = config.icon;
-    
-    return (
-      <Badge variant={config.variant} className="flex items-center space-x-1">
-        <Icon className="w-3 h-3" />
-        <span>{level.toUpperCase()}</span>
-      </Badge>
-    );
-  };
-
-  const getCategoryIcon = (category) => {
-    const icons = {
-      auth: Shield,
-      message: MessageSquare,
-      user: User,
-      ban: AlertTriangle,
-      system: Settings,
-    };
-    const Icon = icons[category] || Activity;
-    return <Icon className="w-4 h-4" />;
-  };
-
-  const getActionIcon = (action) => {
-    if (!action) return <Activity className="w-4 h-4" />;
-    if (action.endsWith('.failed') || action === 'error') return <XCircle className="w-4 h-4" />;
-    if (action.includes('approve')) return <CheckCircle className="w-4 h-4" />;
-    if (action.includes('reject')) return <XCircle className="w-4 h-4" />;
-    if (action.includes('ban')) return <AlertTriangle className="w-4 h-4" />;
-    if (action.includes('login') || action.includes('register')) return <User className="w-4 h-4" />;
-    return <Activity className="w-4 h-4" />;
-  };
 
   const exportLogs = () => {
     const csvContent = [
