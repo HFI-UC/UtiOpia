@@ -102,18 +102,18 @@ export const processLogData = (data, showSensitive = false) => {
     processed[key] = processedValue;
     
     // 分类
-    let categorized = false;
+    let matchedCategory = false;
     for (const [category, fields] of Object.entries(FIELD_CATEGORIES)) {
       if (fields.some(field => key.toLowerCase().includes(field.toLowerCase()))) {
         if (!categorized[category]) categorized[category] = {};
         categorized[category][key] = processedValue;
-        categorized = true;
+        matchedCategory = true;
         break;
       }
     }
     
     // 如果没有匹配的类别，放入other
-    if (!categorized) {
+    if (!matchedCategory) {
       categorized.other[key] = processedValue;
     }
   }

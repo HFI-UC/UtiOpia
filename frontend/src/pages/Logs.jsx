@@ -539,7 +539,7 @@ const LogItem = ({ log, expandAll = false, jsonSearchTerm = '' }) => {
   };
 
   return (
-    <div className="border rounded-lg hover:bg-muted/50 transition-colors">
+    <div className="border rounded-lg hover:bg-muted/50 transition-colors overflow-hidden">
       {/* Header */}
       <div className="p-4">
         <div className="flex items-start justify-between">
@@ -557,49 +557,7 @@ const LogItem = ({ log, expandAll = false, jsonSearchTerm = '' }) => {
                 </Badge>
               </div>
               
-              {/* 关键信息标签 */}
-              <div className="flex flex-wrap gap-1 mb-2">
-                {log.ip && (
-                  <Badge variant="secondary" className="text-xs">
-                    <Globe className="w-3 h-3 mr-1" />
-                    {log.ip}
-                  </Badge>
-                )}
-                {log.email && (
-                  <Badge variant="secondary" className="text-xs">
-                    <User className="w-3 h-3 mr-1" />
-                    {log.email}
-                  </Badge>
-                )}
-                {log.username && (
-                  <Badge variant="secondary" className="text-xs">
-                    <User className="w-3 h-3 mr-1" />
-                    {log.username}
-                  </Badge>
-                )}
-                {log.method && (
-                  <Badge variant="secondary" className="text-xs">
-                    {log.method}
-                  </Badge>
-                )}
-                {log.messageId && (
-                  <Badge variant="secondary" className="text-xs">
-                    <Hash className="w-3 h-3 mr-1" />
-                    {log.messageId}
-                  </Badge>
-                )}
-              </div>
-              
-              {log.details && (
-                <div className="text-sm text-muted-foreground line-clamp-2 break-words whitespace-normal overflow-hidden">
-                  {log.details}
-                </div>
-              )}
-              {log.error && (
-                <div className="text-sm text-red-600 dark:text-red-400 line-clamp-1 break-words mt-1">
-                  错误: {log.error}
-                </div>
-              )}
+              {/* 简化卡片：移除详情与标签，仅保留下方的时间/IP/用户/路径 */}
               <div className="flex items-center space-x-4 text-xs text-muted-foreground mt-2">
                 <div className="flex items-center space-x-1">
                   <Calendar className="w-3 h-3" />
@@ -609,6 +567,12 @@ const LogItem = ({ log, expandAll = false, jsonSearchTerm = '' }) => {
                   <User className="w-3 h-3" />
                   <span>{log.user}</span>
                 </div>
+                {log.ip && (
+                  <div className="flex items-center space-x-1">
+                    <Globe className="w-3 h-3" />
+                    <span className="truncate max-w-[160px]">{log.ip}</span>
+                  </div>
+                )}
                 {log.path && (
                   <div className="flex items-center space-x-1">
                     <Globe className="w-3 h-3" />
