@@ -21,8 +21,12 @@ import {
   XCircle,
   Eye,
   Edit,
-  Trash2
+  Trash2,
+  ChevronDown,
+  ChevronRight,
+  Copy
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 const Logs = () => {
   const [logs, setLogs] = useState([]);
@@ -53,6 +57,7 @@ const Logs = () => {
             action,
             user: String(it.user_id ?? 'system'),
             details: metaToReadable(metaObj),
+            meta: metaObj,
           };
         });
         setLogs(normalized);
@@ -156,16 +161,14 @@ const Logs = () => {
 
   const exportLogs = () => {
     const csvContent = [
-      ['时间', '级别', '类型', '操作', '用户', '目标', '详情', 'IP地址'].join(','),
+      ['时间', '级别', '分类', '操作', '用户', '详情JSON'].join(','),
       ...filteredLogs.map(log => [
         formatTime(log.timestamp),
         log.level,
-        log.type,
+        log.category,
         log.action,
         log.user,
-        log.target,
-        `"${log.details}"`,
-        log.ip
+        `"${JSON.stringify(log.meta || {}, null, 0).replaceAll('"', '"')}"`
       ].join(','))
     ].join('\n');
 
@@ -252,10 +255,12 @@ const Logs = () => {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>日志记录</span>
-            <Button onClick={exportLogs} variant="outline" size="sm">
-              <Download className="w-4 h-4 mr-2" />
-              导出日志
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button onClick={exportLogs} variant="outline" size="sm">
+                <Download className="w-4 h-4 mr-2" />
+                导出日志
+              </Button>
+            </div>
           </CardTitle>
           <CardDescription>
             系统操作和事件的详细记录
@@ -303,40 +308,7 @@ const Logs = () => {
           {/* Logs List */}
           <div className="space-y-3">
             {filteredLogs.map((log) => (
-              <div key={log.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start space-x-3 flex-1">
-                    <div className="flex items-center space-x-2 mt-1">
-                      {getCategoryIcon(log.category)}
-                      {getActionIcon(log.action)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <span className="font-medium text-sm">{log.action}</span>
-                        {getLevelBadge(log.level)}
-                        <Badge variant="outline" className="text-xs">
-                          {log.category}
-                        </Badge>
-                      </div>
-                      {log.details && (
-                        <p className="text-sm text-muted-foreground mb-2">
-                          {log.details}
-                        </p>
-                      )}
-                      <div className="flex items-center space-x-4 text-xs text-muted-foreground">
-                        <div className="flex items-center space-x-1">
-                          <Calendar className="w-3 h-3" />
-                          <span>{formatTime(log.timestamp)}</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <User className="w-3 h-3" />
-                          <span>{log.user}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <LogItem key={log.id} log={log} />
             ))}
 
             {filteredLogs.length === 0 && (
@@ -351,6 +323,85 @@ const Logs = () => {
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+};
+
+const LogItem = ({ log }) => {
+  const [open, setOpen] = useState(false);
+
+  const copyJson = async () => {
+    try {
+      const text = JSON.stringify(log.meta || {}, null, 2);
+      await navigator.clipboard.writeText(text);
+      toast.success('已复制JSON');
+    } catch {
+      toast.error('复制失败');
+    }
+  };
+
+  return (
+    <div className="border rounded-lg hover:bg-muted/50 transition-colors">
+      {/* Header */}
+      <div className="p-4">
+        <div className="flex items-start justify-between">
+          <div className="flex items-start space-x-3 flex-1">
+            <div className="flex items-center space-x-2 mt-1">
+              {getCategoryIcon(log.category)}
+              {getActionIcon(log.action)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center space-x-2 mb-1">
+                <span className="font-medium text-sm break-all">{log.action}</span>
+                {getLevelBadge(log.level)}
+                <Badge variant="outline" className="text-xs">
+                  {log.category}
+                </Badge>
+              </div>
+              {log.details && (
+                <p className="text-sm text-muted-foreground line-clamp-2">
+                  {log.details}
+                </p>
+              )}
+              <div className="flex items-center space-x-4 text-xs text-muted-foreground mt-2">
+                <div className="flex items-center space-x-1">
+                  <Calendar className="w-3 h-3" />
+                  <span>{formatTime(log.timestamp)}</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <User className="w-3 h-3" />
+                  <span>{log.user}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => setOpen(v => !v)} className="ml-2">
+            {open ? <ChevronDown className="w-4 h-4 mr-1" /> : <ChevronRight className="w-4 h-4 mr-1" />}
+            {open ? '收起' : '详情'}
+          </Button>
+        </div>
+      </div>
+
+      {/* Body */}
+      {open && (
+        <div className="px-4 pb-4">
+          <div className="rounded-md border bg-muted/30 p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-muted-foreground">meta</span>
+              <Button variant="outline" size="sm" onClick={copyJson}>
+                <Copy className="w-4 h-4 mr-1" /> 复制JSON
+              </Button>
+            </div>
+            {log.meta && Object.keys(log.meta).length > 0 ? (
+              <pre className="whitespace-pre-wrap break-words text-xs font-mono leading-relaxed">
+{JSON.stringify(log.meta, null, 2)}
+              </pre>
+            ) : (
+              <p className="text-xs text-muted-foreground">(无详情)</p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

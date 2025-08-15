@@ -110,6 +110,19 @@ final class UserService
             $stmt->execute([$type, $value, $reason, $actor['id'], $stage, $expiresAt]);
         }
         $this->logger->log('ban.create', $actor['id'], ['type' => $type, 'value' => $value, 'reason' => $reason]);
+        // 邮件通知：如果是 email 封禁，直接发通知（匿名邮箱或普通邮箱）
+        if ($type === 'email') {
+            try { $this->mailer->sendUserBanStatus($value, '同学', true); } catch (\Throwable) {}
+        } else if ($type === 'student_id') {
+            // 若按学号封禁，尝试给已注册用户发信
+            try {
+                $stmt = $this->pdo->prepare('SELECT email, nickname FROM users WHERE student_id = ? LIMIT 1');
+                $stmt->execute([$value]);
+                if ($u = $stmt->fetch()) {
+                    $this->mailer->sendUserBanStatus((string)$u['email'], (string)($u['nickname'] ?? '同学'), true);
+                }
+            } catch (\Throwable) {}
+        }
         return ['ok' => true];
     }
 
@@ -123,6 +136,18 @@ final class UserService
                 ->execute([$type, $value]);
             $this->logger->log('ban.remove', $actor['id'], ['type' => $type, 'value' => $value]);
             $this->pdo->commit();
+            // 邮件通知：解除封禁
+            if ($type === 'email') {
+                try { $this->mailer->sendUserBanStatus($value, '同学', false); } catch (\Throwable) {}
+            } else if ($type === 'student_id') {
+                try {
+                    $stmt = $this->pdo->prepare('SELECT email, nickname FROM users WHERE student_id = ? LIMIT 1');
+                    $stmt->execute([$value]);
+                    if ($u = $stmt->fetch()) {
+                        $this->mailer->sendUserBanStatus((string)$u['email'], (string)($u['nickname'] ?? '同学'), false);
+                    }
+                } catch (\Throwable) {}
+            }
             return ['ok' => true];
         } catch (\Throwable $e) {
             $this->pdo->rollBack();

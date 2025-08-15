@@ -14,7 +14,8 @@ import {
   User,
   Calendar,
   MessageSquare,
-  Filter
+  Filter,
+  Ban
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -58,6 +59,31 @@ const Moderation = () => {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+  
+  const handleQuickBan = async (message) => {
+    const email = message.user_email || message.anon_email || '';
+    const studentId = message.anon_student_id || '';
+    const options = [];
+    if (email) options.push({ label: `邮箱 ${email}`, type: 'email', value: email });
+    if (studentId) options.push({ label: `学号 ${studentId}`, type: 'student_id', value: studentId });
+    if (options.length === 0) {
+      toast.error('无可封禁的标识');
+      return;
+    }
+    let choice = options[0];
+    if (options.length > 1) {
+      const pick = window.prompt(`输入 1 选择${options[0].label}${options[1] ? `，输入 2 选择${options[1].label}` : ''}`,'1');
+      if (pick === '2' && options[1]) choice = options[1];
+    }
+    const reason = window.prompt('封禁原因（可选）','');
+    try {
+      await api.post('/bans', { type: choice.type, value: choice.value, reason: reason || '' });
+      toast.success('封禁成功');
+    } catch (e) {
+      const msg = e.response?.data?.error || e.message || '封禁失败';
+      toast.error(msg);
+    }
   };
 
   const handleApprove = async (messageId) => {
@@ -227,6 +253,17 @@ const Moderation = () => {
               <XCircle className="w-4 h-4 mr-1" />
               拒绝
             </Button>
+            {(message.user_email || message.anon_email || message.anon_student_id) && (
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => handleQuickBan(message)}
+                disabled={loading}
+              >
+                <Ban className="w-4 h-4 mr-1" />
+                封禁
+              </Button>
+            )}
             <Button size="sm" variant="outline">
               <Eye className="w-4 h-4 mr-1" />
               详情
