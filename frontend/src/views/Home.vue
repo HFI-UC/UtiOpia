@@ -29,13 +29,14 @@
               <span class="message-time">{{ formatTime(m.created_at) }}</span>
               <span class="message-status" :class="`status-${m.status}`">{{ getStatusText(m.status) }}</span>
             </div>
-            <div class="message-actions" v-if="canEdit(m)">
-              <button class="action-btn edit-btn" @click="onOpenEdit(m)" title="编辑">
-                <span>✏️</span>
+            <div class="message-actions" v-if="canEdit(m)" @mouseleave="menuFor = (menuFor === m.id ? null : menuFor)">
+              <button class="action-btn menu-btn" @click.stop="toggleMenu(m)" title="更多">
+                <span>⋯</span>
               </button>
-              <button class="action-btn delete-btn" @click="onOpenDelete(m)" title="删除">
-                <span>🗑️</span>
-              </button>
+              <div class="actions-menu" v-if="menuFor === m.id">
+                <button class="menu-item" @click.stop="onOpenEdit(m)">✏️ 编辑</button>
+                <button class="menu-item danger" @click.stop="onOpenDelete(m)">🗑️ 删除</button>
+              </div>
             </div>
           </div>
           
@@ -121,7 +122,7 @@
 
 <script setup lang="ts">
 import axios from 'axios'
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import Turnstile from '../components/Turnstile.vue'
 import Dialog from '../components/Dialog.vue'
@@ -146,6 +147,7 @@ const fileName = ref('')
 const anonEmail = ref('')
 const anonStudentId = ref('')
 const anonPassphrase = ref('')
+const menuFor = ref<number|null>(null)
 
 async function fetchMessages(reset=false) {
   if (isLoading.value) return
@@ -223,6 +225,9 @@ onMounted(() => {
   fetchMessages(true)
   window.addEventListener('scroll', onScroll)
 })
+onUnmounted(() => {
+  window.removeEventListener('scroll', onScroll)
+})
 
 function onScroll() {
   const nearBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 200
@@ -233,6 +238,10 @@ function canEdit(m:any) {
   if (auth.user && m.user_id === auth.user.id) return true
   if (!m.user_id && m.is_anonymous) return true
   return false
+}
+
+function toggleMenu(m:any) {
+  menuFor.value = menuFor.value === m.id ? null : m.id
 }
 
 const showEdit = ref(false)
@@ -493,6 +502,7 @@ function getStatusText(status: string) {
 .message-actions {
   display: flex;
   gap: 8px;
+  position: relative;
 }
 
 .action-btn {
@@ -520,6 +530,35 @@ function getStatusText(status: string) {
 .delete-btn:hover {
   background: var(--danger);
   color: white;
+}
+
+/* Actions dropdown menu */
+.actions-menu {
+  position: absolute;
+  top: 36px;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--card-bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  z-index: 10;
+}
+.menu-item {
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.menu-item:hover {
+  background: var(--primary-100);
+}
+.menu-item.danger:hover {
+  background: rgba(239, 68, 68, 0.12);
 }
 
 /* Card Content */
