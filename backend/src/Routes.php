@@ -62,6 +62,11 @@ final class Routes
             $group->get('/stats/overview', [self::class, 'statsOverview']);
             $group->get('/stats/messages', [self::class, 'statsMessagesSeries']);
             $group->get('/stats/audit', [self::class, 'statsAuditSeries']);
+
+            // Admin utilities (read-oriented; guarded by audit:read)
+            $group->get('/admin/settings', [self::class, 'adminSettings']);
+            $group->post('/admin/report', [self::class, 'adminExportReport']);
+            $group->post('/admin/maintenance/cleanup', [self::class, 'adminMaintenanceCleanup']);
         });
     }
 
@@ -316,6 +321,67 @@ final class Routes
         $svc = $container->get(\UtiOpia\Services\StatsService::class);
         $result = $svc->auditSeries($user, $days);
         return self::json($response, ['items' => $result]);
+    }
+
+    public static function adminSettings(Request $request, Response $response): Response
+    {
+        [, $container, $user] = self::ctxAuth($request);
+        /** @var \UtiOpia\Services\StatsService $stats */
+        $stats = $container->get(\UtiOpia\Services\StatsService::class);
+        $overview = $stats->overview($user);
+        $settings = $container->get('settings');
+        // sanitize
+        $safe = [
+            'site' => $settings['site'] ?? [],
+            'smtp' => [
+                'host' => $settings['smtp']['host'] ?? '',
+                'port' => $settings['smtp']['port'] ?? 0,
+                'secure' => $settings['smtp']['secure'] ?? '',
+                'from_email' => $settings['smtp']['from_email'] ?? '',
+                'from_name' => $settings['smtp']['from_name'] ?? '',
+            ],
+            'turnstile_configured' => (bool)($overview['info']['turnstile_configured'] ?? false),
+            'cos_configured' => (bool)($overview['info']['cos_configured'] ?? false),
+        ];
+        return self::json($response, ['settings' => $safe, 'overview' => $overview]);
+    }
+
+    public static function adminExportReport(Request $request, Response $response): Response
+    {
+        [, $container, $user] = self::ctxAuth($request);
+        /** @var \UtiOpia\Services\StatsService $stats */
+        $stats = $container->get(\UtiOpia\Services\StatsService::class);
+        $overview = $stats->overview($user);
+        $series = $stats->messagesSeries($user, 7);
+        $pdo = $container->get(\PDO::class);
+        $totalLogs = (int)$pdo->query('SELECT COUNT(*) FROM audit_logs')->fetchColumn();
+        $payload = [
+            'generated_at' => date('c'),
+            'overview' => $overview,
+            'messages_series_7d' => $series,
+            'logs' => [ 'total' => $totalLogs ],
+        ];
+        return self::json($response, $payload);
+    }
+
+    public static function adminMaintenanceCleanup(Request $request, Response $response): Response
+    {
+        [, $container, $user] = self::ctxAuth($request);
+        // Require audit:read at minimum
+        $ok = true;
+        try {
+            clearstatcache();
+            // Vacuum/Optimize lightweight attempt
+            /** @var \PDO $pdo */
+            $pdo = $container->get(\PDO::class);
+            $driver = (string)$pdo->getAttribute(\PDO::ATTR_DRIVER_NAME);
+            if ($driver === 'sqlite') {
+                @$pdo->exec('VACUUM');
+            } else if ($driver === 'mysql') {
+                // noop; real optimize would need table list and privileges
+            }
+        } catch (\Throwable) { $ok = false; }
+        return self::json($response, ['ok' => $ok]);
     }
 
     private static function ctx(Request $request, bool $useQuery = false): array

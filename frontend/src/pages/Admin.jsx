@@ -19,6 +19,7 @@ import {
   TrendingUp,
   TrendingDown
 } from 'lucide-react';
+import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 const Admin = () => {
   const [stats, setStats] = useState({
@@ -31,6 +32,12 @@ const Admin = () => {
   });
   const [users, setUsers] = useState([]);
   const [updating, setUpdating] = useState(false);
+  const [query, setQuery] = useState('');
+  const filteredUsers = users.filter(u => {
+    const q = query.toLowerCase();
+    return u.email.toLowerCase().includes(q) || String(u.id).includes(q) || (u.nickname||'').toLowerCase().includes(q);
+  });
+  const [series, setSeries] = useState([]);
 
   // 真实统计数据
   useEffect(() => {
@@ -46,6 +53,17 @@ const Admin = () => {
           rejectedMessages: data.messages?.rejected ?? 0,
           bannedUsers: data.users?.banned ?? 0
         });
+        setStats(prev => ({
+          ...prev,
+          siteName: data.info?.site_name || '',
+          siteUrl: data?.info ? undefined : undefined,
+          turnstileConfigured: !!data.info?.turnstile_configured,
+          cosConfigured: !!data.info?.cos_configured,
+          serverTime: data.info?.server_time,
+          phpVersion: data.info?.php_version,
+          dbOk: data.health?.db ?? true,
+          disk: data.info ? `${Math.round((data.info.disk_free||0)/1e9)}G free / ${Math.round((data.info.disk_total||0)/1e9)}G` : '-',
+        }));
       } catch (_) {
         // 静默失败
       }
@@ -61,6 +79,18 @@ const Admin = () => {
       } catch {}
     };
     fetchUsers();
+  }, []);
+
+  useEffect(() => {
+    const fetchSeries = async () => {
+      try {
+        const r = await api.get('/stats/messages', { params: { days: 7 } });
+        // 兼容 total/count
+        const items = (r?.data?.items || []).map(it => ({ date: it.date, value: it.total ?? it.count ?? 0 }));
+        setSeries(items);
+      } catch {}
+    };
+    fetchSeries();
   }, []);
 
   const updateUser = async (id, patch) => {
@@ -159,6 +189,26 @@ const Admin = () => {
         />
       </div>
 
+      {/* Trend Chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle>7日发布趋势</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={series} margin={{ top: 10, right: 20, bottom: 0, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Management Tabs */}
       <Tabs defaultValue="system" className="space-y-6">
         <TabsList className="grid w-full grid-cols-4">
@@ -181,33 +231,29 @@ const Admin = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">用户注册</p>
-                    <p className="text-sm text-muted-foreground">允许新用户注册</p>
+                <div className="space-y-2">
+                  <p className="font-medium">站点信息</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">站点名</p>
+                      <Input readOnly defaultValue={stats?.siteName || ''} placeholder="从后端读取" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">前端地址</p>
+                      <Input readOnly defaultValue={stats?.siteUrl || ''} placeholder="从后端读取" />
+                    </div>
                   </div>
-                  <Badge variant="default">已启用</Badge>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">匿名发布</p>
-                    <p className="text-sm text-muted-foreground">允许匿名用户发布内容</p>
+                <div className="space-y-2">
+                  <p className="font-medium">集成</p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Cloudflare Turnstile</span>
+                    <Badge variant="outline">{stats?.turnstileConfigured ? '已配置' : '未配置'}</Badge>
                   </div>
-                  <Badge variant="default">已启用</Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">内容审核</p>
-                    <p className="text-sm text-muted-foreground">发布前需要审核</p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">对象存储（COS）</span>
+                    <Badge variant="outline">{stats?.cosConfigured ? '已配置' : '未配置'}</Badge>
                   </div>
-                  <Badge variant="default">已启用</Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">图片上传</p>
-                    <p className="text-sm text-muted-foreground">允许上传图片附件</p>
-                  </div>
-                  <Badge variant="default">已启用</Badge>
                 </div>
               </CardContent>
             </Card>
@@ -224,20 +270,31 @@ const Admin = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">系统运行时间</span>
-                  <Badge variant="outline">7天 12小时</Badge>
-                </div>
-                <div className="flex items-center justify-between">
                   <span className="text-sm">数据库状态</span>
-                  <Badge variant="default">正常</Badge>
+                  <Badge variant="default">{stats?.dbOk ? '正常' : '异常'}</Badge>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">存储使用率</span>
-                  <Badge variant="outline">23%</Badge>
+                  <span className="text-sm">服务器时间</span>
+                  <Badge variant="outline">{stats?.serverTime || '-'}</Badge>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">API响应时间</span>
-                  <Badge variant="outline">156ms</Badge>
+                  <span className="text-sm">PHP</span>
+                  <Badge variant="outline">{stats?.phpVersion || '-'}</Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">磁盘</span>
+                  <Badge variant="outline">{stats?.disk || '-'}</Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <Button variant="outline" onClick={async()=>{
+                    const r = await api.post('/admin/maintenance/cleanup');
+                  }}>清理/优化</Button>
+                  <Button variant="outline" onClick={async()=>{
+                    const r = await api.post('/admin/report');
+                    const blob = new Blob([JSON.stringify(r.data,null,2)], {type:'application/json'});
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a'); a.href = url; a.download = `report_${Date.now()}.json`; a.click(); URL.revokeObjectURL(url);
+                  }}>导出报告</Button>
                 </div>
               </CardContent>
             </Card>
@@ -253,6 +310,10 @@ const Admin = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              <div className="flex items-center justify-between mb-3">
+                <Input placeholder="搜索ID/邮箱/昵称" value={query} onChange={(e)=>setQuery(e.target.value)} className="max-w-sm" />
+                {updating && <span className="text-xs text-muted-foreground">更新中…</span>}
+              </div>
               <div className="overflow-auto rounded-md border">
                 <table className="w-full text-sm">
                   <thead className="bg-muted/50">
@@ -266,7 +327,7 @@ const Admin = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {users.map((u) => (
+                    {filteredUsers.map((u) => (
                       <tr key={u.id} className="border-t">
                         <td className="p-3">{u.id}</td>
                         <td className="p-3 break-all">{u.email}</td>
@@ -369,16 +430,10 @@ const Admin = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Button variant="outline" className="w-full justify-start">
-                  清理过期数据
+                <Button variant="outline" className="w-full justify-start" onClick={async()=>{await api.post('/admin/maintenance/cleanup');}}>
+                  清理/优化
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  优化数据库
-                </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  备份数据
-                </Button>
-                <Button variant="outline" className="w-full justify-start">
+                <Button variant="outline" className="w-full justify-start" onClick={async()=>{const r=await api.post('/admin/report'); const b=new Blob([JSON.stringify(r.data,null,2)],{type:'application/json'}); const url=URL.createObjectURL(b); const a=document.createElement('a'); a.href=url; a.download=`report_${Date.now()}.json`; a.click(); URL.revokeObjectURL(url);}}>
                   导出统计报告
                 </Button>
               </CardContent>
