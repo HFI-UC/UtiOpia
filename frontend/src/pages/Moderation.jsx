@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
   CheckCircle, 
   XCircle, 
@@ -23,6 +24,7 @@ const Moderation = () => {
   const [pendingMessages, setPendingMessages] = useState([]);
   const [reviewedMessages, setReviewedMessages] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [detail, setDetail] = useState(null);
 
   // 加载真实数据
   useEffect(() => {
@@ -264,7 +266,7 @@ const Moderation = () => {
                 封禁
               </Button>
             )}
-            <Button size="sm" variant="outline" onClick={() => window.alert(`ID #${message.id}\n\n` + (message.content || ''))}>
+            <Button size="sm" variant="outline" onClick={() => setDetail(message)}>
               <Eye className="w-4 h-4 mr-1" />
               详情
             </Button>
@@ -409,6 +411,67 @@ const Moderation = () => {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Detail Modal */}
+      <Dialog open={!!detail} onOpenChange={(o)=>{ if(!o) setDetail(null); }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>纸条详情 #{detail?.id}</DialogTitle>
+            <DialogDescription>
+              创建于 {detail ? formatTime(detail.created_at) : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              {detail?.status === 'pending' && (<Badge variant="secondary"><Clock className="w-3 h-3 mr-1"/>待审核</Badge>)}
+              {detail?.status === 'approved' && (<Badge variant="default"><CheckCircle className="w-3 h-3 mr-1"/>已通过</Badge>)}
+              {detail?.status === 'rejected' && (<Badge variant="destructive"><XCircle className="w-3 h-3 mr-1"/>已拒绝</Badge>)}
+            </div>
+            <div className="text-sm whitespace-pre-wrap break-words">
+              {detail?.content}
+            </div>
+            {detail?.image_url && (
+              <div className="rounded-md overflow-hidden border">
+                <img src={detail.image_url} alt="预览" className="w-full h-64 object-cover" />
+              </div>
+            )}
+            {detail?.is_anonymous && (detail?.anon_email || detail?.anon_student_id) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                {detail?.anon_email && (
+                  <div className="flex items-center space-x-2 p-2 rounded-md border bg-muted/30">
+                    <User className="w-3 h-3" />
+                    <span className="text-muted-foreground">匿名邮箱：</span>
+                    <span className="font-medium break-all">{detail.anon_email}</span>
+                  </div>
+                )}
+                {detail?.anon_student_id && (
+                  <div className="flex items-center space-x-2 p-2 rounded-md border bg-muted/30">
+                    <User className="w-3 h-3" />
+                    <span className="text-muted-foreground">匿名学号：</span>
+                    <span className="font-medium break-all">{detail.anon_student_id}</span>
+                  </div>
+                )}
+              </div>
+            )}
+            {detail?.status === 'rejected' && detail?.reject_reason && (
+              <div className="flex items-center space-x-2 p-3 bg-red-50 rounded-lg border border-red-200">
+                <AlertTriangle className="w-4 h-4 text-red-500" />
+                <span className="text-sm text-red-700">拒绝原因：{detail.reject_reason}</span>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="justify-between">
+            <div className="text-xs text-muted-foreground">审核人：{detail?.reviewed_by || '-'} {detail?.reviewed_at ? `· ${formatTime(detail.reviewed_at)}` : ''}</div>
+            <div className="space-x-2">
+              <Button size="sm" onClick={()=>detail && handleApprove(detail.id)} disabled={loading}><CheckCircle className="w-4 h-4 mr-1"/>通过</Button>
+              <Button size="sm" variant="destructive" onClick={()=>detail && handleReject(detail.id)} disabled={loading}><XCircle className="w-4 h-4 mr-1"/>拒绝</Button>
+              {(detail?.user_email || detail?.anon_email || detail?.anon_student_id) && (
+                <Button size="sm" variant="outline" onClick={()=>detail && handleQuickBan(detail)} disabled={loading}><Ban className="w-4 h-4 mr-1"/>封禁</Button>
+              )}
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

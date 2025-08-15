@@ -33,11 +33,29 @@ const safeParse = (s) => {
   try { return JSON.parse(s); } catch { return {}; }
 };
 
+const safeDecode = (val) => {
+  // 更强力的解析：尝试 JSON.parse；若失败，尝试 URLSearchParams；若仍失败，返回原字符串
+  if (val == null) return val;
+  if (typeof val === 'object') return val;
+  const s = String(val);
+  try { return JSON.parse(s); } catch {}
+  try {
+    if (s.includes('=') && (s.includes('&') || s.includes('%'))) {
+      const params = new URLSearchParams(s);
+      const obj = {};
+      for (const [k, v] of params.entries()) obj[k] = v;
+      if (Object.keys(obj).length > 0) return obj;
+    }
+  } catch {}
+  return s;
+};
+
 const metaToReadable = (meta) => {
-  if (!meta || typeof meta !== 'object') return '';
-  const keys = Object.keys(meta);
+  const m = safeDecode(meta);
+  if (!m || typeof m !== 'object') return typeof m === 'string' ? m : '';
+  const keys = Object.keys(m);
   if (keys.length === 0) return '';
-  return keys.map(k => `${k}: ${typeof meta[k] === 'object' ? JSON.stringify(meta[k]) : String(meta[k])}`).join(' | ');
+  return keys.map(k => `${k}: ${typeof m[k] === 'object' ? JSON.stringify(m[k]) : String(m[k])}`).join(' | ');
 };
 
 const formatTime = (timestamp) => {
@@ -359,9 +377,9 @@ const LogItem = ({ log }) => {
                 </Badge>
               </div>
               {log.details && (
-                <p className="text-sm text-muted-foreground line-clamp-2">
+                <div className="text-sm text-muted-foreground line-clamp-2 break-words whitespace-normal">
                   {log.details}
-                </p>
+                </div>
               )}
               <div className="flex items-center space-x-4 text-xs text-muted-foreground mt-2">
                 <div className="flex items-center space-x-1">
@@ -385,20 +403,24 @@ const LogItem = ({ log }) => {
       {/* Body */}
       {open && (
         <div className="px-4 pb-4">
-          <div className="rounded-md border bg-muted/30 p-3">
+          <div className="rounded-md border bg-muted/30 p-3 overflow-auto">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs text-muted-foreground">meta</span>
               <Button variant="outline" size="sm" onClick={copyJson}>
                 <Copy className="w-4 h-4 mr-1" /> 复制JSON
               </Button>
             </div>
-            {log.meta && Object.keys(log.meta).length > 0 ? (
-              <pre className="whitespace-pre-wrap break-words text-xs font-mono leading-relaxed">
-{JSON.stringify(log.meta, null, 2)}
-              </pre>
-            ) : (
-              <p className="text-xs text-muted-foreground">(无详情)</p>
-            )}
+            {(() => {
+              const data = safeDecode(log.meta);
+              if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
+                return <p className="text-xs text-muted-foreground">(无详情)</p>;
+              }
+              return (
+                <pre className="whitespace-pre-wrap break-words text-xs font-mono leading-relaxed max-h-80">
+{typeof data === 'string' ? data : JSON.stringify(data, null, 2)}
+                </pre>
+              );
+            })()}
           </div>
         </div>
       )}
