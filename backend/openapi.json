@@ -1,0 +1,1679 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "UtiOpia 留言墙 API",
+    "description": "UtiOpia 留言墙后端 API 文档 - 支持用户认证、留言管理、文件上传、审核系统等功能",
+    "version": "1.0.0",
+    "contact": {
+      "name": "UtiOpia 开发团队",
+      "email": "admin@example.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "开发服务器"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["系统"],
+        "summary": "健康检查",
+        "description": "检查系统运行状态",
+        "responses": {
+          "200": {
+            "description": "系统正常",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "ts": {
+                      "type": "integer",
+                      "description": "当前时间戳",
+                      "example": 1640995200
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/register": {
+      "post": {
+        "tags": ["认证"],
+        "summary": "用户注册",
+        "description": "注册新用户，需要符合特定邮箱格式和学号格式",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password", "nickname", "student_id", "turnstile_token"],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "pattern": "^[a-z]+\\.[a-z]+20\\d{2}@gdhfi\\.com$",
+                    "description": "邮箱，必须符合格式：姓名.姓名年份@gdhfi.com",
+                    "example": "zhang.san2023@gdhfi.com"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 6,
+                    "description": "密码，最少6位",
+                    "example": "password123"
+                  },
+                  "nickname": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 50,
+                    "description": "昵称",
+                    "example": "张三"
+                  },
+                  "student_id": {
+                    "type": "string",
+                    "pattern": "^GJ20\\d{2}\\d{4}$",
+                    "description": "学生号，格式：GJ + 年份 + 四位数字",
+                    "example": "GJ20230001"
+                  },
+                  "turnstile_token": {
+                    "type": "string",
+                    "description": "Turnstile 验证码令牌"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "注册成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "注册失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/login": {
+      "post": {
+        "tags": ["认证"],
+        "summary": "用户登录",
+        "description": "用户登录获取访问令牌",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password", "turnstile_token"],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "zhang.san2023@gdhfi.com"
+                  },
+                  "password": {
+                    "type": "string",
+                    "example": "password123"
+                  },
+                  "turnstile_token": {
+                    "type": "string",
+                    "description": "Turnstile 验证码令牌"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "登录成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": {
+                      "type": "string",
+                      "description": "JWT 访问令牌"
+                    },
+                    "user": {
+                      "$ref": "#/components/schemas/User"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "登录失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me": {
+      "get": {
+        "tags": ["认证"],
+        "summary": "获取当前用户信息",
+        "description": "获取当前登录用户的详细信息",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "用户信息获取成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "$ref": "#/components/schemas/UserDetail"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未授权",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/upload/presign": {
+      "post": {
+        "tags": ["文件上传"],
+        "summary": "获取预签名上传 URL",
+        "description": "获取用于直接上传文件到 COS 的预签名 URL",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["filename"],
+                "properties": {
+                  "filename": {
+                    "type": "string",
+                    "description": "文件名",
+                    "example": "image.jpg"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "预签名 URL 生成成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "upload_url": {
+                      "type": "string",
+                      "description": "预签名上传 URL"
+                    },
+                    "file_url": {
+                      "type": "string",
+                      "description": "上传后的文件访问 URL"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/upload/sts": {
+      "post": {
+        "tags": ["文件上传"],
+        "summary": "获取临时访问凭证",
+        "description": "获取用于上传文件的临时访问凭证（STS）",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["filename"],
+                "properties": {
+                  "filename": {
+                    "type": "string",
+                    "description": "文件名",
+                    "example": "image.jpg"
+                  },
+                  "max_bytes": {
+                    "type": "integer",
+                    "description": "最大文件大小（字节）",
+                    "default": 5242880,
+                    "example": 5242880
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "临时凭证生成成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "credentials": {
+                      "type": "object",
+                      "description": "临时访问凭证"
+                    },
+                    "bucket": {
+                      "type": "string",
+                      "description": "存储桶名称"
+                    },
+                    "region": {
+                      "type": "string",
+                      "description": "地域"
+                    },
+                    "key": {
+                      "type": "string",
+                      "description": "对象键"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/messages": {
+      "get": {
+        "tags": ["留言"],
+        "summary": "获取留言列表",
+        "description": "分页获取留言列表，支持按状态筛选",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "每页条数",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 10
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "留言状态筛选",
+            "schema": {
+              "type": "string",
+              "enum": ["pending", "approved", "rejected", "all"],
+              "default": "approved"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "留言列表获取成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Message"
+                      }
+                    },
+                    "total": {
+                      "type": "integer",
+                      "description": "总数"
+                    },
+                    "page": {
+                      "type": "integer",
+                      "description": "当前页码"
+                    },
+                    "pageSize": {
+                      "type": "integer",
+                      "description": "每页条数"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["留言"],
+        "summary": "创建留言",
+        "description": "创建新留言，支持匿名和实名发布",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["content", "turnstile_token"],
+                "properties": {
+                  "content": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500,
+                    "description": "留言内容"
+                  },
+                  "image_url": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "图片 URL（可选）"
+                  },
+                  "is_anonymous": {
+                    "type": "boolean",
+                    "description": "是否匿名发布",
+                    "default": false
+                  },
+                  "anon_email": {
+                    "type": "string",
+                    "format": "email",
+                    "pattern": "^[a-z]+\\.[a-z]+20\\d{2}@gdhfi\\.com$",
+                    "description": "匿名邮箱（匿名发布且未登录时必填）"
+                  },
+                  "anon_student_id": {
+                    "type": "string",
+                    "pattern": "^GJ20\\d{2}\\d{4}$",
+                    "description": "匿名学号（匿名发布且未登录时必填）"
+                  },
+                  "anon_passphrase": {
+                    "type": "string",
+                    "description": "匿名口令（匿名发布且未登录时必填，用于后续编辑）"
+                  },
+                  "turnstile_token": {
+                    "type": "string",
+                    "description": "Turnstile 验证码令牌"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "留言创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "id": {
+                      "type": "integer",
+                      "description": "留言 ID"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "创建失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/messages/{id}": {
+      "put": {
+        "tags": ["留言"],
+        "summary": "更新留言",
+        "description": "更新指定 ID 的留言",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "留言 ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["content", "turnstile_token"],
+                "properties": {
+                  "content": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500,
+                    "description": "留言内容"
+                  },
+                  "anon_passphrase": {
+                    "type": "string",
+                    "description": "匿名口令（匿名留言编辑时必填）"
+                  },
+                  "turnstile_token": {
+                    "type": "string",
+                    "description": "Turnstile 验证码令牌"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "更新成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限不足",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["留言"],
+        "summary": "删除留言",
+        "description": "软删除指定 ID 的留言",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "留言 ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["turnstile_token"],
+                "properties": {
+                  "anon_passphrase": {
+                    "type": "string",
+                    "description": "匿名口令（匿名留言删除时必填）"
+                  },
+                  "turnstile_token": {
+                    "type": "string",
+                    "description": "Turnstile 验证码令牌"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "删除成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限不足",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/messages/{id}/approve": {
+      "post": {
+        "tags": ["审核"],
+        "summary": "审核通过留言",
+        "description": "审核员审核通过指定留言",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "留言 ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "审核通过成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限不足",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/messages/{id}/reject": {
+      "post": {
+        "tags": ["审核"],
+        "summary": "审核拒绝留言",
+        "description": "审核员拒绝指定留言并提供拒绝理由",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "留言 ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["reason"],
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "description": "拒绝理由"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "审核拒绝成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限不足",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users": {
+      "get": {
+        "tags": ["用户管理"],
+        "summary": "获取用户列表",
+        "description": "管理员获取所有用户列表",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "用户列表获取成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/UserDetail"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限不足",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/{id}": {
+      "put": {
+        "tags": ["用户管理"],
+        "summary": "更新用户信息",
+        "description": "管理员更新用户信息",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "用户 ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "role": {
+                    "type": "string",
+                    "enum": ["super_admin", "moderator", "user"],
+                    "description": "用户角色"
+                  },
+                  "nickname": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 50,
+                    "description": "昵称"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "更新成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限不足",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/{id}/ban": {
+      "post": {
+        "tags": ["用户管理"],
+        "summary": "封禁用户",
+        "description": "管理员封禁指定用户",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "用户 ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "封禁成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限不足",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/{id}/unban": {
+      "post": {
+        "tags": ["用户管理"],
+        "summary": "解封用户",
+        "description": "管理员解封指定用户",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "用户 ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "解封成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限不足",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bans": {
+      "get": {
+        "tags": ["封禁管理"],
+        "summary": "获取封禁列表",
+        "description": "管理员获取所有封禁记录",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "封禁列表获取成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Ban"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限不足",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["封禁管理"],
+        "summary": "创建封禁记录",
+        "description": "管理员创建邮箱或学号的封禁记录",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["type", "value"],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["email", "student_id"],
+                    "description": "封禁类型"
+                  },
+                  "value": {
+                    "type": "string",
+                    "description": "封禁值（邮箱或学号）"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "封禁理由"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "封禁创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限不足",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["封禁管理"],
+        "summary": "删除封禁记录",
+        "description": "管理员删除封禁记录",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["type", "value"],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["email", "student_id"],
+                    "description": "封禁类型"
+                  },
+                  "value": {
+                    "type": "string",
+                    "description": "封禁值（邮箱或学号）"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "封禁删除成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限不足",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/logs": {
+      "get": {
+        "tags": ["审计日志"],
+        "summary": "获取审计日志",
+        "description": "管理员获取系统审计日志",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "每页条数",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "description": "操作类型筛选",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "errorOnly",
+            "in": "query",
+            "description": "只显示错误日志",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "日志获取成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AuditLog"
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "page": {
+                      "type": "integer"
+                    },
+                    "pageSize": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限不足",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stats/overview": {
+      "get": {
+        "tags": ["统计"],
+        "summary": "获取概览统计",
+        "description": "获取系统概览统计信息",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统计获取成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatsOverview"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限不足",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stats/messages": {
+      "get": {
+        "tags": ["统计"],
+        "summary": "获取留言统计时间序列",
+        "description": "获取留言数量的时间序列统计",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "description": "统计天数",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 7
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统计获取成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "date": {
+                            "type": "string",
+                            "format": "date",
+                            "description": "日期"
+                          },
+                          "count": {
+                            "type": "integer",
+                            "description": "留言数量"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stats/audit": {
+      "get": {
+        "tags": ["统计"],
+        "summary": "获取审计日志统计时间序列",
+        "description": "获取审计日志的时间序列统计",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "description": "统计天数",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 7
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统计获取成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "date": {
+                            "type": "string",
+                            "format": "date",
+                            "description": "日期"
+                          },
+                          "count": {
+                            "type": "integer",
+                            "description": "日志数量"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "使用 JWT 令牌进行身份验证。在请求头中包含：Authorization: Bearer <token>"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "错误信息"
+          }
+        },
+        "required": ["error"]
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "用户 ID"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "邮箱"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["super_admin", "moderator", "user"],
+            "description": "用户角色"
+          },
+          "nickname": {
+            "type": "string",
+            "description": "昵称"
+          }
+        },
+        "required": ["id", "email", "role", "nickname"]
+      },
+      "UserDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/User"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "banned": {
+                "type": "boolean",
+                "description": "是否被封禁"
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time",
+                "description": "创建时间"
+              }
+            },
+            "required": ["banned", "created_at"]
+          }
+        ]
+      },
+      "Message": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "留言 ID"
+          },
+          "user_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "用户 ID（匿名留言时为 null）"
+          },
+          "is_anonymous": {
+            "type": "boolean",
+            "description": "是否匿名留言"
+          },
+          "content": {
+            "type": "string",
+            "description": "留言内容"
+          },
+          "image_url": {
+            "type": "string",
+            "nullable": true,
+            "description": "图片 URL"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "approved", "rejected"],
+            "description": "留言状态"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "创建时间"
+          },
+          "user_email": {
+            "type": "string",
+            "nullable": true,
+            "description": "用户邮箱（非匿名时显示）"
+          },
+          "anon_email": {
+            "type": "string",
+            "nullable": true,
+            "description": "匿名邮箱（仅管理员可见）"
+          },
+          "anon_student_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "匿名学号（仅管理员可见）"
+          }
+        },
+        "required": ["id", "is_anonymous", "content", "status", "created_at"]
+      },
+      "Ban": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "封禁记录 ID"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["email", "student_id"],
+            "description": "封禁类型"
+          },
+          "value": {
+            "type": "string",
+            "description": "封禁值"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true,
+            "description": "封禁理由"
+          },
+          "created_by": {
+            "type": "integer",
+            "nullable": true,
+            "description": "创建者用户 ID"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "创建时间"
+          },
+          "active": {
+            "type": "boolean",
+            "description": "是否激活"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "过期时间"
+          }
+        },
+        "required": ["id", "type", "value", "created_at", "active"]
+      },
+      "AuditLog": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "日志 ID"
+          },
+          "action": {
+            "type": "string",
+            "description": "操作类型"
+          },
+          "user_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "用户 ID"
+          },
+          "meta": {
+            "type": "object",
+            "nullable": true,
+            "description": "元数据"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "创建时间"
+          }
+        },
+        "required": ["id", "action", "created_at"]
+      },
+      "StatsOverview": {
+        "type": "object",
+        "properties": {
+          "users": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer",
+                "description": "总用户数"
+              },
+              "banned": {
+                "type": "integer",
+                "description": "被封禁用户数"
+              }
+            }
+          },
+          "messages": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer",
+                "description": "总留言数"
+              },
+              "pending": {
+                "type": "integer",
+                "description": "待审核留言数"
+              },
+              "approved": {
+                "type": "integer",
+                "description": "已通过留言数"
+              },
+              "rejected": {
+                "type": "integer",
+                "description": "已拒绝留言数"
+              }
+            }
+          },
+          "bans": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer",
+                "description": "总封禁数"
+              },
+              "active": {
+                "type": "integer",
+                "description": "激活封禁数"
+              }
+            }
+          },
+          "health": {
+            "type": "object",
+            "properties": {
+              "database": {
+                "type": "boolean",
+                "description": "数据库状态"
+              },
+              "uptime": {
+                "type": "string",
+                "description": "系统运行时间"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "系统",
+      "description": "系统相关接口"
+    },
+    {
+      "name": "认证",
+      "description": "用户认证相关接口"
+    },
+    {
+      "name": "文件上传",
+      "description": "文件上传相关接口"
+    },
+    {
+      "name": "留言",
+      "description": "留言管理相关接口"
+    },
+    {
+      "name": "审核",
+      "description": "留言审核相关接口"
+    },
+    {
+      "name": "用户管理",
+      "description": "用户管理相关接口（管理员权限）"
+    },
+    {
+      "name": "封禁管理",
+      "description": "封禁管理相关接口（管理员权限）"
+    },
+    {
+      "name": "审计日志",
+      "description": "审计日志相关接口（管理员权限）"
+    },
+    {
+      "name": "统计",
+      "description": "统计信息相关接口"
+    }
+  ]
+}
