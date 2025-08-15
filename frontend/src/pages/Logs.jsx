@@ -139,7 +139,14 @@ const Logs = () => {
     const fetchLogs = async () => {
       setLoading(true);
       try {
-        const resp = await api.get('/logs', { params: { page, pageSize: 100 } });
+        const params = { page, pageSize: 100 };
+        if (searchTerm) params.q = searchTerm;
+        if (filterCategory !== 'all') params.category = filterCategory;
+        if (filterLevel !== 'all') params.level = filterLevel;
+        if (filterUser) params.user = filterUser;
+        if (dateRange.from) params.from = dateRange.from.toISOString().slice(0,19).replace('T',' ');
+        if (dateRange.to) params.to = dateRange.to.toISOString().slice(0,19).replace('T',' ');
+        const resp = await api.get('/logs', { params });
         const items = resp?.data?.items || [];
         const total = resp?.data?.total || 0;
         setTotalPages(Math.ceil(total / 100));
@@ -184,7 +191,7 @@ const Logs = () => {
       }
     };
     fetchLogs();
-  }, [page]);
+  }, [page, searchTerm, filterCategory, filterLevel, filterUser, dateRange]);
   
   // 提取关键信息
   const extractKeyInfo = (meta) => {
@@ -208,72 +215,15 @@ const Logs = () => {
     return info;
   };
 
-  // 过滤日志
+  // 本地仅做 JSON 内容搜索（其余筛选交给后端）
   useEffect(() => {
     let filtered = logs;
-
-    // 搜索过滤（增强版）
-    if (searchTerm) {
-      const q = searchTerm.toLowerCase();
-      filtered = filtered.filter(log => {
-        // 搜索所有字段
-        const searchableText = [
-          log.details,
-          log.action,
-          log.user,
-          log.ip,
-          log.email,
-          log.username,
-          log.error,
-          log.path,
-          JSON.stringify(log.meta)
-        ].filter(Boolean).join(' ').toLowerCase();
-        
-        return searchableText.includes(q);
-      });
-    }
-
-    // 分类过滤
-    if (filterCategory !== 'all') {
-      filtered = filtered.filter(log => log.category === filterCategory);
-    }
-
-    // 级别过滤
-    if (filterLevel !== 'all') {
-      filtered = filtered.filter(log => log.level === filterLevel);
-    }
-    
-    // 用户过滤
-    if (filterUser) {
-      const userQuery = filterUser.toLowerCase();
-      filtered = filtered.filter(log => 
-        log.user.toLowerCase().includes(userQuery) ||
-        (log.username && log.username.toLowerCase().includes(userQuery)) ||
-        (log.email && log.email.toLowerCase().includes(userQuery))
-      );
-    }
-    
-    // 日期范围过滤
-    if (dateRange.from) {
-      filtered = filtered.filter(log => {
-        const logDate = new Date(log.timestamp);
-        if (dateRange.from && logDate < dateRange.from) return false;
-        if (dateRange.to && logDate > dateRange.to) return false;
-        return true;
-      });
-    }
-
-    // JSON 内容搜索
     if (jsonSearchTerm) {
       const jsonQuery = jsonSearchTerm.toLowerCase();
-      filtered = filtered.filter(log => {
-        const metaStr = JSON.stringify(log.meta).toLowerCase();
-        return metaStr.includes(jsonQuery);
-      });
+      filtered = filtered.filter(log => JSON.stringify(log.meta).toLowerCase().includes(jsonQuery));
     }
-
     setFilteredLogs(filtered);
-  }, [logs, searchTerm, filterCategory, filterLevel, filterUser, dateRange, jsonSearchTerm]);
+  }, [logs, jsonSearchTerm]);
 
 
   const exportLogs = () => {

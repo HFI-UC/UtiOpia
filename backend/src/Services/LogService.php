@@ -20,6 +20,11 @@ final class LogService
         $action = trim((string)($query['action'] ?? ''));
         $onlyError = ((int)($query['only_error'] ?? 0) === 1) || ((int)($query['errorOnly'] ?? 0) === 1);
         $q = trim((string)($query['q'] ?? ''));
+        $category = trim((string)($query['category'] ?? ''));
+        $level = trim((string)($query['level'] ?? ''));
+        $userFilter = trim((string)($query['user'] ?? ''));
+        $from = trim((string)($query['from'] ?? ''));
+        $to = trim((string)($query['to'] ?? ''));
 
         $where = [];
         $params = [];
@@ -34,6 +39,40 @@ final class LogService
             $where[] = '(action LIKE :likeq OR CAST(user_id AS CHAR) = :q OR meta LIKE :likeq)';
             $params[':likeq'] = '%' . $q . '%';
             $params[':q'] = $q;
+        }
+        if ($category !== '') {
+            if ($category === 'system') {
+                $where[] = '(action NOT LIKE "auth.%" AND action NOT LIKE "message.%" AND action NOT LIKE "user.%" AND action NOT LIKE "ban.%")';
+            } else {
+                $where[] = 'action LIKE :categoryPrefix';
+                $params[':categoryPrefix'] = $category . '.%';
+            }
+        }
+        if ($level !== '') {
+            if ($level === 'error') {
+                $where[] = '(action = "error" OR action LIKE "%.failed")';
+            } elseif ($level === 'warning') {
+                $where[] = '(action LIKE "%.conflict" OR action LIKE "%.banned")';
+            } elseif ($level === 'info') {
+                $where[] = '(action <> "error" AND action NOT LIKE "%.failed" AND action NOT LIKE "%.conflict" AND action NOT LIKE "%.banned")';
+            }
+        }
+        if ($userFilter !== '') {
+            if (ctype_digit($userFilter)) {
+                $where[] = 'user_id = :uid';
+                $params[':uid'] = (int)$userFilter;
+            } else {
+                $where[] = '(meta LIKE :likeUser)';
+                $params[':likeUser'] = '%' . $userFilter . '%';
+            }
+        }
+        if ($from !== '') {
+            $where[] = 'created_at >= :from';
+            $params[':from'] = $from;
+        }
+        if ($to !== '') {
+            $where[] = 'created_at <= :to';
+            $params[':to'] = $to;
         }
         $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
 

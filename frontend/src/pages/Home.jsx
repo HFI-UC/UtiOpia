@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import useMessagesStore from '../stores/messagesStore';
+import api from '../lib/api';
 import useAuthStore from '../stores/authStore';
 import Turnstile from '../components/Turnstile';
 
@@ -54,6 +55,18 @@ const Home = () => {
   useEffect(() => {
     fetchMessages(true);
   }, [fetchMessages]);
+
+  // 公共统计
+  const [pubCounts, setPubCounts] = useState({ approved: 0, pending: 0, rejected: 0, total: 0 });
+  useEffect(() => {
+    const loadCounts = async () => {
+      try {
+        const r = await api.get('/stats/public-counts');
+        setPubCounts(r?.data || { approved: 0, pending: 0, rejected: 0, total: 0 });
+      } catch {}
+    };
+    loadCounts();
+  }, []);
 
   // 无限滚动
   useEffect(() => {
@@ -189,20 +202,20 @@ const Home = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="text-center">
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-blue-600">{total}</div>
-            <p className="text-sm text-muted-foreground">总纸条数</p>
+            <div className="text-2xl font-bold text-blue-600">{pubCounts.approved}</div>
+            <p className="text-sm text-muted-foreground">已通过</p>
           </CardContent>
         </Card>
         <Card className="text-center">
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-purple-600">{messages.filter(m => m.status === 'approved').length}</div>
-            <p className="text-sm text-muted-foreground">已通过审核</p>
+            <div className="text-2xl font-bold text-purple-600">{pubCounts.pending}</div>
+            <p className="text-sm text-muted-foreground">待审批</p>
           </CardContent>
         </Card>
         <Card className="text-center">
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-pink-600">{messages.filter(m => m.status === 'pending').length}</div>
-            <p className="text-sm text-muted-foreground">等待审核</p>
+            <div className="text-2xl font-bold text-pink-600">{pubCounts.rejected}</div>
+            <p className="text-sm text-muted-foreground">已拒绝</p>
           </CardContent>
         </Card>
       </div>

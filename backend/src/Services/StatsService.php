@@ -174,6 +174,23 @@ final class StatsService
         }
     }
 
+    /**
+     * Public counts for homepage (no auth required)
+     */
+    public function publicCounts(): array
+    {
+        $stmt = $this->pdo->query('SELECT status, COUNT(*) c FROM messages WHERE deleted_at IS NULL OR deleted_at IS NULL GROUP BY status');
+        $counts = ['approved' => 0, 'pending' => 0, 'rejected' => 0];
+        foreach ($stmt->fetchAll() as $row) {
+            $status = (string)$row['status'];
+            if (isset($counts[$status])) {
+                $counts[$status] = (int)$row['c'];
+            }
+        }
+        $counts['total'] = $counts['approved'] + $counts['pending'] + $counts['rejected'];
+        return $counts;
+    }
+
     private function getDbVersion(string $driver): string
     {
         try {

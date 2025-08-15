@@ -63,6 +63,8 @@ final class Routes
             $group->get('/stats/messages', [self::class, 'statsMessagesSeries']);
             $group->get('/stats/audit', [self::class, 'statsAuditSeries']);
             $group->get('/stats/users', [self::class, 'statsUsersSeries']);
+            // Public counts (no auth)
+            $group->get('/stats/public-counts', [self::class, 'publicCounts']);
 
             // Admin utilities (read-oriented; guarded by audit:read)
             $group->get('/admin/settings', [self::class, 'adminSettings']);
@@ -331,6 +333,14 @@ final class Routes
         $svc = $container->get(\UtiOpia\Services\StatsService::class);
         $result = $svc->usersSeries($user, $days);
         return self::json($response, ['items' => $result]);
+    }
+
+    public static function publicCounts(Request $request, Response $response): Response
+    {
+        $container = self::$container;
+        $svc = $container->get(\UtiOpia\Services\StatsService::class);
+        $result = $svc->publicCounts();
+        return self::json($response, $result);
     }
 
     public static function adminSettings(Request $request, Response $response): Response
