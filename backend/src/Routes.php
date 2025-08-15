@@ -62,6 +62,7 @@ final class Routes
             $group->get('/stats/overview', [self::class, 'statsOverview']);
             $group->get('/stats/messages', [self::class, 'statsMessagesSeries']);
             $group->get('/stats/audit', [self::class, 'statsAuditSeries']);
+            $group->get('/stats/users', [self::class, 'statsUsersSeries']);
 
             // Admin utilities (read-oriented; guarded by audit:read)
             $group->get('/admin/settings', [self::class, 'adminSettings']);
@@ -320,6 +321,15 @@ final class Routes
         $days = (int)($query['days'] ?? 7);
         $svc = $container->get(\UtiOpia\Services\StatsService::class);
         $result = $svc->auditSeries($user, $days);
+        return self::json($response, ['items' => $result]);
+    }
+
+    public static function statsUsersSeries(Request $request, Response $response): Response
+    {
+        [$query, $container, $user] = self::ctxAuth($request, true);
+        $days = (int)($query['days'] ?? 7);
+        $svc = $container->get(\UtiOpia\Services\StatsService::class);
+        $result = $svc->usersSeries($user, $days);
         return self::json($response, ['items' => $result]);
     }
 

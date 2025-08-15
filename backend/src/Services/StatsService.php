@@ -142,6 +142,28 @@ final class StatsService
         return array_values($series);
     }
 
+    public function usersSeries(array $user, int $days = 7): array
+    {
+        $this->acl->ensure($user['role'] ?? 'user', 'audit:read');
+        $days = max(1, min(30, $days));
+        $since = time() - ($days - 1) * 86400;
+        $sinceStr = date('Y-m-d 00:00:00', $since);
+        $stmt = $this->pdo->prepare('SELECT created_at FROM users WHERE created_at >= ?');
+        $stmt->execute([$sinceStr]);
+        $rows = $stmt->fetchAll();
+        $series = [];
+        for ($i = 0; $i < $days; $i++) {
+            $d = date('Y-m-d', $since + $i * 86400);
+            $series[$d] = ['date' => $d, 'total' => 0];
+        }
+        foreach ($rows as $row) {
+            $d = substr((string)$row['created_at'], 0, 10);
+            if (!isset($series[$d])) continue;
+            $series[$d]['total'] += 1;
+        }
+        return array_values($series);
+    }
+
     private function health(): array
     {
         try {
