@@ -51,6 +51,8 @@ const Home = () => {
   const [editPassword, setEditPassword] = useState('');
   const [deletePassword, setDeletePassword] = useState('');
   const [turnstileToken, setTurnstileToken] = useState('');
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
   useEffect(() => {
     fetchMessages(true);
@@ -141,6 +143,7 @@ const Home = () => {
     if (!editDialog.message || !turnstileToken) return;
     
     try {
+      setEditSubmitting(true);
       const updateData = {
         content: editContent,
         turnstile_token: turnstileToken
@@ -155,13 +158,14 @@ const Home = () => {
       toast.success('纸条更新成功！');
     } catch (error) {
       toast.error(error.message);
-    }
+    } finally { setEditSubmitting(false); }
   };
 
   const submitDelete = async () => {
     if (!deleteDialog.message || !turnstileToken) return;
     
     try {
+      setDeleteSubmitting(true);
       const deleteData = {
         turnstile_token: turnstileToken
       };
@@ -175,7 +179,7 @@ const Home = () => {
       toast.success('纸条删除成功！');
     } catch (error) {
       toast.error(error.message);
-    }
+    } finally { setDeleteSubmitting(false); }
   };
 
   return (
@@ -343,7 +347,7 @@ const Home = () => {
 
       {/* Edit Dialog */}
       <Dialog open={editDialog.open} onOpenChange={(open) => setEditDialog({ open, message: null })}>
-        <DialogContent>
+        <DialogContent className="relative">
           <DialogHeader>
             <DialogTitle>编辑纸条</DialogTitle>
             <DialogDescription>
@@ -386,16 +390,21 @@ const Home = () => {
             <Button variant="outline" onClick={() => setEditDialog({ open: false, message: null })}>
               取消
             </Button>
-            <Button onClick={submitEdit} disabled={!turnstileToken}>
-              保存修改
+            <Button onClick={submitEdit} disabled={!turnstileToken || editSubmitting}>
+              {editSubmitting ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin"/>保存中...</>) : '保存修改'}
             </Button>
           </DialogFooter>
+          {editSubmitting && (
+            <div className="absolute inset-0 bg-white/60 dark:bg-black/40 rounded-lg flex items-center justify-center">
+              <Loader2 className="w-6 h-6 animate-spin" />
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
       {/* Delete Dialog */}
       <Dialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ open, message: null })}>
-        <DialogContent>
+        <DialogContent className="relative">
           <DialogHeader>
             <DialogTitle>删除纸条</DialogTitle>
             <DialogDescription>
@@ -427,10 +436,15 @@ const Home = () => {
             <Button variant="outline" onClick={() => setDeleteDialog({ open: false, message: null })}>
               取消
             </Button>
-            <Button variant="destructive" onClick={submitDelete} disabled={!turnstileToken}>
-              确认删除
+            <Button variant="destructive" onClick={submitDelete} disabled={!turnstileToken || deleteSubmitting}>
+              {deleteSubmitting ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin"/>删除中...</>) : '确认删除'}
             </Button>
           </DialogFooter>
+          {deleteSubmitting && (
+            <div className="absolute inset-0 bg-white/60 dark:bg-black/40 rounded-lg flex items-center justify-center">
+              <Loader2 className="w-6 h-6 animate-spin" />
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

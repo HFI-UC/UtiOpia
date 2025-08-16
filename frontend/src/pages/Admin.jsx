@@ -38,6 +38,8 @@ const Admin = () => {
     return u.email.toLowerCase().includes(q) || String(u.id).includes(q) || (u.nickname||'').toLowerCase().includes(q);
   });
   const [series, setSeries] = useState([]);
+  const [reporting, setReporting] = useState(false);
+  const [maintaining, setMaintaining] = useState(false);
 
   // 真实统计数据
   useEffect(() => {
@@ -286,15 +288,19 @@ const Admin = () => {
                   <Badge variant="outline">{stats?.disk || '-'}</Badge>
                 </div>
                 <div className="flex items-center justify-between">
+                  <Button variant="outline" onClick={async()=>{ setMaintaining(true); try{ await api.post('/admin/maintenance/cleanup'); } finally { setMaintaining(false);} }} disabled={maintaining}>
+                    {maintaining ? '清理中…' : '清理/优化'}
+                  </Button>
                   <Button variant="outline" onClick={async()=>{
-                    const r = await api.post('/admin/maintenance/cleanup');
-                  }}>清理/优化</Button>
-                  <Button variant="outline" onClick={async()=>{
-                    const r = await api.post('/admin/report');
-                    const blob = new Blob([JSON.stringify(r.data,null,2)], {type:'application/json'});
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a'); a.href = url; a.download = `report_${Date.now()}.json`; a.click(); URL.revokeObjectURL(url);
-                  }}>导出报告</Button>
+                    try { setReporting(true);
+                      const r = await api.post('/admin/report');
+                      const blob = new Blob([JSON.stringify(r.data,null,2)], {type:'application/json'});
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a'); a.href = url; a.download = `report_${Date.now()}.json`; a.click(); URL.revokeObjectURL(url);
+                    } finally { setReporting(false);} 
+                  }} disabled={reporting}>
+                    {reporting ? '导出中…' : '导出报告'}
+                  </Button>
                 </div>
               </CardContent>
             </Card>

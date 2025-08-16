@@ -48,6 +48,7 @@ const Write = () => {
   const [stats, setStats] = useState({ today: null, week: null, total: null });
   const [loadingStats, setLoadingStats] = useState(true);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmSubmitting, setConfirmSubmitting] = useState(false);
 
   const isAuthenticated = !!token;
   const maxContentLength = 500;
@@ -621,15 +622,30 @@ const Write = () => {
       </div>
       {/* Confirm Modal */}
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent>
+        <DialogContent className="relative">
           <DialogHeader>
             <DialogTitle>确认实名发布</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">你将以实名发布，其他用户可看到“由你发布”的标识。是否继续？</p>
           <DialogFooter>
             <Button variant="outline" onClick={()=>setConfirmOpen(false)}>取消</Button>
-            <Button onClick={async ()=>{ setConfirmOpen(false); try { await createMessage({ content: formData.content, image_url: formData.imageUrl, turnstile_token: turnstileToken, is_anonymous: false }); toast.success('纸条发布成功，正在等待审核！'); navigate('/'); } catch {} }}>确认</Button>
+            <Button onClick={async ()=>{ 
+              try { 
+                setConfirmSubmitting(true);
+                await createMessage({ content: formData.content, image_url: formData.imageUrl, turnstile_token: turnstileToken, is_anonymous: false }); 
+                toast.success('纸条发布成功，正在等待审核！'); 
+                setConfirmOpen(false);
+                navigate('/'); 
+              } catch {} finally { setConfirmSubmitting(false); }
+            }} disabled={confirmSubmitting}>
+              {confirmSubmitting ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />提交中...</>) : '确认'}
+            </Button>
           </DialogFooter>
+          {confirmSubmitting && (
+            <div className="absolute inset-0 bg-white/60 dark:bg-black/40 rounded-lg flex items-center justify-center">
+              <Loader2 className="w-6 h-6 animate-spin" />
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import api from '../lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -133,9 +133,12 @@ const Logs = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [expandAll, setExpandAll] = useState(false);
   const [jsonSearchTerm, setJsonSearchTerm] = useState('');
+  const requestSeqRef = useRef(0);
+  const loadMoreRef = useRef(null);
 
-  // 加载真实日志数据
+  // 加载真实日志数据（处理竞态，仅使用最后一次请求结果）
   useEffect(() => {
+    const seq = ++requestSeqRef.current;
     const fetchLogs = async () => {
       setLoading(true);
       try {
@@ -147,10 +150,10 @@ const Logs = () => {
         if (dateRange.from) params.from = dateRange.from.toISOString().slice(0,19).replace('T',' ');
         if (dateRange.to) params.to = dateRange.to.toISOString().slice(0,19).replace('T',' ');
         const resp = await api.get('/logs', { params });
+        if (seq !== requestSeqRef.current) return; // 过期请求，丢弃
         const items = resp?.data?.items || [];
         const total = resp?.data?.total || 0;
         setTotalPages(Math.ceil(total / 100));
-        
         const normalized = items.map(it => {
           const action = String(it.action || '');
           const prefix = action.includes('.') ? action.split('.')[0] : action;
@@ -182,16 +185,42 @@ const Logs = () => {
             ...extractedInfo
           };
         });
-        setLogs(normalized);
-        setFilteredLogs(normalized);
+        if (page === 1) {
+          setLogs(normalized);
+        } else {
+          setLogs(prev => [...prev, ...normalized]);
+        }
       } catch (e) {
+        if (seq !== requestSeqRef.current) return;
         toast.error('加载日志失败');
       } finally {
-        setLoading(false);
+        if (seq === requestSeqRef.current) setLoading(false);
       }
     };
     fetchLogs();
   }, [page, searchTerm, filterCategory, filterLevel, filterUser, dateRange]);
+
+  // 筛选条件变化时重置到第 1 页
+  useEffect(() => {
+    setLogs([]);
+    setFilteredLogs([]);
+    setTotalPages(1);
+    setPage(1);
+  }, [searchTerm, filterCategory, filterLevel, filterUser, dateRange]);
+
+  // 无限滚动：当底部哨兵进入视口时加载下一页
+  useEffect(() => {
+    const el = loadMoreRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver((entries) => {
+      const entry = entries[0];
+      if (entry.isIntersecting && !loading && page < totalPages) {
+        setPage(p => p + 1);
+      }
+    }, { root: null, rootMargin: '0px', threshold: 1.0 });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [loading, page, totalPages]);
   
   // 提取关键信息
   const extractKeyInfo = (meta) => {
@@ -494,7 +523,7 @@ const Logs = () => {
 
           {/* Logs List */}
           <div className="space-y-3">
-            {loading ? (
+            {loading && logs.length === 0 ? (
               <div className="flex items-center justify-center py-8">
                 <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
                 <span className="ml-2 text-muted-foreground">加载中...</span>
@@ -514,6 +543,21 @@ const Logs = () => {
                 </p>
               </div>
             )}
+            {/* 无限滚动哨兵 */}
+            <div ref={loadMoreRef} className="py-4 text-center text-xs text-muted-foreground">
+              {page < totalPages ? (
+                loading && logs.length > 0 ? (
+                  <div className="flex items-center justify-center">
+                    <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+                    加载中...
+                  </div>
+                ) : (
+                  '下拉加载更多'
+                )
+              ) : (
+                logs.length > 0 ? '没有更多了' : null
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>

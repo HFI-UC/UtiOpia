@@ -18,10 +18,14 @@ const IMPORTANT_FIELDS = [
 
 // 分类配置
 const FIELD_CATEGORIES = {
-  request: ['method', 'path', 'ip', 'get', 'post', 'REQUEST_METHOD', 'REQUEST_URI', 'QUERY_STRING'],
+  request: [
+    'method', 'path', 'ip', 'get', 'post',
+    'REQUEST_METHOD', 'REQUEST_URI', 'QUERY_STRING', 'PATH_INFO', 'REQUEST_TIME',
+    'HTTPS', 'HTTP_HOST', 'SERVER_PROTOCOL'
+  ],
   user: ['user_id', 'email', 'username', 'REMOTE_ADDR', 'CF_CONNECTING_IP', 'CF_IPCOUNTRY', 'CF_IPCITY'],
   server: ['SERVER_NAME', 'SERVER_SOFTWARE', 'SERVER_ADDR', 'SERVER_PORT'],
-  headers: ['User-Agent', 'Accept', 'Origin', 'Referer', 'Authorization'],
+  headers: ['User-Agent', 'Accept', 'Origin', 'Referer', 'Authorization', 'HTTP_'],
   cloudflare: ['CF_RAY', 'CF_CONNECTING_IP', 'CF_IPCOUNTRY', 'CF_IPCITY', 'CF_REGION'],
   environment: ['DB_HOST', 'DB_NAME', 'CORS_ORIGIN', 'SITE_NAME', 'SITE_URL'],
   sensitive: [...SENSITIVE_FIELDS]
@@ -70,8 +74,47 @@ export const processLogData = (data, showSensitive = false) => {
     headers: {},
     cloudflare: {},
     environment: {},
+    query: {},
+    body: {},
     other: {}
   };
+
+  // 专门处理 PHP 超全局变量
+  const serverData = data['$_SERVER'] || data._SERVER || data.server || null;
+  if (serverData && typeof serverData === 'object') {
+    for (const [k, v] of Object.entries(serverData)) {
+      const processedValue = processValue(v, k);
+      // 头部
+      if (k.startsWith('HTTP_') || k.startsWith('CONTENT_')) {
+        categorized.headers[k] = processedValue;
+        continue;
+      }
+      // 请求相关
+      if (
+        k === 'REQUEST_METHOD' ||
+        k === 'REQUEST_URI' ||
+        k === 'QUERY_STRING' ||
+        k === 'PATH_INFO' ||
+        k === 'HTTPS' ||
+        k === 'HTTP_HOST' ||
+        k === 'SERVER_PROTOCOL' ||
+        k === 'REMOTE_ADDR' ||
+        k === 'REMOTE_PORT'
+      ) {
+        categorized.request[k] = processedValue;
+        continue;
+      }
+      categorized.server[k] = processedValue;
+    }
+  }
+  const getData = data['$_GET'] || data._GET || data.get || null;
+  if (getData && typeof getData === 'object') {
+    categorized.query = processValue(getData, '$_GET') || {};
+  }
+  const postData = data['$_POST'] || data._POST || data.post || null;
+  if (postData && typeof postData === 'object') {
+    categorized.body = processValue(postData, '$_POST') || {};
+  }
   
   // 递归处理对象
   const processValue = (value, key) => {
@@ -111,7 +154,14 @@ export const processLogData = (data, showSensitive = false) => {
         break;
       }
     }
-    
+    // 避免覆盖已专门处理的 query/body
+    if (key === '$_GET' || key === '_GET' || key === 'get') {
+      matchedCategory = true;
+    }
+    if (key === '$_POST' || key === '_POST' || key === 'post') {
+      matchedCategory = true;
+    }
+
     // 如果没有匹配的类别，放入other
     if (!matchedCategory) {
       categorized.other[key] = processedValue;
@@ -124,31 +174,46 @@ export const processLogData = (data, showSensitive = false) => {
 // 提取摘要信息
 export const extractSummary = (data) => {
   if (!data || typeof data !== 'object') return {};
-  
+
+  const server = data['$_SERVER'] || data._SERVER || {};
+
+  const pick = (...keys) => {
+    for (const k of keys) {
+      if (data[k] != null) return data[k];
+      if (server && server[k] != null) return server[k];
+    }
+    return null;
+  };
+
+  let ip = pick('ip', 'CF_CONNECTING_IP', 'REMOTE_ADDR', 'HTTP_X_FORWARDED_FOR');
+  if (typeof ip === 'string' && ip.includes(',')) {
+    ip = ip.split(',')[0].trim();
+  }
+
   const summary = {
     request: {
-      method: data.method || data.REQUEST_METHOD || 'Unknown',
-      path: data.path || data.REQUEST_URI || 'Unknown',
-      ip: data.ip || data.CF_CONNECTING_IP || data.REMOTE_ADDR || 'Unknown',
-      status: data.status || data.REDIRECT_STATUS || 'Unknown'
+      method: pick('method', 'REQUEST_METHOD') || 'Unknown',
+      path: pick('path', 'REQUEST_URI') || 'Unknown',
+      ip: ip || 'Unknown',
+      status: pick('status', 'REDIRECT_STATUS', 'STATUS_CODE') || 'Unknown'
     },
     user: {
-      id: data.user_id || data.userId || 'Unknown',
-      email: data.email || data.user_email || null,
-      username: data.username || data.user_name || null
+      id: pick('user_id', 'userId') || 'Unknown',
+      email: pick('email', 'user_email'),
+      username: pick('username', 'user_name')
     },
     location: {
-      country: data.CF_IPCOUNTRY || null,
-      city: data.CF_IPCITY || null,
-      region: data.CF_REGION || null
+      country: pick('CF_IPCOUNTRY'),
+      city: pick('CF_IPCITY'),
+      region: pick('CF_REGION')
     },
     client: {
-      userAgent: data['User-Agent'] || data.HTTP_USER_AGENT || null,
-      origin: data.Origin || data.HTTP_ORIGIN || null
+      userAgent: pick('User-Agent', 'HTTP_USER_AGENT'),
+      origin: pick('Origin', 'HTTP_ORIGIN')
     },
-    error: data.error || data.message || null
+    error: pick('error', 'message')
   };
-  
+
   return summary;
 };
 

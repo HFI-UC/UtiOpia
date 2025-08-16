@@ -29,7 +29,8 @@ import {
   XCircle,
   Edit,
   Trash2,
-  Shield
+  Shield,
+  Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
  
@@ -47,6 +48,8 @@ const Bans = () => {
     type: 'temporary'
   });
   const [editDlg, setEditDlg] = useState({ open: false, reason: '', ban: null });
+  const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   // 加载真实封禁数据
   useEffect(() => {
@@ -164,6 +167,7 @@ const Bans = () => {
     }
 
     try {
+      setAdding(true);
       // 后端仅支持类型 email 或 student_id，值为具体邮箱或学号
       const type = newBan.userEmail.includes('@') ? 'email' : 'student_id';
       await api.post('/bans', { type, value: newBan.userEmail, reason: newBan.reason });
@@ -190,6 +194,8 @@ const Bans = () => {
     } catch (error) {
       const msg = error.response?.data?.error || error.message || '操作失败';
       toast.error(msg);
+    } finally {
+      setAdding(false);
     }
   };
 
@@ -297,7 +303,7 @@ const Bans = () => {
                   添加封禁
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="relative">
                 <DialogHeader>
                   <DialogTitle>添加封禁记录</DialogTitle>
                   <DialogDescription>
@@ -365,10 +371,15 @@ const Bans = () => {
                   <Button variant="outline" onClick={() => setShowAddDialog(false)}>
                     取消
                   </Button>
-                  <Button onClick={handleAddBan}>
-                    确认封禁
+                  <Button onClick={handleAddBan} disabled={adding}>
+                    {adding ? (<><Loader2 className="w-4 h-4 mr-1 animate-spin"/>提交中...</>) : '确认封禁'}
                   </Button>
                 </DialogFooter>
+                {adding && (
+                  <div className="absolute inset-0 bg-white/60 dark:bg-black/40 rounded-lg flex items-center justify-center">
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  </div>
+                )}
               </DialogContent>
             </Dialog>
           </div>
@@ -483,7 +494,7 @@ const Bans = () => {
       </Card>
       {/* Edit Reason Dialog */}
       <Dialog open={editDlg.open} onOpenChange={(o)=> setEditDlg(prev => ({ ...prev, open: o }))}>
-        <DialogContent>
+        <DialogContent className="relative">
           <DialogHeader>
             <DialogTitle>修改封禁原因</DialogTitle>
           </DialogHeader>
@@ -496,6 +507,7 @@ const Bans = () => {
               const ban = editDlg.ban; if (!ban) return;
               const value = ban.userEmail; const type = value.includes('@') ? 'email' : 'student_id';
               try {
+                setEditing(true);
                 await api.delete('/bans', { data: { type, value } });
                 await api.post('/bans', { type, value, reason: editDlg.reason || '' });
                 const resp = await api.get('/bans');
@@ -507,9 +519,18 @@ const Bans = () => {
               } catch (e) {
                 const msg = e.response?.data?.error || e.message || '更新失败';
                 toast.error(msg);
+              } finally {
+                setEditing(false);
               }
-            }}>保存</Button>
+            }} disabled={editing}>
+              {editing ? (<><Loader2 className="w-4 h-4 mr-1 animate-spin"/>保存中...</>) : '保存'}
+            </Button>
           </DialogFooter>
+          {editing && (
+            <div className="absolute inset-0 bg-white/60 dark:bg-black/40 rounded-lg flex items-center justify-center">
+              <Loader2 className="w-6 h-6 animate-spin" />
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

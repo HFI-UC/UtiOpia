@@ -14,7 +14,8 @@ import {
   Key,
   AlertTriangle,
   Info,
-  Search
+  Search,
+  FileText
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -42,6 +43,8 @@ const getCategoryIcon = (category) => {
     headers: Info,
     environment: Shield,
     sensitive: Key,
+    query: Search,
+    body: FileText,
     other: Info
   };
   return icons[category] || Info;
@@ -57,6 +60,8 @@ const getCategoryTitle = (category) => {
     headers: '请求头',
     environment: '环境变量',
     sensitive: '敏感信息',
+    query: '查询参数($_GET)',
+    body: '请求体($_POST)',
     other: '其他信息'
   };
   return titles[category] || '其他';

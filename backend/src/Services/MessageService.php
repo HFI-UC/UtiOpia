@@ -17,27 +17,27 @@ final class MessageService
         $page = max(1, (int)($query['page'] ?? 1));
         $pageSize = min(50, max(1, (int)($query['pageSize'] ?? 10)));
         $offset = ($page - 1) * $pageSize;
-        $status = (string)($query['status'] ?? 'approved');
-        $canSeeSensitive = false;
-        if ($status !== 'approved') {
-            try {
-                $this->acl->ensure($user['role'], 'message:approve');
-                $canSeeSensitive = true;
-            } catch (\Throwable) {
-                $status = 'approved';
-            }
+        $requestedStatus = (string)($query['status'] ?? 'approved');
+        $canModerate = false;
+        try {
+            $this->acl->ensure($user['role'], 'message:approve');
+            $canModerate = true;
+        } catch (\Throwable) {}
+        $status = $canModerate ? $requestedStatus : 'approved';
+        // 基础字段对所有访问者开放；敏感字段仅对具有审核权限的角色开放
+        $cols = 'm.id, m.user_id, m.is_anonymous, m.content, m.image_url, m.status, m.created_at';
+        if ($canModerate) {
+            $cols .= ', m.reject_reason, m.reviewed_at, m.reviewed_by';
+            // 审核视图可查看匿名线索与实名邮箱
+            $cols .= ', m.anon_email, m.anon_student_id, '
+                  . 'CASE WHEN m.user_id IS NOT NULL AND m.user_id > 0 THEN u.email ELSE NULL END AS user_email';
         }
-        // Always include is_anonymous for client rendering; only privileged views can read anon_*
-        $cols = 'm.id, m.user_id, m.is_anonymous, m.content, m.image_url, m.status, m.created_at, '
-              . 'm.reject_reason, m.reviewed_at, m.reviewed_by, '
-              . 'CASE WHEN m.user_id IS NOT NULL AND m.user_id > 0 THEN u.email ELSE NULL END AS user_email';
-        if ($canSeeSensitive) { $cols .= ', m.anon_email, m.anon_student_id'; }
         $where = '';
         if ($status !== 'all') {
             $where = 'WHERE m.status = :status';
         }
         // 普通用户不显示软删除
-        if (!$canSeeSensitive) {
+        if (!$canModerate) {
             $where = $where === '' ? 'WHERE m.deleted_at IS NULL' : ($where . ' AND m.deleted_at IS NULL');
         }
         $stmt = $this->pdo->prepare("SELECT SQL_CALC_FOUND_ROWS $cols FROM messages m LEFT JOIN users u ON m.user_id = u.id $where ORDER BY m.id DESC LIMIT :limit OFFSET :offset");

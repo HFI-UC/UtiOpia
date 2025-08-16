@@ -16,7 +16,8 @@ import {
   Calendar,
   MessageSquare,
   Filter,
-  Ban
+  Ban,
+  Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -28,6 +29,8 @@ const Moderation = () => {
   const [trail, setTrail] = useState([]);
   const [rejectDialog, setRejectDialog] = useState({ open: false, id: null, text: '' });
   const [banDialog, setBanDialog] = useState({ open: false, choice: null, options: [], reason: '' });
+  const [rejectSubmitting, setRejectSubmitting] = useState(false);
+  const [banSubmitting, setBanSubmitting] = useState(false);
 
   // 加载真实数据
   useEffect(() => {
@@ -424,7 +427,7 @@ const Moderation = () => {
 
       {/* Detail Modal */}
       <Dialog open={!!detail} onOpenChange={(o)=>{ if(!o){ setDetail(null); setTrail([]);} }}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl relative">
           <DialogHeader>
             <DialogTitle>纸条详情 #{detail?.id}</DialogTitle>
             <DialogDescription>
@@ -491,19 +494,33 @@ const Moderation = () => {
           <DialogFooter className="justify-between">
             <div className="text-xs text-muted-foreground">审核人：{detail?.reviewed_by || '-'} {detail?.reviewed_at ? `· ${formatTime(detail.reviewed_at)}` : ''}</div>
             <div className="space-x-2">
-              <Button size="sm" onClick={()=>detail && handleApprove(detail.id)} disabled={loading}><CheckCircle className="w-4 h-4 mr-1"/>通过</Button>
-              <Button size="sm" variant="destructive" onClick={()=>detail && handleReject(detail.id)} disabled={loading}><XCircle className="w-4 h-4 mr-1"/>拒绝</Button>
+              <Button size="sm" onClick={()=>detail && handleApprove(detail.id)} disabled={loading}>
+                {loading ? <Loader2 className="w-4 h-4 mr-1 animate-spin"/> : <CheckCircle className="w-4 h-4 mr-1"/>}
+                {loading ? '处理中...' : '通过'}
+              </Button>
+              <Button size="sm" variant="destructive" onClick={()=>detail && handleReject(detail.id)} disabled={loading}>
+                {loading ? <Loader2 className="w-4 h-4 mr-1 animate-spin"/> : <XCircle className="w-4 h-4 mr-1"/>}
+                {loading ? '处理中...' : '拒绝'}
+              </Button>
               {(detail?.user_email || detail?.anon_email || detail?.anon_student_id) && (
-                <Button size="sm" variant="outline" onClick={()=>detail && handleQuickBan(detail)} disabled={loading}><Ban className="w-4 h-4 mr-1"/>封禁</Button>
+                <Button size="sm" variant="outline" onClick={()=>detail && handleQuickBan(detail)} disabled={loading}>
+                  {loading ? <Loader2 className="w-4 h-4 mr-1 animate-spin"/> : <Ban className="w-4 h-4 mr-1"/>}
+                  {loading ? '处理中...' : '封禁'}
+                </Button>
               )}
             </div>
           </DialogFooter>
+          {loading && (
+            <div className="absolute inset-0 bg-white/60 dark:bg-black/40 rounded-lg flex items-center justify-center">
+              <Loader2 className="w-6 h-6 animate-spin" />
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
       {/* Reject Modal */}
       <Dialog open={rejectDialog.open} onOpenChange={(o)=> setRejectDialog(prev => ({ ...prev, open: o }))}>
-        <DialogContent>
+        <DialogContent className="relative">
           <DialogHeader>
             <DialogTitle>请输入拒绝理由</DialogTitle>
           </DialogHeader>
@@ -514,7 +531,7 @@ const Moderation = () => {
             <Button variant="outline" onClick={()=> setRejectDialog({ open: false, id: null, text: '' })}>取消</Button>
             <Button onClick={async ()=>{
               if (!rejectDialog.id || !rejectDialog.text) return;
-              setLoading(true);
+              setRejectSubmitting(true);
               try {
                 await api.post(`/messages/${rejectDialog.id}/reject`, { reason: rejectDialog.text });
                 const message = pendingMessages.find(m => m.id === rejectDialog.id);
@@ -528,17 +545,24 @@ const Moderation = () => {
                 const msg = error.response?.data?.error || error.message || '操作失败';
                 toast.error(msg);
               } finally {
-                setLoading(false);
+                setRejectSubmitting(false);
                 setRejectDialog({ open: false, id: null, text: '' });
               }
-            }}>确认</Button>
+            }} disabled={rejectSubmitting}>
+              {rejectSubmitting ? (<><Loader2 className="w-4 h-4 mr-1 animate-spin"/>提交中...</>) : '确认'}
+            </Button>
           </DialogFooter>
+          {rejectSubmitting && (
+            <div className="absolute inset-0 bg-white/60 dark:bg-black/40 rounded-lg flex items-center justify-center">
+              <Loader2 className="w-6 h-6 animate-spin" />
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
       {/* Ban Modal */}
       <Dialog open={banDialog.open} onOpenChange={(o)=> setBanDialog(prev => ({ ...prev, open: o }))}>
-        <DialogContent>
+        <DialogContent className="relative">
           <DialogHeader>
             <DialogTitle>封禁目标与原因</DialogTitle>
           </DialogHeader>
@@ -555,16 +579,25 @@ const Moderation = () => {
             <Button onClick={async ()=>{
               if (!banDialog.choice) return;
               try {
+                setBanSubmitting(true);
                 await api.post('/bans', { type: banDialog.choice.type, value: banDialog.choice.value, reason: banDialog.reason });
                 toast.success('封禁成功');
               } catch (e) {
                 const msg = e.response?.data?.error || e.message || '封禁失败';
                 toast.error(msg);
               } finally {
+                setBanSubmitting(false);
                 setBanDialog({ open: false, choice: null, options: [], reason: '' });
               }
-            }}>确认</Button>
+            }} disabled={banSubmitting}>
+              {banSubmitting ? (<><Loader2 className="w-4 h-4 mr-1 animate-spin"/>提交中...</>) : '确认'}
+            </Button>
           </DialogFooter>
+          {banSubmitting && (
+            <div className="absolute inset-0 bg-white/60 dark:bg-black/40 rounded-lg flex items-center justify-center">
+              <Loader2 className="w-6 h-6 animate-spin" />
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
