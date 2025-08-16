@@ -25,7 +25,15 @@ final class MessageService
         } catch (\Throwable) {}
         $status = $canModerate ? $requestedStatus : 'approved';
         // 基础字段对所有访问者开放；敏感字段仅对具有审核权限的角色开放
-        $cols = 'm.id, m.user_id, m.is_anonymous, m.content, m.image_url, m.status, m.created_at';
+        $viewerId = (int)($user['id'] ?? 0);
+        if ($canModerate) {
+            $cols = 'm.id, m.user_id, m.is_anonymous, m.content, m.image_url, m.status, m.created_at';
+        } else {
+            // 非审核视图：匿名且非本人 → 隐去 user_id
+            $cols = 'm.id, CASE WHEN m.is_anonymous = 1 AND (m.user_id IS NULL OR m.user_id <> :viewer_id) '
+                  . 'THEN NULL ELSE m.user_id END AS user_id, '
+                  . 'm.is_anonymous, m.content, m.image_url, m.status, m.created_at';
+        }
         if ($canModerate) {
             $cols .= ', m.reject_reason, m.reviewed_at, m.reviewed_by';
             // 审核视图可查看匿名线索与实名邮箱
@@ -43,6 +51,9 @@ final class MessageService
         $stmt = $this->pdo->prepare("SELECT SQL_CALC_FOUND_ROWS $cols FROM messages m LEFT JOIN users u ON m.user_id = u.id $where ORDER BY m.id DESC LIMIT :limit OFFSET :offset");
         if ($status !== 'all') {
             $stmt->bindValue(':status', $status);
+        }
+        if (!$canModerate) {
+            $stmt->bindValue(':viewer_id', $viewerId, PDO::PARAM_INT);
         }
         $stmt->bindValue(':limit', $pageSize, PDO::PARAM_INT);
         $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);

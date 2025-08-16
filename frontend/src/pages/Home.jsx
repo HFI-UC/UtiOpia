@@ -293,17 +293,11 @@ const Home = () => {
                   <div className="flex items-center space-x-2">
                     <Avatar className="w-6 h-6">
                       <AvatarFallback className="text-xs">
-                        {message.user_id && message.user_email ? 
-                          message.user_email.charAt(0).toUpperCase() : 
-                          <User className="w-3 h-3" />
-                        }
+                        {message.user_email ? message.user_email.charAt(0).toUpperCase() : <User className="w-3 h-3" />}
                       </AvatarFallback>
                     </Avatar>
                     <span className="text-sm text-muted-foreground">
-                      {message.user_id && message.user_email ? 
-                        message.user_email : 
-                        '匿名用户'
-                      }
+                      {message.user_email || '匿名用户'}
                     </span>
                   </div>
                   <Badge variant="outline" className="text-xs">
