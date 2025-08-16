@@ -9,6 +9,7 @@ import { Heart, MessageCircle, Clock, User, Loader2, Reply } from 'lucide-react'
 import api from '../lib/api';
 import { toast } from 'sonner';
 import useAuthStore from '../stores/authStore';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 const MessageDetail = () => {
   const { id } = useParams();
@@ -115,12 +116,20 @@ const MessageDetail = () => {
         <CardFooter>
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center space-x-2">
-              <Avatar className="w-6 h-6">
-                <AvatarFallback className="text-xs">
-                  {detail.user_email ? detail.user_email.charAt(0).toUpperCase() : <User className="w-3 h-3" />}
-                </AvatarFallback>
-              </Avatar>
-              <span className="text-sm text-muted-foreground">{detail.user_email || '匿名用户'}</span>
+              <Tooltip delayDuration={150}>
+                <TooltipTrigger asChild>
+                  <Avatar className="w-6 h-6 cursor-default">
+                    <AvatarFallback className="text-xs">
+                      {detail.user_email ? detail.user_email.charAt(0).toUpperCase() : <User className="w-3 h-3" />}
+                    </AvatarFallback>
+                  </Avatar>
+                </TooltipTrigger>
+                {(detail.user_email || detail.user_nickname) && (
+                  <TooltipContent side="top" sideOffset={6}>
+                    {(detail.user_nickname || '') + (detail.user_nickname && detail.user_email ? ' · ' : '') + (detail.user_email || '')}
+                  </TooltipContent>
+                )}
+              </Tooltip>
             </div>
             <div className="flex items-center space-x-3">
               <button

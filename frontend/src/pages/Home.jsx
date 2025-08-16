@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import {
   Dialog,
   DialogContent,
@@ -404,14 +405,20 @@ const Home = () => {
               <CardFooter className="pt-3">
                 <div className="flex items-center justify-between w-full">
                   <div className="flex items-center space-x-2">
-                    <Avatar className="w-6 h-6">
-                      <AvatarFallback className="text-xs">
-                        {message.user_email ? message.user_email.charAt(0).toUpperCase() : <User className="w-3 h-3" />}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-sm text-muted-foreground">
-                      {message.user_email || '匿名用户'}
-                    </span>
+                    <Tooltip delayDuration={150}>
+                      <TooltipTrigger asChild>
+                        <Avatar className="w-6 h-6 cursor-default">
+                          <AvatarFallback className="text-xs">
+                            {message.user_email ? message.user_email.charAt(0).toUpperCase() : <User className="w-3 h-3" />}
+                          </AvatarFallback>
+                        </Avatar>
+                      </TooltipTrigger>
+                      {(message.user_email || message.user_nickname) && (
+                        <TooltipContent side="top" sideOffset={6}>
+                          {(message.user_nickname || '') + (message.user_nickname && message.user_email ? ' · ' : '') + (message.user_email || '')}
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
                   </div>
                   <div className="flex items-center space-x-3">
                     <button

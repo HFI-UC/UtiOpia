@@ -35,13 +35,16 @@ final class MessageService
                   . 'THEN NULL ELSE m.user_id END AS user_id, '
                   . 'm.is_anonymous, m.content, m.image_url, m.status, m.created_at, '
                   . 'CASE WHEN m.is_anonymous = 0 AND m.user_id IS NOT NULL AND m.user_id > 0 '
-                  . 'THEN u.email ELSE NULL END AS user_email';
+                  . 'THEN u.email ELSE NULL END AS user_email, '
+                  . 'CASE WHEN m.is_anonymous = 0 AND m.user_id IS NOT NULL AND m.user_id > 0 '
+                  . 'THEN u.nickname ELSE NULL END AS user_nickname';
         }
         if ($canModerate) {
             $cols .= ', m.reject_reason, m.reviewed_at, m.reviewed_by';
             // 审核视图可查看匿名线索与实名邮箱
             $cols .= ', m.anon_email, m.anon_student_id, '
-                  . 'CASE WHEN m.user_id IS NOT NULL AND m.user_id > 0 THEN u.email ELSE NULL END AS user_email';
+                  . 'CASE WHEN m.user_id IS NOT NULL AND m.user_id > 0 THEN u.email ELSE NULL END AS user_email, '
+                  . 'CASE WHEN m.user_id IS NOT NULL AND m.user_id > 0 THEN u.nickname ELSE NULL END AS user_nickname';
         }
         // 点赞统计与当前用户是否点赞
         $cols .= ', (SELECT COUNT(*) FROM message_likes ml WHERE ml.message_id = m.id AND ml.deleted_at IS NULL) AS likes_count';
@@ -229,11 +232,12 @@ final class MessageService
             $cols = 'm.id, '
                 . 'CASE WHEN m.is_anonymous = 1 AND (m.user_id IS NULL OR m.user_id <> :viewer_id) THEN NULL ELSE m.user_id END AS user_id, '
                 . 'm.is_anonymous, m.content, m.image_url, m.status, m.created_at, '
-                . 'CASE WHEN m.is_anonymous = 0 AND m.user_id IS NOT NULL AND m.user_id > 0 THEN u.email ELSE NULL END AS user_email';
+                . 'CASE WHEN m.is_anonymous = 0 AND m.user_id IS NOT NULL AND m.user_id > 0 THEN u.email ELSE NULL END AS user_email, '
+                . 'CASE WHEN m.is_anonymous = 0 AND m.user_id IS NOT NULL AND m.user_id > 0 THEN u.nickname ELSE NULL END AS user_nickname';
         }
         if ($canModerate) {
             $cols .= ', m.reject_reason, m.reviewed_at, m.reviewed_by';
-            $cols .= ', m.anon_email, m.anon_student_id, CASE WHEN m.user_id IS NOT NULL AND m.user_id > 0 THEN u.email ELSE NULL END AS user_email';
+            $cols .= ', m.anon_email, m.anon_student_id, CASE WHEN m.user_id IS NOT NULL AND m.user_id > 0 THEN u.email ELSE NULL END AS user_email, CASE WHEN m.user_id IS NOT NULL AND m.user_id > 0 THEN u.nickname ELSE NULL END AS user_nickname';
         }
         $cols .= ', (SELECT COUNT(*) FROM message_likes ml WHERE ml.message_id = m.id AND ml.deleted_at IS NULL) AS likes_count';
         if ($viewerId > 0) {
