@@ -18,10 +18,13 @@ CREATE TABLE IF NOT EXISTS message_likes (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 3) 新增评论表（评论默认展示；可由管理员/版主改为拒绝）
+-- 若已存在 message_comments 表，请补充 is_anonymous 字段
+ALTER TABLE message_comments ADD COLUMN is_anonymous TINYINT(1) NOT NULL DEFAULT 0 AFTER user_id;
 CREATE TABLE IF NOT EXISTS message_comments (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   message_id INT UNSIGNED NOT NULL,
   user_id INT UNSIGNED NOT NULL,
+  is_anonymous TINYINT(1) NOT NULL DEFAULT 0,
   content VARCHAR(1000) NOT NULL,
   parent_id BIGINT UNSIGNED NULL,
   root_id BIGINT UNSIGNED NULL,

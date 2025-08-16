@@ -71,7 +71,7 @@ $container->set(PDO::class, function ($c) {
             $pdo->exec('CREATE TABLE bans (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT, value TEXT, reason TEXT, created_by INTEGER, created_at TEXT, updated_at TEXT, active INTEGER, stage INTEGER, expires_at TEXT, UNIQUE(type,value,active))');
             $pdo->exec('CREATE TABLE message_likes (id INTEGER PRIMARY KEY AUTOINCREMENT, message_id INTEGER, user_id INTEGER, deleted_at TEXT, created_at TEXT)');
             $pdo->exec('CREATE UNIQUE INDEX uniq_message_user ON message_likes(message_id, user_id)');
-            $pdo->exec('CREATE TABLE message_comments (id INTEGER PRIMARY KEY AUTOINCREMENT, message_id INTEGER, user_id INTEGER, content TEXT, parent_id INTEGER NULL, root_id INTEGER NULL, status TEXT, reject_reason TEXT, reviewed_by INTEGER, reviewed_at TEXT, deleted_at TEXT, created_at TEXT)');
+            $pdo->exec('CREATE TABLE message_comments (id INTEGER PRIMARY KEY AUTOINCREMENT, message_id INTEGER, user_id INTEGER, is_anonymous INTEGER DEFAULT 0, content TEXT, parent_id INTEGER NULL, root_id INTEGER NULL, status TEXT, reject_reason TEXT, reviewed_by INTEGER, reviewed_at TEXT, deleted_at TEXT, created_at TEXT)');
             return $pdo;
         }
         throw $e;

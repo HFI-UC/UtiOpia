@@ -217,6 +217,7 @@ CREATE TABLE `message_comments` (
   `id` bigint(20) UNSIGNED NOT NULL,
   `message_id` int(10) UNSIGNED NOT NULL,
   `user_id` int(10) UNSIGNED NOT NULL,
+  `is_anonymous` tinyint(1) NOT NULL DEFAULT '0',
   `content` varchar(1000) NOT NULL,
   `parent_id` bigint(20) UNSIGNED DEFAULT NULL,
   `root_id` bigint(20) UNSIGNED DEFAULT NULL,

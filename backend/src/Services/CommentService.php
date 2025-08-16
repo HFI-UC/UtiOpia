@@ -19,13 +19,23 @@ final class CommentService
         $offset = ($page - 1) * $pageSize;
         $canModerate = false;
         try { $this->acl->ensure($viewer['role'] ?? 'user', 'comment:approve'); $canModerate = true; } catch (\Throwable) {}
+        $viewerId = (int)($viewer['id'] ?? 0);
         $where = 'c.message_id = :mid AND c.deleted_at IS NULL';
         if (!$canModerate) {
             $where .= ' AND c.status = "approved"';
         }
-        $sql = 'SELECT SQL_CALC_FOUND_ROWS c.id, c.message_id, c.user_id, c.content, c.parent_id, c.root_id, c.status, c.created_at, c.reviewed_at, c.reviewed_by FROM message_comments c WHERE ' . $where . ' ORDER BY COALESCE(c.root_id, c.id) ASC, c.id ASC LIMIT :limit OFFSET :offset';
+        $sql = 'SELECT SQL_CALC_FOUND_ROWS '
+            . 'c.id, c.message_id, c.user_id, c.is_anonymous, c.content, c.parent_id, c.root_id, c.status, c.created_at, c.reviewed_at, c.reviewed_by, '
+            . 'CASE WHEN c.is_anonymous = 1 AND (c.user_id IS NULL OR c.user_id <> :viewer_id) THEN NULL ELSE u.email END AS user_email, '
+            . 'CASE WHEN c.is_anonymous = 1 AND (c.user_id IS NULL OR c.user_id <> :viewer_id) THEN NULL ELSE u.nickname END AS user_nickname '
+            . 'FROM message_comments c '
+            . 'LEFT JOIN users u ON u.id = c.user_id '
+            . 'WHERE ' . $where . ' '
+            . 'ORDER BY COALESCE(c.root_id, c.id) ASC, c.id ASC '
+            . 'LIMIT :limit OFFSET :offset';
         $stmt = $this->pdo->prepare($sql);
         $stmt->bindValue(':mid', $messageId, PDO::PARAM_INT);
+        $stmt->bindValue(':viewer_id', $viewerId, PDO::PARAM_INT);
         $stmt->bindValue(':limit', $pageSize, PDO::PARAM_INT);
         $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
@@ -53,11 +63,12 @@ final class CommentService
             $rootId = (int)($parent['root_id'] ?? 0);
             if ($rootId <= 0) { $rootId = $parentId; }
         }
+        $isAnonymous = (int) (!empty($data['is_anonymous']));
         // 评论默认直接展示（approved）
-        $stmt = $this->pdo->prepare('INSERT INTO message_comments(message_id, user_id, content, parent_id, root_id, status, created_at) VALUES(?,?,?,?,?,"approved",CURRENT_TIMESTAMP)');
-        $stmt->execute([$messageId, $userId, $content, $parentId > 0 ? $parentId : null, $rootId]);
+        $stmt = $this->pdo->prepare('INSERT INTO message_comments(message_id, user_id, is_anonymous, content, parent_id, root_id, status, created_at) VALUES(?,?,?,?,?, ?,"approved",CURRENT_TIMESTAMP)');
+        $stmt->execute([$messageId, $userId, $isAnonymous, $content, $parentId > 0 ? $parentId : null, $rootId]);
         $id = (int)$this->pdo->lastInsertId();
-        $this->logger->log('comment.create', $userId, ['message_id' => $messageId, 'comment_id' => $id]);
+        $this->logger->log('comment.create', $userId, ['message_id' => $messageId, 'comment_id' => $id, 'is_anonymous' => $isAnonymous]);
         return ['ok' => true, 'id' => $id];
     }
 

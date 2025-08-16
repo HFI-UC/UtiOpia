@@ -87,7 +87,10 @@ CREATE TABLE IF NOT EXISTS message_comments (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   message_id INT UNSIGNED NOT NULL,
   user_id INT UNSIGNED NOT NULL,
+  is_anonymous TINYINT(1) NOT NULL DEFAULT 0,
   content VARCHAR(1000) NOT NULL,
+  parent_id BIGINT UNSIGNED NULL,
+  root_id BIGINT UNSIGNED NULL,
   status ENUM('approved','rejected','pending') NOT NULL DEFAULT 'approved',
   reject_reason VARCHAR(255) NULL,
   reviewed_by INT UNSIGNED NULL,
@@ -96,11 +99,15 @@ CREATE TABLE IF NOT EXISTS message_comments (
   created_at DATETIME NOT NULL,
   INDEX idx_message_id (message_id),
   INDEX idx_user_id (user_id),
+  INDEX idx_parent_id (parent_id),
+  INDEX idx_root_id (root_id),
   INDEX idx_status (status),
   INDEX idx_deleted_at (deleted_at),
   CONSTRAINT fk_message_comments_message FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE,
   CONSTRAINT fk_message_comments_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-  CONSTRAINT fk_message_comments_reviewer FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL
+  CONSTRAINT fk_message_comments_reviewer FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_message_comments_parent FOREIGN KEY (parent_id) REFERENCES message_comments(id) ON DELETE CASCADE,
+  CONSTRAINT fk_message_comments_root FOREIGN KEY (root_id) REFERENCES message_comments(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 SQL;
 
