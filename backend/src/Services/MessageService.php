@@ -29,10 +29,13 @@ final class MessageService
         if ($canModerate) {
             $cols = 'm.id, m.user_id, m.is_anonymous, m.content, m.image_url, m.status, m.created_at';
         } else {
-            // 非审核视图：匿名且非本人 → 隐去 user_id
-            $cols = 'm.id, CASE WHEN m.is_anonymous = 1 AND (m.user_id IS NULL OR m.user_id <> :viewer_id) '
+            // 非审核视图：匿名且非本人 → 隐去 user_id；实名可显示邮箱（公开身份）
+            $cols = 'm.id, '
+                  . 'CASE WHEN m.is_anonymous = 1 AND (m.user_id IS NULL OR m.user_id <> :viewer_id) '
                   . 'THEN NULL ELSE m.user_id END AS user_id, '
-                  . 'm.is_anonymous, m.content, m.image_url, m.status, m.created_at';
+                  . 'm.is_anonymous, m.content, m.image_url, m.status, m.created_at, '
+                  . 'CASE WHEN m.is_anonymous = 0 AND m.user_id IS NOT NULL AND m.user_id > 0 '
+                  . 'THEN u.email ELSE NULL END AS user_email';
         }
         if ($canModerate) {
             $cols .= ', m.reject_reason, m.reviewed_at, m.reviewed_by';

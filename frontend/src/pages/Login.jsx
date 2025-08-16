@@ -162,15 +162,8 @@ const Login = () => {
               </div>
               <div className="flex items-start space-x-3">
                 <div className="w-2 h-2 bg-orange-500 rounded-full mt-2 flex-shrink-0"></div>
-                <p className="text-sm text-muted-foreground">登录后可以实名或匿名发布纸条</p>
+                <p className="text-sm text-muted-foreground">登录后可以实名发布纸条</p>
               </div>
-            </div>
-            
-            <div className="mt-6 p-4 bg-white/50 rounded-lg">
-              <h4 className="font-medium text-sm mb-2">安全提示</h4>
-              <p className="text-xs text-muted-foreground">
-                我们使用先进的安全验证技术保护您的账户安全，请在安全的网络环境下登录。
-              </p>
             </div>
           </CardContent>
         </Card>
