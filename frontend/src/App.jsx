@@ -7,6 +7,7 @@ import Navbar from './components/Navbar';
 
 // Pages
 import Home from './pages/Home';
+import MessageDetail from './pages/MessageDetail';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Write from './pages/Write';
@@ -38,6 +39,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/write" element={<Write />} />
+            <Route path="/messages/:id" element={<MessageDetail />} />
             <Route 
               path="/admin" 
               element={

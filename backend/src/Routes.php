@@ -37,6 +37,7 @@ final class Routes
 
             // Messages
             $group->get('/messages', [self::class, 'listMessages']);
+            $group->get('/messages/{id}', [self::class, 'getMessage']);
             $group->post('/messages', [self::class, 'createMessage']);
             $group->put('/messages/{id}', [self::class, 'updateMessage']);
             $group->delete('/messages/{id}', [self::class, 'deleteMessage']);
@@ -200,6 +201,14 @@ final class Routes
         } catch (\Throwable $e) {
             return self::json($response, ['error' => $e->getMessage()], 403);
         }
+    }
+
+    public static function getMessage(Request $request, Response $response, array $args): Response
+    {
+        [, $container, $user] = self::ctxAuthOptional($request);
+        $svc = $container->get(\UtiOpia\Services\MessageService::class);
+        $result = $svc->getById((int)$args['id'], $user);
+        return self::json($response, $result);
     }
 
     public static function toggleLike(Request $request, Response $response, array $args): Response

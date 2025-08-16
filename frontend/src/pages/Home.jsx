@@ -41,7 +41,8 @@ const Home = () => {
     isDone, 
     fetchMessages, 
     updateMessage, 
-    deleteMessage 
+    deleteMessage, 
+    toggleLike 
   } = useMessagesStore();
   const { user, token } = useAuthStore();
   
@@ -300,9 +301,21 @@ const Home = () => {
                       {message.user_email || '匿名用户'}
                     </span>
                   </div>
-                  <Badge variant="outline" className="text-xs">
-                    #{message.id}
-                  </Badge>
+                  <div className="flex items-center space-x-3">
+                    <button
+                      className={`inline-flex items-center text-sm ${message.liked_by_me ? 'text-red-500' : 'text-muted-foreground'} hover:text-red-500 transition-colors`}
+                      onClick={async ()=>{ try { await toggleLike(message.id); } catch (e) { toast.error(e.message); } }}
+                      title={message.liked_by_me ? '取消点赞' : '点赞'}
+                    >
+                      <Heart className={`w-4 h-4 mr-1 ${message.liked_by_me ? 'fill-current' : ''}`} />
+                      <span>{message.likes_count || 0}</span>
+                    </button>
+                    <Link to={`/messages/${message.id}`} className="inline-flex items-center text-sm text-muted-foreground hover:text-blue-600 transition-colors">
+                      <MessageCircle className="w-4 h-4 mr-1" />
+                      <span>评论</span>
+                    </Link>
+                    <Badge variant="outline" className="text-xs">#{message.id}</Badge>
+                  </div>
                 </div>
               </CardFooter>
             </Card>

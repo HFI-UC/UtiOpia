@@ -214,6 +214,60 @@ final class MessageService
         $stmt->execute([$type, $value]);
         return (bool)$stmt->fetchColumn();
     }
+
+    public function getById(int $id, array $user): array
+    {
+        $requestedStatus = 'all';
+        $canModerate = false;
+        try {
+            $this->acl->ensure($user['role'], 'message:approve');
+            $canModerate = true;
+        } catch (\Throwable) {}
+        $viewerId = (int)($user['id'] ?? 0);
+        if ($canModerate) {
+            $cols = 'm.id, m.user_id, m.is_anonymous, m.content, m.image_url, m.status, m.created_at';
+        } else {
+            $cols = 'm.id, '
+                . 'CASE WHEN m.is_anonymous = 1 AND (m.user_id IS NULL OR m.user_id <> :viewer_id) THEN NULL ELSE m.user_id END AS user_id, '
+                . 'm.is_anonymous, m.content, m.image_url, m.status, m.created_at, '
+                . 'CASE WHEN m.is_anonymous = 0 AND m.user_id IS NOT NULL AND m.user_id > 0 THEN u.email ELSE NULL END AS user_email';
+        }
+        if ($canModerate) {
+            $cols .= ', m.reject_reason, m.reviewed_at, m.reviewed_by';
+            $cols .= ', m.anon_email, m.anon_student_id, CASE WHEN m.user_id IS NOT NULL AND m.user_id > 0 THEN u.email ELSE NULL END AS user_email';
+        }
+        $cols .= ', (SELECT COUNT(*) FROM message_likes ml WHERE ml.message_id = m.id AND ml.deleted_at IS NULL) AS likes_count';
+        if ($viewerId > 0) {
+            $cols .= ', EXISTS(SELECT 1 FROM message_likes ml2 WHERE ml2.message_id = m.id AND ml2.user_id = :viewer_like_user AND ml2.deleted_at IS NULL) AS liked_by_me';
+        }
+        $where = 'WHERE m.id = :id';
+        if (!$canModerate) {
+            $where .= ' AND m.status = "approved" AND m.deleted_at IS NULL';
+        }
+        $sql = "SELECT $cols FROM messages m LEFT JOIN users u ON m.user_id = u.id $where LIMIT 1";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+        if (!$canModerate) {
+            $stmt->bindValue(':viewer_id', $viewerId, PDO::PARAM_INT);
+        }
+        if ($viewerId > 0) {
+            $stmt->bindValue(':viewer_like_user', $viewerId, PDO::PARAM_INT);
+        }
+        $stmt->execute();
+        $item = $stmt->fetch();
+        if (!$item) return ['error' => '不存在或不可见'];
+        try {
+            if (function_exists('app_container_get')) {
+                /** @var COSService $cos */
+                $cos = app_container_get(COSService::class);
+                $url = (string)($item['image_url'] ?? '');
+                if ($url !== '') {
+                    $item['image_url'] = $cos->generatePresignedGetUrl($url, 30);
+                }
+            }
+        } catch (\Throwable) {}
+        return ['item' => $item];
+    }
 }
 
 

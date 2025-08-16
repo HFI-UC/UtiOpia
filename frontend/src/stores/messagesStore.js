@@ -104,6 +104,32 @@ const useMessagesStore = create((set, get) => ({
     }
   },
 
+  // 点赞/取消点赞
+  toggleLike: async (id) => {
+    const { messages } = get();
+    try {
+      const resp = await api.post(`/messages/${id}/like`);
+      const liked = !!resp?.data?.liked;
+      set({
+        messages: messages.map(m => {
+          if (m.id !== id) return m;
+          const currentLiked = !!m.liked_by_me;
+          const nextLiked = liked;
+          const delta = (nextLiked ? 1 : 0) - (currentLiked ? 1 : 0);
+          return {
+            ...m,
+            liked_by_me: nextLiked,
+            likes_count: Math.max(0, (m.likes_count || 0) + delta)
+          };
+        })
+      });
+    } catch (error) {
+      const message = error.response?.data?.error || error.message || '操作失败';
+      set({ error: message });
+      throw new Error(message);
+    }
+  },
+
   // 重置状态
   reset: () => {
     set({

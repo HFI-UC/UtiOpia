@@ -11,6 +11,7 @@ import {
   XCircle, 
   Clock, 
   Eye, 
+  EyeOff,
   AlertTriangle,
   User,
   Calendar,
@@ -31,6 +32,8 @@ const Moderation = () => {
   const [banDialog, setBanDialog] = useState({ open: false, choice: null, options: [], reason: '' });
   const [rejectSubmitting, setRejectSubmitting] = useState(false);
   const [banSubmitting, setBanSubmitting] = useState(false);
+  const [expanded, setExpanded] = useState({}); // messageId -> boolean
+  const [commentsByMsg, setCommentsByMsg] = useState({}); // messageId -> { loading, items }
 
   // 加载真实数据
   useEffect(() => {
@@ -105,16 +108,7 @@ const Moderation = () => {
     setLoading(true);
     try {
       await api.post(`/messages/${messageId}/approve`);
-      const message = pendingMessages.find(m => m.id === messageId);
-      if (message) {
-        const approvedMessage = {
-          ...message,
-          status: 'approved',
-          reviewed_at: new Date().toISOString()
-        };
-        setPendingMessages(prev => prev.filter(m => m.id !== messageId));
-        setReviewedMessages(prev => [approvedMessage, ...prev]);
-      }
+      updateMessageStatusInState(messageId, 'approved');
       toast.success('内容已通过审核');
     } catch (error) {
       const msg = error.response?.data?.error || error.message || '操作失败';
@@ -130,23 +124,77 @@ const Moderation = () => {
     setLoading(true);
     try {
       await api.post(`/messages/${messageId}/reject`, { reason: rejectReason });
-      const message = pendingMessages.find(m => m.id === messageId);
-      if (message) {
-        const rejectedMessage = {
-          ...message,
-          status: 'rejected',
-          reviewed_at: new Date().toISOString(),
-          reject_reason: rejectReason
-        };
-        setPendingMessages(prev => prev.filter(m => m.id !== messageId));
-        setReviewedMessages(prev => [rejectedMessage, ...prev]);
-      }
+      updateMessageStatusInState(messageId, 'rejected', rejectReason);
       toast.success('内容已拒绝');
     } catch (error) {
       const msg = error.response?.data?.error || error.message || '操作失败';
       toast.error(msg);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const updateMessageStatusInState = (messageId, status, rejectReason = '') => {
+    setPendingMessages(prev => prev.filter(m => m.id !== messageId));
+    setReviewedMessages(prev => {
+      const inReviewed = prev.find(m => m.id === messageId);
+      if (inReviewed) {
+        return prev.map(m => m.id === messageId ? { ...m, status, reviewed_at: new Date().toISOString(), reject_reason: status==='rejected'?rejectReason:undefined } : m);
+      }
+      const fromPending = pendingMessages.find(m => m.id === messageId);
+      if (fromPending) {
+        const newItem = { ...fromPending, status, reviewed_at: new Date().toISOString(), reject_reason: status==='rejected'?rejectReason:undefined };
+        return [newItem, ...prev];
+      }
+      return prev;
+    });
+  };
+
+  const toggleExpandComments = async (messageId) => {
+    setExpanded(prev => ({ ...prev, [messageId]: !prev[messageId] }));
+    const opened = !expanded[messageId];
+    if (opened && !commentsByMsg[messageId]) {
+      setCommentsByMsg(prev => ({ ...prev, [messageId]: { loading: true, items: [] } }));
+      try {
+        const r = await api.get(`/messages/${messageId}/comments`, { params: { page: 1, pageSize: 100 } });
+        const items = r?.data?.items || [];
+        setCommentsByMsg(prev => ({ ...prev, [messageId]: { loading: false, items } }));
+      } catch {
+        setCommentsByMsg(prev => ({ ...prev, [messageId]: { loading: false, items: [] } }));
+      }
+    }
+  };
+
+  const approveComment = async (commentId, messageId) => {
+    try {
+      await api.post(`/comments/${commentId}/approve`);
+      setCommentsByMsg(prev => ({
+        ...prev,
+        [messageId]: {
+          ...(prev[messageId]||{ loading:false, items:[] }),
+          items: (prev[messageId]?.items||[]).map(c => c.id === commentId ? { ...c, status: 'approved' } : c)
+        }
+      }));
+      toast.success('评论已展示');
+    } catch (e) {
+      toast.error(e.response?.data?.error || e.message || '操作失败');
+    }
+  };
+
+  const rejectComment = async (commentId, messageId) => {
+    const reason = window.prompt('请输入隐藏原因（可留空）', '');
+    try {
+      await api.post(`/comments/${commentId}/reject`, { reason });
+      setCommentsByMsg(prev => ({
+        ...prev,
+        [messageId]: {
+          ...(prev[messageId]||{ loading:false, items:[] }),
+          items: (prev[messageId]?.items||[]).map(c => c.id === commentId ? { ...c, status: 'rejected', reject_reason: reason } : c)
+        }
+      }));
+      toast.success('评论已隐藏');
+    } catch (e) {
+      toast.error(e.response?.data?.error || e.message || '操作失败');
     }
   };
 
@@ -195,6 +243,14 @@ const Moderation = () => {
                 已拒绝
               </Badge>
             )}
+            <div className="flex items-center space-x-1">
+              <Button size="sm" variant={message.status==='approved' ? 'outline' : 'default'} onClick={() => handleApprove(message.id)} disabled={loading}>
+                <Eye className="w-3 h-3 mr-1" />展示
+              </Button>
+              <Button size="sm" variant="destructive" onClick={() => handleReject(message.id)} disabled={loading}>
+                <EyeOff className="w-3 h-3 mr-1" />隐藏
+              </Button>
+            </div>
           </div>
         </div>
       </CardHeader>
@@ -246,6 +302,43 @@ const Moderation = () => {
             审核时间：{formatTime(message.reviewed_at)} | 审核人：{message.reviewed_by ?? '未检查'}
           </div>
         )}
+
+        {/* 评论区域（管理员可展开并审核评论） */}
+        <div className="pt-2">
+          <Button size="sm" variant="outline" onClick={() => toggleExpandComments(message.id)} disabled={commentsByMsg[message.id]?.loading}>
+            {expanded[message.id] ? '收起评论' : '查看评论'}
+          </Button>
+          {expanded[message.id] && (
+            <div className="mt-3 space-y-2">
+              {commentsByMsg[message.id]?.loading && (
+                <div className="text-xs text-muted-foreground">加载评论中…</div>
+              )}
+              {(commentsByMsg[message.id]?.items || []).length === 0 && !commentsByMsg[message.id]?.loading && (
+                <div className="text-xs text-muted-foreground">暂无评论</div>
+              )}
+              {(commentsByMsg[message.id]?.items || []).map((c) => (
+                <div key={c.id} className="p-2 border rounded-md">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm whitespace-pre-wrap break-words">{c.content}</div>
+                    <div className="flex items-center space-x-2">
+                      {c.status === 'approved' && (<Badge variant="outline">已展示</Badge>)}
+                      {c.status === 'rejected' && (<Badge variant="destructive">已隐藏</Badge>)}
+                      {c.status === 'pending' && (<Badge variant="secondary">待审核</Badge>)}
+                    </div>
+                  </div>
+                  <div className="mt-2 flex items-center space-x-2">
+                    <Button size="sm" variant={c.status==='approved'?'outline':'default'} onClick={()=>approveComment(c.id, message.id)}>
+                      <Eye className="w-3 h-3 mr-1" />展示
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={()=>rejectComment(c.id, message.id)}>
+                      <EyeOff className="w-3 h-3 mr-1" />隐藏
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
         
         {showActions && (
           <div className="flex space-x-2 pt-2">
