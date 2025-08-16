@@ -234,13 +234,13 @@ const Moderation = () => {
             {message.status === 'approved' && (
               <Badge variant="default">
                 <CheckCircle className="w-3 h-3 mr-1" />
-                已通过
+                已展示
               </Badge>
             )}
             {message.status === 'rejected' && (
               <Badge variant="destructive">
-                <XCircle className="w-3 h-3 mr-1" />
-                已拒绝
+                <EyeOff className="w-3 h-3 mr-1" />
+                已隐藏
               </Badge>
             )}
             <div className="flex items-center space-x-1">
@@ -482,7 +482,7 @@ const Moderation = () => {
             <Card>
               <CardContent className="p-8 text-center">
                 <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">暂无待审核内容</h3>
+                <h3 className="text-lg font-medium mb-2">暂无待处理内容</h3>
                 <p className="text-muted-foreground">
                   所有提交的内容都已完成审核
                 </p>
@@ -506,7 +506,7 @@ const Moderation = () => {
             <Card>
               <CardContent className="p-8 text-center">
                 <Eye className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">暂无审核记录</h3>
+                <h3 className="text-lg font-medium mb-2">暂无记录</h3>
                 <p className="text-muted-foreground">
                   还没有完成任何内容审核
                 </p>

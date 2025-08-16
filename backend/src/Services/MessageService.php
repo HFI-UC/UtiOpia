@@ -136,7 +136,7 @@ final class MessageService
         }
         $id = (int)$this->pdo->lastInsertId();
         $this->logger->log('message.create', $userId, ['message_id' => $id]);
-        // 邮件通知：已发布
+        // 发送“已公开展示但可能被隐藏”的提示邮件
         try {
             if (function_exists('app_container_get')) {
                 /** @var Mailer $mailer */
@@ -145,11 +145,10 @@ final class MessageService
                     $stmt = $this->pdo->prepare('SELECT email, nickname FROM users WHERE id = ?');
                     $stmt->execute([$userId]);
                     if ($u = $stmt->fetch()) {
-                        $mailer->sendMessageApproved((string)$u['email'], (string)$u['nickname'], $id, $content);
+                        $mailer->sendMessagePublishedNotice((string)$u['email'], (string)$u['nickname'], $id, $content);
                     }
                 } else if ($isAnonymous && $anonEmail !== '') {
-                    // 游客匿名：发送到匿名邮箱
-                    $mailer->sendMessageApproved($anonEmail, '同学', $id, $content);
+                    $mailer->sendMessagePublishedNotice($anonEmail, '同学', $id, $content);
                 }
             }
         } catch (\Throwable) {}

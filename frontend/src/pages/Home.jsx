@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -25,7 +25,8 @@ import {
   Clock,
   User,
   Star,
-  Loader2
+  Loader2,
+  Reply
 } from 'lucide-react';
 import { toast } from 'sonner';
 import useMessagesStore from '../stores/messagesStore';
@@ -34,6 +35,7 @@ import useAuthStore from '../stores/authStore';
 import Turnstile from '../components/Turnstile';
 
 const Home = () => {
+  const navigate = useNavigate();
   const { 
     messages, 
     total, 
@@ -45,6 +47,7 @@ const Home = () => {
     toggleLike 
   } = useMessagesStore();
   const { user, token } = useAuthStore();
+  const isAuthed = !!token;
   
   const [editDialog, setEditDialog] = useState({ open: false, message: null });
   const [deleteDialog, setDeleteDialog] = useState({ open: false, message: null });
@@ -54,6 +57,12 @@ const Home = () => {
   const [turnstileToken, setTurnstileToken] = useState('');
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+
+  // Embedded comments state per message
+  const [expandedComments, setExpandedComments] = useState({}); // messageId -> bool
+  const [commentsByMsg, setCommentsByMsg] = useState({}); // messageId -> { loading, items, total }
+  const [commentInput, setCommentInput] = useState({}); // messageId -> text
+  const [replyTo, setReplyTo] = useState({}); // messageId -> { id, content } | null
 
   useEffect(() => {
     fetchMessages(true);
@@ -183,6 +192,47 @@ const Home = () => {
     } finally { setDeleteSubmitting(false); }
   };
 
+  const toggleCommentsFor = async (messageId) => {
+    setExpandedComments(prev => ({ ...prev, [messageId]: !prev[messageId] }));
+    const opening = !expandedComments[messageId];
+    if (opening && !commentsByMsg[messageId]) {
+      await loadCommentsFor(messageId);
+    }
+  };
+
+  const loadCommentsFor = async (messageId) => {
+    setCommentsByMsg(prev => ({ ...prev, [messageId]: { loading: true, items: [], total: 0 } }));
+    try {
+      const r = await api.get(`/messages/${messageId}/comments`, { params: { page: 1, pageSize: 100 } });
+      const items = r?.data?.items || [];
+      const total = r?.data?.total || items.length;
+      setCommentsByMsg(prev => ({ ...prev, [messageId]: { loading: false, items, total } }));
+    } catch {
+      setCommentsByMsg(prev => ({ ...prev, [messageId]: { loading: false, items: [], total: 0 } }));
+    }
+  };
+
+  const submitCommentFor = async (messageId) => {
+    if (!isAuthed) {
+      navigate(`/login?redirect=${encodeURIComponent(location.pathname)}`);
+      return;
+    }
+    const text = (commentInput[messageId] || '').trim();
+    if (!text) { toast.error('请输入评论内容'); return; }
+    try {
+      const payload = replyTo[messageId] ? { content: text, parent_id: replyTo[messageId].id } : { content: text };
+      const r = await api.post(`/messages/${messageId}/comments`, payload);
+      if (r?.data?.id) {
+        setCommentInput(prev => ({ ...prev, [messageId]: '' }));
+        setReplyTo(prev => ({ ...prev, [messageId]: null }));
+        await loadCommentsFor(messageId);
+        toast.success('评论已发布');
+      }
+    } catch (e) {
+      toast.error(e.response?.data?.error || e.message || '评论失败');
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-8">
       {/* Hero Section */}
@@ -287,6 +337,68 @@ const Home = () => {
                     />
                   </div>
                 )}
+
+                {/* Embedded comments section */}
+                <div className="pt-2">
+                  <Button variant="outline" size="sm" onClick={() => toggleCommentsFor(message.id)}>
+                    {expandedComments[message.id] ? '收起评论' : `查看评论${commentsByMsg[message.id] ? ` (${commentsByMsg[message.id].total})` : ''}`}
+                  </Button>
+                  {expandedComments[message.id] && (
+                    <div className="mt-3 space-y-3">
+                      {commentsByMsg[message.id]?.loading ? (
+                        <div className="text-xs text-muted-foreground flex items-center"><Loader2 className="w-4 h-4 animate-spin mr-2"/>加载中…</div>
+                      ) : (
+                        (commentsByMsg[message.id]?.items || []).length === 0 ? (
+                          <div className="text-xs text-muted-foreground">暂无评论</div>
+                        ) : (
+                          <div className="space-y-2">
+                            {(commentsByMsg[message.id]?.items || []).map((c) => {
+                              const isReply = !!c.parent_id;
+                              const isOwner = !!(user && message.user_id && c.user_id && Number(message.user_id) === Number(c.user_id));
+                              return (
+                                <div key={c.id} className={`p-2 border rounded-md ${isReply ? 'ml-4' : ''}`}>
+                                  <div className="text-xs text-muted-foreground flex items-center space-x-2">
+                                    {isReply && <span className="px-1 bg-muted rounded">回复</span>}
+                                    {isOwner && <span className="px-1 bg-yellow-100 text-yellow-800 rounded">作者</span>}
+                                  </div>
+                                  <div className="text-sm whitespace-pre-wrap break-words mt-1">{c.content}</div>
+                                  <div className="mt-2 text-xs text-muted-foreground flex items-center justify-between">
+                                    <span>{formatTime(c.created_at)}</span>
+                                    <Button variant="ghost" size="sm" onClick={() => { if (!isAuthed) { navigate(`/login?redirect=${encodeURIComponent(location.pathname)}`); return; } setReplyTo(prev => ({ ...prev, [message.id]: { id: c.id, content: c.content } })); }}>
+                                      <Reply className="w-3 h-3 mr-1"/>回复
+                                    </Button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )
+                      )}
+
+                      {/* Input */}
+                      {replyTo[message.id] && (
+                        <div className="text-xs text-muted-foreground">正在回复：{replyTo[message.id].content.slice(0, 40)}</div>
+                      )}
+                      <Textarea
+                        placeholder={isAuthed ? '写下你的评论...' : '登录后参与评论'}
+                        value={commentInput[message.id] || ''}
+                        onChange={(e) => setCommentInput(prev => ({ ...prev, [message.id]: e.target.value }))}
+                        disabled={!isAuthed}
+                      />
+                      <div className="flex items-center justify-between">
+                        {!isAuthed ? (
+                          <div className="text-xs text-muted-foreground">
+                            想要发表评论或回复？
+                            <Link to={`/login?redirect=${encodeURIComponent(location.pathname)}`} className="text-blue-600 ml-1">去登录</Link>
+                            <span className="mx-1">/</span>
+                            <Link to={`/register?redirect=${encodeURIComponent(location.pathname)}`} className="text-blue-600">去注册</Link>
+                          </div>
+                        ) : <span />}
+                        <Button onClick={() => submitCommentFor(message.id)} disabled={!isAuthed}>发表评论</Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </CardContent>
               
               <CardFooter className="pt-3">
@@ -310,10 +422,10 @@ const Home = () => {
                       <Heart className={`w-4 h-4 mr-1 ${message.liked_by_me ? 'fill-current' : ''}`} />
                       <span>{message.likes_count || 0}</span>
                     </button>
-                    <Link to={`/messages/${message.id}`} className="inline-flex items-center text-sm text-muted-foreground hover:text-blue-600 transition-colors">
+                    <Button variant="ghost" size="sm" onClick={() => toggleCommentsFor(message.id)} className="text-muted-foreground hover:text-blue-600">
                       <MessageCircle className="w-4 h-4 mr-1" />
                       <span>评论</span>
-                    </Link>
+                    </Button>
                     <Badge variant="outline" className="text-xs">#{message.id}</Badge>
                   </div>
                 </div>

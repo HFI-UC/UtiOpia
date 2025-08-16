@@ -152,17 +152,25 @@ const MessageDetail = () => {
               <div className="text-sm text-muted-foreground">暂无评论</div>
             ) : (
               <div className="space-y-3">
-                {comments.items.map(c => (
-                  <div key={c.id} className="p-3 border rounded-md">
-                    <div className="text-sm whitespace-pre-wrap break-words">{c.content}</div>
-                    <div className="mt-2 text-xs text-muted-foreground flex items-center justify-between">
-                      <span>{formatTime(c.created_at)}</span>
-                      <Button variant="ghost" size="sm" onClick={() => { if (!isAuthed) { navigate('/login?redirect=' + encodeURIComponent(location.pathname)); return; } setReplyTo({ id: c.id, content: c.content }); }}>
-                        <Reply className="w-3 h-3 mr-1"/>回复
-                      </Button>
+                {comments.items.map(c => {
+                  const isReply = !!c.parent_id;
+                  const isOwner = !!(detail?.user_id && c.user_id && Number(detail.user_id) === Number(c.user_id));
+                  return (
+                    <div key={c.id} className={`p-3 border rounded-md ${isReply ? 'ml-4' : ''}`}>
+                      <div className="text-xs text-muted-foreground flex items-center space-x-2">
+                        {isReply && <span className="px-1 bg-muted rounded">回复</span>}
+                        {isOwner && <span className="px-1 bg-yellow-100 text-yellow-800 rounded">作者</span>}
+                      </div>
+                      <div className="text-sm whitespace-pre-wrap break-words mt-1">{c.content}</div>
+                      <div className="mt-2 text-xs text-muted-foreground flex items-center justify-between">
+                        <span>{formatTime(c.created_at)}</span>
+                        <Button variant="ghost" size="sm" onClick={() => { if (!isAuthed) { navigate('/login?redirect=' + encodeURIComponent(location.pathname)); return; } setReplyTo({ id: c.id, content: c.content }); }}>
+                          <Reply className="w-3 h-3 mr-1"/>回复
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )
           )}

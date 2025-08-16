@@ -17,16 +17,7 @@ final class ModerationService
         $this->pdo->prepare('UPDATE messages SET status = "approved", reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP WHERE id = ?')
             ->execute([$actor['id'], $messageId]);
         $this->logger->log('message.approve', $actor['id'], ['message_id' => $messageId]);
-        // 通知作者（模板：已通过）。若为游客匿名，发送至匿名邮箱
-        $stmt = $this->pdo->prepare('SELECT m.is_anonymous, m.anon_email, m.content, u.email, u.nickname FROM messages m LEFT JOIN users u ON m.user_id = u.id WHERE m.id = ?');
-        $stmt->execute([$messageId]);
-        if ($row = $stmt->fetch()) {
-            if ((int)$row['is_anonymous'] === 1 && !empty($row['anon_email'])) {
-                $this->mailer->sendMessageApproved((string)$row['anon_email'], '同学', $messageId, (string)$row['content']);
-            } else if (!empty($row['email'])) {
-                $this->mailer->sendMessageApproved((string)$row['email'], (string)$row['nickname'], $messageId, (string)$row['content']);
-            }
-        }
+        // 不通知作者（默认即展示，避免重复通知）
         return ['ok' => true];
     }
 

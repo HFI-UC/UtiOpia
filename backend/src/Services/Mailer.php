@@ -172,6 +172,18 @@ HTML;
 		return $this->send($to, $title, $this->baseTemplate($title, $content));
 	}
 
+	public function sendMessagePublishedNotice(string $to, string $nickname, int $messageId, string $contentText): bool
+	{
+		$site = $this->settings['site'] ?? ['url' => ''];
+		$title = '已发布：内容已公开展示';
+		$excerpt = $this->excerpt($contentText);
+		$content = '<p>亲爱的 <strong>' . htmlspecialchars($nickname) . '</strong>，你的纸条已公开展示。</p>'
+			. '<p class="text-muted">请遵守社区规范。如被判定违反规则，管理员可能会将其隐藏。</p>'
+			. '<p><strong>内容摘要：</strong>' . htmlspecialchars($excerpt) . '</p>';
+		$buttons = [ ['text' => '查看留言墙', 'url' => (string)($site['url'] ?? '')] ];
+		return $this->send($to, $title, $this->baseTemplate($title, $content, $buttons));
+	}
+
 	public function sendCommentApproved(string $to, string $nickname, int $messageId, int $commentId, string $contentText): bool
 	{
 		$site = $this->settings['site'] ?? ['url' => ''];
