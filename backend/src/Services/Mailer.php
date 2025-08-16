@@ -171,6 +171,30 @@ HTML;
 			: '<p>亲爱的 <strong>' . htmlspecialchars($nickname) . '</strong>，您的账户已解除封禁，可以继续使用平台功能。</p>';
 		return $this->send($to, $title, $this->baseTemplate($title, $content));
 	}
+
+	public function sendCommentApproved(string $to, string $nickname, int $messageId, int $commentId, string $contentText): bool
+	{
+		$site = $this->settings['site'] ?? ['url' => ''];
+		$title = '评论已通过展示';
+		$excerpt = $this->excerpt($contentText);
+		$content = '<p>亲爱的 <strong>' . htmlspecialchars($nickname) . '</strong>，您的评论已通过审核并对外展示。</p>'
+			. '<p><strong>评论摘要：</strong>' . htmlspecialchars($excerpt) . '</p>';
+		$buttons = [ ['text' => '查看评论', 'url' => (string)($site['url'] ?? '')] ];
+		return $this->send($to, $title, $this->baseTemplate($title, $content, $buttons));
+	}
+
+	public function sendCommentRejected(string $to, string $nickname, int $messageId, int $commentId, string $contentText, string $reason = ''): bool
+	{
+		$site = $this->settings['site'] ?? ['url' => ''];
+		$title = '评论已被隐藏';
+		$excerpt = $this->excerpt($contentText);
+		$reasonHtml = $reason !== '' ? '<p><strong>原因：</strong>' . htmlspecialchars($reason) . '</p>' : '';
+		$content = '<p>亲爱的 <strong>' . htmlspecialchars($nickname) . '</strong>，很抱歉，您的评论未通过审核，已被隐藏。</p>'
+			. $reasonHtml
+			. '<p><strong>评论摘要：</strong>' . htmlspecialchars($excerpt) . '</p>';
+		$buttons = [ ['text' => '返回留言墙', 'url' => (string)($site['url'] ?? '')] ];
+		return $this->send($to, $title, $this->baseTemplate($title, $content, $buttons));
+	}
 }
 
 

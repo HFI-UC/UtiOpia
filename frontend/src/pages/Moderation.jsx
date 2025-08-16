@@ -110,8 +110,7 @@ const Moderation = () => {
         const approvedMessage = {
           ...message,
           status: 'approved',
-          reviewed_at: new Date().toISOString(),
-          reviewed_by: '你'
+          reviewed_at: new Date().toISOString()
         };
         setPendingMessages(prev => prev.filter(m => m.id !== messageId));
         setReviewedMessages(prev => [approvedMessage, ...prev]);
@@ -137,7 +136,6 @@ const Moderation = () => {
           ...message,
           status: 'rejected',
           reviewed_at: new Date().toISOString(),
-          reviewed_by: '你',
           reject_reason: rejectReason
         };
         setPendingMessages(prev => prev.filter(m => m.id !== messageId));
@@ -245,7 +243,7 @@ const Moderation = () => {
         
         {message.reviewed_at && (
           <div className="text-xs text-muted-foreground">
-            审核时间：{formatTime(message.reviewed_at)} | 审核人：{message.reviewed_by}
+            审核时间：{formatTime(message.reviewed_at)} | 审核人：{message.reviewed_by ?? '未检查'}
           </div>
         )}
         
@@ -536,7 +534,7 @@ const Moderation = () => {
                 await api.post(`/messages/${rejectDialog.id}/reject`, { reason: rejectDialog.text });
                 const message = pendingMessages.find(m => m.id === rejectDialog.id);
                 if (message) {
-                  const rejectedMessage = { ...message, status: 'rejected', reviewed_at: new Date().toISOString(), reviewed_by: '你', reject_reason: rejectDialog.text };
+                  const rejectedMessage = { ...message, status: 'rejected', reviewed_at: new Date().toISOString(), reject_reason: rejectDialog.text };
                   setPendingMessages(prev => prev.filter(m => m.id !== rejectDialog.id));
                   setReviewedMessages(prev => [rejectedMessage, ...prev]);
                 }

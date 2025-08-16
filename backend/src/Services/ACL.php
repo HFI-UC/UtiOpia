@@ -14,11 +14,13 @@ final class ACL
             'super_admin' => ['*'],
             'moderator' => [
                 'message:read', 'message:update', 'message:delete', 'message:approve', 'message:reject',
+                'like:toggle', 'comment:approve', 'comment:reject',
                 'user:read', 'user:update', 'user:ban', 'user:unban',
                 'audit:read', 'ban:manage',
             ],
             'user' => [
                 'message:read', 'message:create', 'message:update:own', 'message:delete:own',
+                'like:toggle', 'comment:create', 'comment:delete:own',
             ],
         ];
         if (in_array('*', $map[$role] ?? [], true)) {

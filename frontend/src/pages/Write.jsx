@@ -270,7 +270,7 @@ const Write = () => {
       }
       
       await createMessage(messageData);
-      toast.success('纸条发布成功，正在等待审核！');
+      toast.success('纸条发布成功，已对外展示！');
       navigate('/');
     } catch (err) {
       // 错误已经在store中处理
@@ -557,7 +557,7 @@ const Write = () => {
                 </Button>
                 
                 <p className="text-center text-xs text-muted-foreground">
-                  发布后需要等待审核通过才会显示
+                  发布后将立即展示。请遵守社区规范，管理员可能会进行事后管理。
                 </p>
               </CardFooter>
             </form>
@@ -633,7 +633,7 @@ const Write = () => {
               try { 
                 setConfirmSubmitting(true);
                 await createMessage({ content: formData.content, image_url: formData.imageUrl, turnstile_token: turnstileToken, is_anonymous: false }); 
-                toast.success('纸条发布成功，正在等待审核！'); 
+                toast.success('纸条发布成功，已对外展示！'); 
                 setConfirmOpen(false);
                 navigate('/'); 
               } catch {} finally { setConfirmSubmitting(false); }

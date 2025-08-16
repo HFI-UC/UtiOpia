@@ -120,6 +120,12 @@ $container->set(\UtiOpia\Services\StatsService::class, function ($c) {
 $container->set(\UtiOpia\Services\Mailer::class, function ($c) {
     return new \UtiOpia\Services\Mailer($c->get('settings'), $c->get(\UtiOpia\Services\AuditLogger::class));
 });
+$container->set(\UtiOpia\Services\LikeService::class, function ($c) {
+    return new \UtiOpia\Services\LikeService($c->get(PDO::class), $c->get(\UtiOpia\Services\AuditLogger::class), $c->get(\UtiOpia\Services\ACL::class));
+});
+$container->set(\UtiOpia\Services\CommentService::class, function ($c) {
+    return new \UtiOpia\Services\CommentService($c->get(PDO::class), $c->get(\UtiOpia\Services\AuditLogger::class), $c->get(\UtiOpia\Services\ACL::class));
+});
 
 // Error middleware (after services are available)
 $app->add(new UErrorMiddleware($container->get(\UtiOpia\Services\AuditLogger::class)));

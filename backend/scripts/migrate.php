@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS messages (
   anon_passphrase_hash VARCHAR(255) NULL,
   content VARCHAR(500) NOT NULL,
   image_url VARCHAR(1024) NULL,
-  status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+  status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'approved',
   reject_reason VARCHAR(255) NULL,
   reviewed_by INT UNSIGNED NULL,
   reviewed_at DATETIME NULL,
@@ -58,14 +58,51 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   action VARCHAR(100) NOT NULL,
   user_id INT UNSIGNED NULL,
-  meta JSON NULL,
+  meta TEXT NULL,
   created_at DATETIME NOT NULL,
   INDEX idx_action(action),
   INDEX idx_user_id(user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 SQL;
 
-$sql[] = "";
+// Likes
+$sql[] = <<<SQL
+CREATE TABLE IF NOT EXISTS message_likes (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  message_id INT UNSIGNED NOT NULL,
+  user_id INT UNSIGNED NOT NULL,
+  deleted_at DATETIME NULL,
+  created_at DATETIME NOT NULL,
+  UNIQUE KEY uniq_message_user (message_id, user_id),
+  INDEX idx_user_id (user_id),
+  INDEX idx_deleted_at (deleted_at),
+  CONSTRAINT fk_message_likes_message FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE,
+  CONSTRAINT fk_message_likes_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+SQL;
+
+// Comments
+$sql[] = <<<SQL
+CREATE TABLE IF NOT EXISTS message_comments (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  message_id INT UNSIGNED NOT NULL,
+  user_id INT UNSIGNED NOT NULL,
+  content VARCHAR(1000) NOT NULL,
+  status ENUM('approved','rejected','pending') NOT NULL DEFAULT 'approved',
+  reject_reason VARCHAR(255) NULL,
+  reviewed_by INT UNSIGNED NULL,
+  reviewed_at DATETIME NULL,
+  deleted_at DATETIME NULL,
+  created_at DATETIME NOT NULL,
+  INDEX idx_message_id (message_id),
+  INDEX idx_user_id (user_id),
+  INDEX idx_status (status),
+  INDEX idx_deleted_at (deleted_at),
+  CONSTRAINT fk_message_comments_message FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE,
+  CONSTRAINT fk_message_comments_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_message_comments_reviewer FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+SQL;
 
 $sql[] = <<<SQL
 CREATE TABLE IF NOT EXISTS bans (

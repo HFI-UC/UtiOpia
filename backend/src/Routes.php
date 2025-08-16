@@ -41,6 +41,14 @@ final class Routes
             $group->put('/messages/{id}', [self::class, 'updateMessage']);
             $group->delete('/messages/{id}', [self::class, 'deleteMessage']);
 
+            // Likes
+            $group->post('/messages/{id}/like', [self::class, 'toggleLike']);
+
+            // Comments
+            $group->get('/messages/{id}/comments', [self::class, 'listComments']);
+            $group->post('/messages/{id}/comments', [self::class, 'createComment']);
+            $group->delete('/comments/{id}', [self::class, 'deleteComment']);
+
             // Admin: users
             $group->get('/users', [self::class, 'listUsers']);
             $group->put('/users/{id}', [self::class, 'updateUser']);
@@ -55,6 +63,8 @@ final class Routes
             // Moderation
             $group->post('/messages/{id}/approve', [self::class, 'approveMessage']);
             $group->post('/messages/{id}/reject', [self::class, 'rejectMessage']);
+            $group->post('/comments/{id}/approve', [self::class, 'approveComment']);
+            $group->post('/comments/{id}/reject', [self::class, 'rejectComment']);
 
             // Audit logs
             $group->get('/logs', [self::class, 'listLogs']);
@@ -192,6 +202,38 @@ final class Routes
         }
     }
 
+    public static function toggleLike(Request $request, Response $response, array $args): Response
+    {
+        [, $container, $user] = self::ctxAuth($request);
+        $svc = $container->get(\UtiOpia\Services\LikeService::class);
+        $result = $svc->toggle((int)$args['id'], $user);
+        return self::json($response, $result);
+    }
+
+    public static function listComments(Request $request, Response $response, array $args): Response
+    {
+        [$query, $container, $user] = self::ctxAuthOptional($request, true);
+        $svc = $container->get(\UtiOpia\Services\CommentService::class);
+        $result = $svc->listForMessage((int)$args['id'], $user, $query);
+        return self::json($response, $result);
+    }
+
+    public static function createComment(Request $request, Response $response, array $args): Response
+    {
+        [$body, $container, $user] = self::ctxAuth($request);
+        $svc = $container->get(\UtiOpia\Services\CommentService::class);
+        $result = $svc->create((int)$args['id'], (int)$user['id'], $body);
+        return self::json($response, $result);
+    }
+
+    public static function deleteComment(Request $request, Response $response, array $args): Response
+    {
+        [, $container, $user] = self::ctxAuth($request);
+        $svc = $container->get(\UtiOpia\Services\CommentService::class);
+        $result = $svc->delete((int)$args['id'], $user);
+        return self::json($response, $result);
+    }
+
     public static function listUsers(Request $request, Response $response): Response
     {
         [, $container, $user] = self::ctxAuth($request);
@@ -285,6 +327,22 @@ final class Routes
         [$body, $container, $user] = self::ctxAuth($request);
         $svc = $container->get(\UtiOpia\Services\ModerationService::class);
         $result = $svc->reject((int)$args['id'], $user, $body['reason'] ?? '');
+        return self::json($response, $result);
+    }
+
+    public static function approveComment(Request $request, Response $response, array $args): Response
+    {
+        [, $container, $user] = self::ctxAuth($request);
+        $svc = $container->get(\UtiOpia\Services\ModerationService::class);
+        $result = $svc->approveComment((int)$args['id'], $user);
+        return self::json($response, $result);
+    }
+
+    public static function rejectComment(Request $request, Response $response, array $args): Response
+    {
+        [$body, $container, $user] = self::ctxAuth($request);
+        $svc = $container->get(\UtiOpia\Services\ModerationService::class);
+        $result = $svc->rejectComment((int)$args['id'], $user, (string)($body['reason'] ?? ''));
         return self::json($response, $result);
     }
 

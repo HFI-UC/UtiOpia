@@ -43,6 +43,11 @@ final class MessageService
             $cols .= ', m.anon_email, m.anon_student_id, '
                   . 'CASE WHEN m.user_id IS NOT NULL AND m.user_id > 0 THEN u.email ELSE NULL END AS user_email';
         }
+        // 点赞统计与当前用户是否点赞
+        $cols .= ', (SELECT COUNT(*) FROM message_likes ml WHERE ml.message_id = m.id AND ml.deleted_at IS NULL) AS likes_count';
+        if ($viewerId > 0) {
+            $cols .= ', EXISTS(SELECT 1 FROM message_likes ml2 WHERE ml2.message_id = m.id AND ml2.user_id = :viewer_like_user AND ml2.deleted_at IS NULL) AS liked_by_me';
+        }
         $where = '';
         if ($status !== 'all') {
             $where = 'WHERE m.status = :status';
@@ -57,6 +62,9 @@ final class MessageService
         }
         if (!$canModerate) {
             $stmt->bindValue(':viewer_id', $viewerId, PDO::PARAM_INT);
+        }
+        if ($viewerId > 0) {
+            $stmt->bindValue(':viewer_like_user', $viewerId, PDO::PARAM_INT);
         }
         $stmt->bindValue(':limit', $pageSize, PDO::PARAM_INT);
         $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
@@ -98,7 +106,7 @@ final class MessageService
                 $stmt = $this->pdo->prepare('SELECT banned FROM users WHERE id = ?');
                 $stmt->execute([$userId]);
                 if (($stmt->fetch()['banned'] ?? 0) == 1) return ['error' => '账号已被封禁'];
-                $this->pdo->prepare('INSERT INTO messages(user_id, is_anonymous, content, image_url, status, created_at) VALUES(?,1,?,?,"pending",CURRENT_TIMESTAMP)')
+                $this->pdo->prepare('INSERT INTO messages(user_id, is_anonymous, content, image_url, status, created_at) VALUES(?,1,?,?,"approved",CURRENT_TIMESTAMP)')
                     ->execute([$userId, $content, $imageUrl]);
             } else {
                 // 游客匿名：仍需校验匿名信息
@@ -115,7 +123,7 @@ final class MessageService
                     return ['error' => '当前身份已被封禁'];
                 }
                 $passHash = password_hash($anonPassphrase, PASSWORD_BCRYPT);
-                $stmt = $this->pdo->prepare('INSERT INTO messages(user_id, is_anonymous, anon_email, anon_student_id, anon_passphrase_hash, content, image_url, status, created_at) VALUES(NULL,1,?,?,?,?,?,"pending",CURRENT_TIMESTAMP)');
+                $stmt = $this->pdo->prepare('INSERT INTO messages(user_id, is_anonymous, anon_email, anon_student_id, anon_passphrase_hash, content, image_url, status, created_at) VALUES(NULL,1,?,?,?,?,?,"approved",CURRENT_TIMESTAMP)');
                 $stmt->execute([$anonEmail, $anonStudentId, $passHash, $content, $imageUrl]);
             }
         } else {
@@ -123,12 +131,12 @@ final class MessageService
             $stmt = $this->pdo->prepare('SELECT banned FROM users WHERE id = ?');
             $stmt->execute([$userId]);
             if (($stmt->fetch()['banned'] ?? 0) == 1) return ['error' => '账号已被封禁'];
-            $this->pdo->prepare('INSERT INTO messages(user_id, is_anonymous, content, image_url, status, created_at) VALUES(?,0,?,?,"pending",CURRENT_TIMESTAMP)')
+            $this->pdo->prepare('INSERT INTO messages(user_id, is_anonymous, content, image_url, status, created_at) VALUES(?,0,?,?,"approved",CURRENT_TIMESTAMP)')
                 ->execute([$userId, $content, $imageUrl]);
         }
         $id = (int)$this->pdo->lastInsertId();
         $this->logger->log('message.create', $userId, ['message_id' => $id]);
-        // 邮件通知：提交后待审核
+        // 邮件通知：已发布
         try {
             if (function_exists('app_container_get')) {
                 /** @var Mailer $mailer */
@@ -137,11 +145,11 @@ final class MessageService
                     $stmt = $this->pdo->prepare('SELECT email, nickname FROM users WHERE id = ?');
                     $stmt->execute([$userId]);
                     if ($u = $stmt->fetch()) {
-                        $mailer->sendMessageSubmitted((string)$u['email'], (string)$u['nickname'], $id, $content);
+                        $mailer->sendMessageApproved((string)$u['email'], (string)$u['nickname'], $id, $content);
                     }
                 } else if ($isAnonymous && $anonEmail !== '') {
                     // 游客匿名：发送到匿名邮箱
-                    $mailer->sendMessageSubmitted($anonEmail, '同学', $id, $content);
+                    $mailer->sendMessageApproved($anonEmail, '同学', $id, $content);
                 }
             }
         } catch (\Throwable) {}
@@ -170,7 +178,7 @@ final class MessageService
         }
         $content = trim((string)($data['content'] ?? ''));
         v::optional(v::stringType()->length(1, 500))->assert($content === '' ? null : $content);
-        $this->pdo->prepare('UPDATE messages SET content = ?, status = "pending" WHERE id = ?')
+        $this->pdo->prepare('UPDATE messages SET content = ? WHERE id = ?')
             ->execute([$content, $id]);
         $this->logger->log('message.update', (int)$user['id'], ['message_id' => $id]);
         return ['ok' => true];

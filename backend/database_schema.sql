@@ -63,7 +63,7 @@ CREATE TABLE `messages` (
   `anon_passphrase_hash` varchar(255) DEFAULT NULL,
   `content` varchar(500) NOT NULL,
   `image_url` varchar(1024) DEFAULT NULL,
-  `status` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+  `status` enum('pending','approved','rejected') NOT NULL DEFAULT 'approved',
   `reject_reason` varchar(255) DEFAULT NULL,
   `reviewed_by` int(10) UNSIGNED DEFAULT NULL,
   `reviewed_at` datetime DEFAULT NULL,
@@ -170,4 +170,89 @@ ALTER TABLE `bans`
 --
 ALTER TABLE `messages`
   ADD CONSTRAINT `fk_messages_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+-- --------------------------------------------------------
+
+--
+-- 表的结构 `message_likes`
+--
+
+CREATE TABLE `message_likes` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `message_id` int(10) UNSIGNED NOT NULL,
+  `user_id` int(10) UNSIGNED NOT NULL,
+  `deleted_at` datetime DEFAULT NULL,
+  `created_at` datetime NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- 表的索引 `message_likes`
+--
+ALTER TABLE `message_likes`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uniq_message_user` (`message_id`,`user_id`),
+  ADD KEY `idx_user_id` (`user_id`),
+  ADD KEY `idx_deleted_at` (`deleted_at`);
+
+--
+-- 使用表AUTO_INCREMENT `message_likes`
+--
+ALTER TABLE `message_likes`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- 限制表 `message_likes`
+--
+ALTER TABLE `message_likes`
+  ADD CONSTRAINT `fk_message_likes_message` FOREIGN KEY (`message_id`) REFERENCES `messages` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_message_likes_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+-- --------------------------------------------------------
+
+--
+-- 表的结构 `message_comments`
+--
+
+CREATE TABLE `message_comments` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `message_id` int(10) UNSIGNED NOT NULL,
+  `user_id` int(10) UNSIGNED NOT NULL,
+  `content` varchar(1000) NOT NULL,
+  `parent_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `root_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `status` enum('approved','rejected','pending') NOT NULL DEFAULT 'approved',
+  `reject_reason` varchar(255) DEFAULT NULL,
+  `reviewed_by` int(10) UNSIGNED DEFAULT NULL,
+  `reviewed_at` datetime DEFAULT NULL,
+  `deleted_at` datetime DEFAULT NULL,
+  `created_at` datetime NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- 表的索引 `message_comments`
+--
+ALTER TABLE `message_comments`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_message_id` (`message_id`),
+  ADD KEY `idx_user_id` (`user_id`),
+  ADD KEY `idx_parent_id` (`parent_id`),
+  ADD KEY `idx_root_id` (`root_id`),
+  ADD KEY `idx_status` (`status`),
+  ADD KEY `idx_deleted_at` (`deleted_at`);
+
+--
+-- 使用表AUTO_INCREMENT `message_comments`
+--
+ALTER TABLE `message_comments`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- 限制表 `message_comments`
+--
+ALTER TABLE `message_comments`
+  ADD CONSTRAINT `fk_message_comments_message` FOREIGN KEY (`message_id`) REFERENCES `messages` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_message_comments_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_message_comments_reviewer` FOREIGN KEY (`reviewed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_message_comments_parent` FOREIGN KEY (`parent_id`) REFERENCES `message_comments` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_message_comments_root` FOREIGN KEY (`root_id`) REFERENCES `message_comments` (`id`) ON DELETE CASCADE;
 COMMIT;

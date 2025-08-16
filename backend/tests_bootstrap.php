@@ -66,9 +66,12 @@ $container->set(PDO::class, function ($c) {
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             // minimal schema for tests
             $pdo->exec('CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT UNIQUE, password_hash TEXT, nickname TEXT, student_id TEXT, role TEXT, banned INTEGER, created_at TEXT)');
-            $pdo->exec('CREATE TABLE messages (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NULL, is_anonymous INTEGER, anon_email TEXT, anon_student_id TEXT, anon_passphrase_hash TEXT, content TEXT, image_url TEXT, status TEXT, reject_reason TEXT, reviewed_by INTEGER, reviewed_at TEXT, created_at TEXT)');
+            $pdo->exec('CREATE TABLE messages (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NULL, is_anonymous INTEGER, anon_email TEXT, anon_student_id TEXT, anon_passphrase_hash TEXT, content TEXT, image_url TEXT, status TEXT, reject_reason TEXT, reviewed_by INTEGER, reviewed_at TEXT, created_at TEXT, deleted_at TEXT)');
             $pdo->exec('CREATE TABLE audit_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, action TEXT, user_id INTEGER, meta TEXT, created_at TEXT)');
             $pdo->exec('CREATE TABLE bans (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT, value TEXT, reason TEXT, created_by INTEGER, created_at TEXT, updated_at TEXT, active INTEGER, stage INTEGER, expires_at TEXT, UNIQUE(type,value,active))');
+            $pdo->exec('CREATE TABLE message_likes (id INTEGER PRIMARY KEY AUTOINCREMENT, message_id INTEGER, user_id INTEGER, deleted_at TEXT, created_at TEXT)');
+            $pdo->exec('CREATE UNIQUE INDEX uniq_message_user ON message_likes(message_id, user_id)');
+            $pdo->exec('CREATE TABLE message_comments (id INTEGER PRIMARY KEY AUTOINCREMENT, message_id INTEGER, user_id INTEGER, content TEXT, parent_id INTEGER NULL, root_id INTEGER NULL, status TEXT, reject_reason TEXT, reviewed_by INTEGER, reviewed_at TEXT, deleted_at TEXT, created_at TEXT)');
             return $pdo;
         }
         throw $e;
@@ -120,6 +123,13 @@ $container->set(\UtiOpia\Services\LogService::class, function ($c) {
 });
 $container->set(\UtiOpia\Services\StatsService::class, function ($c) {
     return new \UtiOpia\Services\StatsService($c->get(PDO::class), $c->get(\UtiOpia\Services\ACL::class), $c->get('settings'));
+});
+
+$container->set(\UtiOpia\Services\LikeService::class, function ($c) {
+    return new \UtiOpia\Services\LikeService($c->get(PDO::class), $c->get(\UtiOpia\Services\AuditLogger::class), $c->get(\UtiOpia\Services\ACL::class));
+});
+$container->set(\UtiOpia\Services\CommentService::class, function ($c) {
+    return new \UtiOpia\Services\CommentService($c->get(PDO::class), $c->get(\UtiOpia\Services\AuditLogger::class), $c->get(\UtiOpia\Services\ACL::class));
 });
 
 \UtiOpia\Routes::register($app);
