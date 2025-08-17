@@ -143,6 +143,72 @@ final class StatsService
         return array_values($series);
     }
 
+    public function weeklySeries(array $user, int $weekOffset = 0): array
+    {
+        $this->acl->ensure($user['role'] ?? 'user', 'audit:read');
+        
+        // 计算指定周的开始和结束日期
+        $currentWeekStart = date('Y-m-d', strtotime('monday this week'));
+        $targetWeekStart = date('Y-m-d', strtotime("monday this week -{$weekOffset} weeks"));
+        $targetWeekEnd = date('Y-m-d', strtotime("sunday this week -{$weekOffset} weeks"));
+        
+        // 生成一周的日期数组
+        $dates = [];
+        $currentDate = strtotime($targetWeekStart);
+        $endDate = strtotime($targetWeekEnd);
+        
+        while ($currentDate <= $endDate) {
+            $dates[] = date('Y-m-d', $currentDate);
+            $currentDate = strtotime('+1 day', $currentDate);
+        }
+        
+        // 查询每天的纸条数据
+        $stmt = $this->pdo->prepare('
+            SELECT 
+                DATE(created_at) as date,
+                COUNT(*) as total,
+                COUNT(CASE WHEN status = "approved" THEN 1 END) as approved,
+                COUNT(CASE WHEN status = "rejected" THEN 1 END) as hidden
+            FROM messages 
+            WHERE DATE(created_at) BETWEEN ? AND ?
+            AND (deleted_at IS NULL OR deleted_at IS NULL)
+            GROUP BY DATE(created_at)
+            ORDER BY date
+        ');
+        $stmt->execute([$targetWeekStart, $targetWeekEnd]);
+        $rows = $stmt->fetchAll();
+        
+        // 构建结果数组，确保每天都有数据
+        $result = [];
+        foreach ($dates as $date) {
+            $dayData = null;
+            foreach ($rows as $row) {
+                if ($row['date'] === $date) {
+                    $dayData = $row;
+                    break;
+                }
+            }
+            
+            if ($dayData) {
+                $result[] = [
+                    'date' => date('m-d', strtotime($date)), // 只显示月-日
+                    'messages' => (int)$dayData['total'],
+                    'approved' => (int)$dayData['approved'],
+                    'hidden' => (int)$dayData['hidden']
+                ];
+            } else {
+                $result[] = [
+                    'date' => date('m-d', strtotime($date)), // 只显示月-日
+                    'messages' => 0,
+                    'approved' => 0,
+                    'hidden' => 0
+                ];
+            }
+        }
+        
+        return $result;
+    }
+
     public function usersSeries(array $user, int $days = 7): array
     {
         $this->acl->ensure($user['role'] ?? 'user', 'audit:read');

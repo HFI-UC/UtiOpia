@@ -72,6 +72,7 @@ final class Routes
             // Stats
             $group->get('/stats/overview', [self::class, 'statsOverview']);
             $group->get('/stats/quick', [self::class, 'statsQuick']);
+            $group->get('/stats/weekly', [self::class, 'statsWeekly']);
             $group->get('/stats/messages', [self::class, 'statsMessagesSeries']);
             $group->get('/stats/audit', [self::class, 'statsAuditSeries']);
             $group->get('/stats/users', [self::class, 'statsUsersSeries']);
@@ -382,6 +383,15 @@ final class Routes
         $svc = $container->get(\UtiOpia\Services\StatsService::class);
         $result = $svc->quickStats($user);
         return self::json($response, $result);
+    }
+
+    public static function statsWeekly(Request $request, Response $response): Response
+    {
+        [$query, $container, $user] = self::ctxAuth($request, true);
+        $weekOffset = (int)($query['week'] ?? 0);
+        $svc = $container->get(\UtiOpia\Services\StatsService::class);
+        $result = $svc->weeklySeries($user, $weekOffset);
+        return self::json($response, ['items' => $result]);
     }
 
     public static function statsMessagesSeries(Request $request, Response $response): Response

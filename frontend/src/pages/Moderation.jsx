@@ -446,10 +446,10 @@ const Moderation = () => {
             <div className="flex items-center space-x-2">
               <div className="flex items-center space-x-2">
                 <EyeOff className="w-5 h-5 text-red-500" />
-                <div>
+              <div>
                   <p className="text-sm text-muted-foreground">已隐藏</p>
                   <p className="text-xl font-bold">{allMessages.filter(m => m.status === 'rejected').length}</p>
-                </div>
+            </div>
               </div>
             </div>
           </CardContent>
@@ -462,13 +462,13 @@ const Moderation = () => {
           <TabsTrigger value="displayed">
             <Eye className="w-4 h-4 mr-2" />
             已展示 ({allMessages.filter(m => m.status === 'approved').length})
-          </TabsTrigger>
+            </TabsTrigger>
           <TabsTrigger value="hidden">
             <EyeOff className="w-4 h-4 mr-2" />
             已隐藏 ({allMessages.filter(m => m.status === 'rejected').length})
-          </TabsTrigger>
-        </TabsList>
-        
+            </TabsTrigger>
+          </TabsList>
+          
         <TabsContent value="displayed" className="space-y-4">
           {allMessages.filter(m => m.status === 'approved').length > 0 ? (
             allMessages.filter(m => m.status === 'approved').map(message => (
@@ -484,7 +484,7 @@ const Moderation = () => {
             </Card>
           )}
         </TabsContent>
-        
+
         <TabsContent value="hidden" className="space-y-4">
           {allMessages.filter(m => m.status === 'rejected').length > 0 ? (
             allMessages.filter(m => m.status === 'rejected').map(message => (

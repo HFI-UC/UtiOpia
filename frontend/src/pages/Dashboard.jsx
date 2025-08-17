@@ -53,6 +53,8 @@ const Dashboard = () => {
     anonymousPercentage: 0
   });
 
+  const [selectedWeek, setSelectedWeek] = useState(0); // 0 = 当前周, 1 = 上周, 2 = 上上周...
+
   const [chartData, setChartData] = useState({
     daily: [],
     weekly: [],
@@ -83,7 +85,16 @@ const Dashboard = () => {
           messages: it.total ?? it.count ?? 0,
           users: (userSeriesResp?.data?.items || [])[idx]?.total ?? 0,
         }));
-        const weekly = daily.map((d, i) => ({ week: `第${i+1}天`, messages: d.messages, approved: Math.round(d.messages*0.9), hidden: Math.max(0, d.messages - Math.round(d.messages*0.9)) }));
+        
+        // 加载周度趋势数据
+        const weeklyData = await loadWeeklyData(selectedWeek);
+        
+        const weekly = weeklyData.map((d, i) => ({ 
+          date: d.date, 
+          messages: d.messages, 
+          approved: d.approved, 
+          hidden: d.hidden 
+        }));
         const status = [
           { name: '已通过', value: sv.messages?.approved ?? 0, color: '#10b981' },
           { name: '已隐藏', value: sv.messages?.hidden ?? sv.messages?.rejected ?? 0, color: '#ef4444' },
@@ -111,7 +122,37 @@ const Dashboard = () => {
       } catch (_) {}
     };
     load();
-  }, []);
+  }, [selectedWeek]);
+
+  // 加载周度趋势数据
+  const loadWeeklyData = async (weekOffset) => {
+    try {
+      const response = await api.get('/stats/weekly', { params: { week: weekOffset } });
+      return response?.data?.items || [];
+    } catch (error) {
+      console.error('加载周度数据失败:', error);
+      return [];
+    }
+  };
+
+  // 切换周数
+  const handleWeekChange = async (newWeekOffset) => {
+    setSelectedWeek(newWeekOffset);
+    try {
+      const weeklyData = await loadWeeklyData(newWeekOffset);
+      setChartData(prev => ({
+        ...prev,
+        weekly: weeklyData.map((d, i) => ({ 
+          date: d.date, 
+          messages: d.messages, 
+          approved: d.approved, 
+          hidden: d.hidden 
+        }))
+      }));
+    } catch (error) {
+      console.error('切换周数失败:', error);
+    }
+  };
 
   const StatCard = ({ title, value, icon: Icon, trend, trendValue, color = "blue" }) => (
     <Card>
@@ -252,19 +293,44 @@ const Dashboard = () => {
       {/* Weekly Trends */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <TrendingUp className="w-5 h-5" />
-            <span>周度趋势</span>
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <TrendingUp className="w-5 h-5" />
+              <span>周度趋势</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant={selectedWeek === 0 ? "default" : "outline"}
+                size="sm"
+                onClick={() => handleWeekChange(0)}
+              >
+                本周
+              </Button>
+              <Button
+                variant={selectedWeek === 1 ? "default" : "outline"}
+                size="sm"
+                onClick={() => handleWeekChange(1)}
+              >
+                上周
+              </Button>
+              <Button
+                variant={selectedWeek === 2 ? "default" : "outline"}
+                size="sm"
+                onClick={() => handleWeekChange(2)}
+              >
+                上上周
+              </Button>
+            </div>
+          </div>
           <CardDescription>
-            过去6周的纸条发布和审核趋势
+            {selectedWeek === 0 ? '本周' : selectedWeek === 1 ? '上周' : '上上周'}的纸条发布和审核趋势
           </CardDescription>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={400}>
             <LineChart data={chartData.weekly}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="week" />
+              <XAxis dataKey="date" />
               <YAxis />
               <Tooltip />
               <Line 
