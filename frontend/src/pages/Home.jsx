@@ -41,6 +41,132 @@ import useAuthStore from '../stores/authStore';
 import Turnstile from '../components/Turnstile';
 
 const Home = () => {
+  // 添加瀑布流布局的CSS样式
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      .messages-container {
+        column-fill: balance;
+        column-gap: 1.5rem;
+        column-rule: 1px solid transparent;
+        padding: 0.5rem;
+      }
+      .message-card {
+        display: inline-block;
+        width: 100%;
+        margin-bottom: 1.5rem;
+        break-inside: avoid;
+        page-break-inside: avoid;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transform: translateZ(0);
+        will-change: transform;
+      }
+      .message-card:hover {
+        transform: translateY(-2px) translateZ(0);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      }
+      .message-card:focus-within {
+        transform: translateY(-1px) translateZ(0);
+      }
+      @media (max-width: 640px) {
+        .messages-container {
+          columns: 1;
+          column-gap: 1rem;
+        }
+        .message-card {
+          margin-bottom: 1rem;
+        }
+      }
+      @media (min-width: 641px) and (max-width: 768px) {
+        .messages-container {
+          columns: 1;
+          column-gap: 1.25rem;
+        }
+      }
+      @media (min-width: 769px) and (max-width: 1024px) {
+        .messages-container {
+          columns: 2;
+          column-gap: 1.5rem;
+        }
+      }
+      @media (min-width: 1025px) and (max-width: 1280px) {
+        .messages-container {
+          columns: 3;
+          column-gap: 1.5rem;
+        }
+      }
+      @media (min-width: 1281px) {
+        .messages-container {
+          columns: 4;
+          column-gap: 1.5rem;
+        }
+      }
+      /* 确保卡片内容不会在列之间断开 */
+      .message-card > * {
+        break-inside: avoid;
+      }
+      /* 优化动画性能 */
+      .message-card * {
+        will-change: transform;
+      }
+      /* 瀑布流布局优化 */
+      .messages-container {
+        contain: layout style paint;
+        min-height: 200px;
+      }
+      .message-card {
+        contain: layout style;
+        backface-visibility: hidden;
+      }
+      /* 确保图片不会破坏布局 */
+      .message-card img {
+        max-width: 100%;
+        height: auto;
+        display: block;
+      }
+      /* 优化评论区域的布局 */
+      .message-card .space-y-3 {
+        contain: layout;
+      }
+      /* 平滑的列切换动画 */
+      .messages-container {
+        transition: column-count 0.3s ease;
+      }
+    `;
+    document.head.appendChild(style);
+    
+      // 监听窗口大小变化，优化瀑布流布局
+  const handleResize = () => {
+    const container = document.querySelector('.messages-container');
+    if (container) {
+      // 强制重新计算列布局
+      container.style.display = 'none';
+      container.offsetHeight;
+      container.style.display = '';
+    }
+  };
+  
+  // 优化瀑布流初始布局
+  const optimizeWaterfallLayout = () => {
+    setIsLayoutOptimizing(true);
+    setTimeout(() => {
+      const container = document.querySelector('.messages-container');
+      if (container) {
+        container.style.display = 'none';
+        container.offsetHeight;
+        container.style.display = '';
+      }
+      setTimeout(() => setIsLayoutOptimizing(false), 100);
+    }, 100);
+  };
+  
+  window.addEventListener('resize', handleResize);
+  
+  return () => {
+    document.head.removeChild(style);
+    window.removeEventListener('resize', handleResize);
+  };
+  }, []);
   const navigate = useNavigate();
   const { 
     messages, 
@@ -73,10 +199,26 @@ const Home = () => {
   const [focusedInput, setFocusedInput] = useState({}); // messageId -> bool
   const [submittingComment, setSubmittingComment] = useState({}); // messageId -> bool
   const commentInputRefs = useRef({}); // messageId -> ref
+  const [isLayoutOptimizing, setIsLayoutOptimizing] = useState(false);
 
   useEffect(() => {
     fetchMessages(true);
   }, [fetchMessages]);
+
+  // 监听消息变化，优化瀑布流布局
+  useEffect(() => {
+    if (messages.length > 0) {
+      // 延迟优化布局，确保DOM完全渲染
+      setTimeout(() => {
+        const container = document.querySelector('.messages-container');
+        if (container) {
+          container.style.display = 'none';
+          container.offsetHeight;
+          container.style.display = '';
+        }
+      }, 300);
+    }
+  }, [messages]);
 
   // 公共统计
   const [pubCounts, setPubCounts] = useState({ approved: 0, pending: 0, rejected: 0, total: 0 });
@@ -213,6 +355,27 @@ const Home = () => {
 
   const toggleCommentsFor = async (messageId) => {
     setExpandedComments(prev => ({ ...prev, [messageId]: !prev[messageId] }));
+    
+    // 动态调整卡片高度并触发瀑布流重新布局
+    setTimeout(() => {
+      const card = document.querySelector(`[data-message-id="${messageId}"]`);
+      if (card) {
+        // 重置高度样式
+        card.style.height = 'auto';
+        card.style.minHeight = 'fit-content';
+        
+        // 强制触发瀑布流重新计算
+        const container = card.closest('.messages-container');
+        if (container) {
+          // 添加一个微小的延迟来确保DOM更新完成
+          setTimeout(() => {
+            container.style.display = 'none';
+            container.offsetHeight; // 强制重排
+            container.style.display = '';
+          }, 50);
+        }
+      }
+    }, 100);
   };
 
   const loadCommentsFor = async (messageId) => {
@@ -250,6 +413,16 @@ const Home = () => {
         setFocusedInput(prev => ({ ...prev, [messageId]: false }));
         await loadCommentsFor(messageId);
         toast.success('评论已发布');
+        
+        // 优化瀑布流布局
+        setTimeout(() => {
+          const container = document.querySelector('.messages-container');
+          if (container) {
+            container.style.display = 'none';
+            container.offsetHeight;
+            container.style.display = '';
+          }
+        }, 200);
       }
     } catch (e) {
       toast.error(e.response?.data?.error || e.message || '评论失败');
@@ -294,7 +467,7 @@ const Home = () => {
         </Card>
         <Card className="text-center">
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-pink-600">{pubCounts.rejected}</div>
+            <div className="text-2xl font-bold text-pink-600">{pubCounts.hidden}</div>
             <p className="text-sm text-muted-foreground">已隐藏</p>
           </CardContent>
         </Card>
@@ -304,10 +477,18 @@ const Home = () => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold">最新纸条</h2>
-          <Badge variant="outline">{total} 条纸条</Badge>
+          <div className="flex items-center space-x-2">
+            {isLayoutOptimizing && (
+              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>优化布局中...</span>
+              </div>
+            )}
+            <Badge variant="outline">{pubCounts.approved} 条纸条</Badge>
+          </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="messages-container">
           {messages.map((message, index) => {
             const fallbackComments = commentsByMsg[message.id]?.items || [];
             const mergedComments = Array.isArray(message.comments?.items) && message.comments.items.length > 0
@@ -320,9 +501,14 @@ const Home = () => {
             return (
             <Card 
               key={message.id}
-              className={`group hover:shadow-lg transition-all duration-300 ${
+              data-message-id={message.id}
+              className={`group hover:shadow-lg transition-all duration-500 ease-out message-card ${
                 index < 3 ? 'ring-2 ring-yellow-200 bg-gradient-to-br from-yellow-50 to-orange-50' : ''
               }`}
+              style={{
+                minHeight: expandedComments[message.id] ? 'auto' : 'fit-content',
+                height: expandedComments[message.id] ? 'auto' : 'fit-content'
+              }}
             >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
@@ -334,7 +520,6 @@ const Home = () => {
                     {index < 3 && <Star className="w-4 h-4 text-yellow-500 fill-current" />}
                   </div>
                   <div className="flex items-center space-x-2">
-                    {getStatusBadge(message.status)}
                     {canEdit(message) && (
                       <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                         <Button 
@@ -428,109 +613,100 @@ const Home = () => {
                   {/* 评论区 */}
                   <div className="space-y-3">
                     {/* 评论列表 */}
-                    {commentsByMsg[message.id]?.loading ? (
-                      <div className="flex items-center justify-center py-4">
-                        <Loader2 className="w-4 h-4 animate-spin mr-2 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">加载评论中...</span>
-                      </div>
-                    ) : (
-                      <>
-                        {displayComments.map((comment) => {
-                          const isReply = !!comment.parent_id;
-                          const isOwner = !!(user && message.user_id && comment.user_id && Number(message.user_id) === Number(comment.user_id));
-                          const showIdentity = !(comment.is_anonymous && (!user || Number(user.id) !== Number(comment.user_id)));
-                          
-                          return (
-                            <div key={comment.id} className={`group ${isReply ? 'ml-6' : ''}`}>
-                              <div className="flex items-start space-x-2">
-                                <Tooltip delayDuration={150}>
-                                  <TooltipTrigger asChild>
-                                    <Avatar className="w-6 h-6 mt-0.5 flex-shrink-0 cursor-default">
-                                      <AvatarFallback className="text-[10px] bg-muted">
-                                        {showIdentity && comment.user_email ? comment.user_email.charAt(0).toUpperCase() : 'U'}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                  </TooltipTrigger>
-                                  {showIdentity && (comment.user_email || comment.user_nickname) && (
-                                    <TooltipContent side="top" sideOffset={6}>
-                                      {(comment.user_nickname || '') + (comment.user_nickname && comment.user_email ? ' · ' : '') + (comment.user_email || '')}
-                                    </TooltipContent>
-                                  )}
-                                </Tooltip>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center space-x-2 mb-0.5">
-                                    <span className="text-sm font-medium truncate">
-                                      {showIdentity ? (comment.user_nickname || comment.user_email || '用户') : '匿名'}
-                                    </span>
-                                    {isOwner && (
-                                      <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">作者</Badge>
-                                    )}
-                                    {isReply && (
-                                      <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">回复</Badge>
-                                    )}
-                                  </div>
-                                  <p className="text-sm text-gray-700 break-words whitespace-pre-wrap">
-                                    {comment.content}
-                                  </p>
-                                  <div className="flex items-center mt-1">
-                                    <span className="text-xs text-muted-foreground">
-                                      {formatTime(comment.created_at)}
-                                    </span>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="ml-2 h-5 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                                      onClick={() => {
-                                        if (!isAuthed) {
-                                          navigate(`/login?redirect=${encodeURIComponent(location.pathname)}`);
-                                          return;
-                                        }
-                                        setReplyTo(prev => ({ 
-                                          ...prev, 
-                                          [message.id]: { 
-                                            id: comment.id, 
-                                            content: comment.content,
-                                            nickname: showIdentity ? (comment.user_nickname || comment.user_email || '用户') : '匿名'
-                                          } 
-                                        }));
-                                        setFocusedInput(prev => ({ ...prev, [message.id]: true }));
-                                        // Focus input after state update
-                                        setTimeout(() => {
-                                          commentInputRefs.current[message.id]?.focus();
-                                        }, 100);
-                                      }}
-                                    >
-                                      回复
-                                    </Button>
-                                  </div>
-                                </div>
+                    {displayComments.map((comment) => {
+                      const isReply = !!comment.parent_id;
+                      const isOwner = !!(user && message.user_id && comment.user_id && Number(message.user_id) === Number(comment.user_id));
+                      const showIdentity = !(comment.is_anonymous && (!user || Number(user.id) !== Number(comment.user_id)));
+                      
+                      return (
+                        <div key={comment.id} className={`group ${isReply ? 'ml-6' : ''}`}>
+                          <div className="flex items-start space-x-2">
+                            <Tooltip delayDuration={150}>
+                              <TooltipTrigger asChild>
+                                <Avatar className="w-6 h-6 mt-0.5 flex-shrink-0 cursor-default">
+                                  <AvatarFallback className="text-[10px] bg-muted">
+                                    {showIdentity && comment.user_email ? comment.user_email.charAt(0).toUpperCase() : 'U'}
+                                  </AvatarFallback>
+                                </Avatar>
+                              </TooltipTrigger>
+                              {showIdentity && (comment.user_email || comment.user_nickname) && (
+                                <TooltipContent side="top" sideOffset={6}>
+                                  {(comment.user_nickname || '') + (comment.user_nickname && comment.user_email ? ' · ' : '') + (comment.user_email || '')}
+                                </TooltipContent>
+                              )}
+                            </Tooltip>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center space-x-2 mb-0.5">
+                                <span className="text-sm font-medium truncate">
+                                  {showIdentity ? (comment.user_nickname || comment.user_email || '用户') : '匿名'}
+                                </span>
+                                {isOwner && (
+                                  <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">作者</Badge>
+                                )}
+                                {isReply && (
+                                  <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">回复</Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-700 break-words whitespace-pre-wrap">
+                                {comment.content}
+                              </p>
+                              <div className="flex items-center mt-1">
+                                <span className="text-xs text-muted-foreground">
+                                  {formatTime(comment.created_at)}
+                                </span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="ml-2 h-5 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={() => {
+                                    if (!isAuthed) {
+                                      navigate(`/login?redirect=${encodeURIComponent(location.pathname)}`);
+                                      return;
+                                    }
+                                    setReplyTo(prev => ({ 
+                                      ...prev, 
+                                      [message.id]: { 
+                                        id: comment.id, 
+                                        content: comment.content,
+                                        nickname: showIdentity ? (comment.user_nickname || comment.user_email || '用户') : '匿名'
+                                      } 
+                                    }));
+                                    setFocusedInput(prev => ({ ...prev, [message.id]: true }));
+                                    // Focus input after state update
+                                    setTimeout(() => {
+                                      commentInputRefs.current[message.id]?.focus();
+                                    }, 100);
+                                  }}
+                                >
+                                  回复
+                                </Button>
                               </div>
                             </div>
-                          );
-                        })}
-                        
-                        {/* 查看更多/收起 */}
-                        {mergedComments.length > 2 && (
-                          <Button
-                            variant="link"
-                            size="sm"
-                            className="h-auto p-0 text-xs text-muted-foreground hover:text-primary"
-                            onClick={() => toggleCommentsFor(message.id)}
-                          >
-                            {showAllComments ? (
-                              <>
-                                <ChevronUp className="w-3 h-3 mr-1" />
-                                收起
-                              </>
-                            ) : (
-                              <>
-                                <ChevronDown className="w-3 h-3 mr-1" />
-                                查看全部 {totalCount} 条评论
-                              </>
-                            )}
-                          </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    
+                    {/* 查看更多/收起 */}
+                    {mergedComments.length > 2 && (
+                      <Button
+                        variant="link"
+                        size="sm"
+                        className="h-auto p-0 text-xs text-muted-foreground hover:text-primary"
+                        onClick={() => toggleCommentsFor(message.id)}
+                      >
+                        {showAllComments ? (
+                          <>
+                            <ChevronUp className="w-3 h-3 mr-1" />
+                            收起
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="w-3 h-3 mr-1" />
+                            查看全部 {totalCount} 条评论
+                          </>
                         )}
-                      </>
+                      </Button>
                     )}
 
                     {/* 评论输入区 */}
@@ -551,16 +727,17 @@ const Home = () => {
                         </div>
                       )}
                       
-                      <div className="flex items-start space-x-2">
-                        {isAuthed && (
-                          <Avatar className="w-6 h-6 mt-1 flex-shrink-0">
-                            <AvatarFallback className="text-[10px] bg-gradient-to-br from-green-500 to-blue-500 text-white">
-                              {user?.email ? user.email.charAt(0).toUpperCase() : <User className="w-3 h-3" />}
-                            </AvatarFallback>
-                          </Avatar>
-                        )}
-                        <div className="flex-1">
-                          {focusedInput[message.id] ? (
+                      {/* 评论输入框 - 默认隐藏，点击评论按钮后显示 */}
+                      {focusedInput[message.id] && (
+                        <div className="flex items-start space-x-2 mt-3">
+                          {isAuthed && (
+                            <Avatar className="w-6 h-6 mt-1 flex-shrink-0">
+                              <AvatarFallback className="text-[10px] bg-gradient-to-br from-green-500 to-blue-500 text-white">
+                                {user?.email ? user.email.charAt(0).toUpperCase() : <User className="w-3 h-3" />}
+                              </AvatarFallback>
+                            </Avatar>
+                          )}
+                          <div className="flex-1">
                             <div className="space-y-2">
                               <Textarea
                                 ref={(el) => commentInputRefs.current[message.id] = el}
@@ -582,7 +759,7 @@ const Home = () => {
                                     <Checkbox id={`anon-${message.id}`} checked={!!commentAnon[message.id]} onCheckedChange={(v) => setCommentAnon(prev => ({ ...prev, [message.id]: !!v }))} />
                                     <span>匿名评论</span>
                                   </label>
-                                  {isAuthed ? 'Ctrl + Enter 发送' : (
+                                  {isAuthed ? ' ' : (
                                     <span>
                                       <Link to={`/login?redirect=${encodeURIComponent(location.pathname)}`} className="text-blue-600 hover:underline">登录</Link>
                                       <span className="mx-1">或</span>
@@ -622,25 +799,9 @@ const Home = () => {
                                 </div>
                               </div>
                             </div>
-                          ) : (
-                            <button
-                              className="w-full text-left px-3 py-2 text-sm text-muted-foreground bg-gray-50 hover:bg-gray-100 rounded-md transition-colors"
-                              onClick={() => {
-                                if (!isAuthed) {
-                                  navigate(`/login?redirect=${encodeURIComponent(location.pathname)}`);
-                                  return;
-                                }
-                                setFocusedInput(prev => ({ ...prev, [message.id]: true }));
-                                setTimeout(() => {
-                                  commentInputRefs.current[message.id]?.focus();
-                                }, 100);
-                              }}
-                            >
-                              {isAuthed ? '写下你的评论...' : '登录后参与讨论'}
-                            </button>
-                          )}
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </div>
                 </CardContent>

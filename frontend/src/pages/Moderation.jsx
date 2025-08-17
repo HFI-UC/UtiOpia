@@ -33,7 +33,6 @@ const Moderation = () => {
   const [rejectSubmitting, setRejectSubmitting] = useState(false);
   const [banSubmitting, setBanSubmitting] = useState(false);
   const [expanded, setExpanded] = useState({}); // messageId -> boolean
-  const [commentsByMsg, setCommentsByMsg] = useState({}); // messageId -> { loading, items, total }
   const [activeTab, setActiveTab] = useState('displayed'); // 'displayed' or 'hidden'
   const PREVIEW_LIMIT = 2;
 
@@ -42,12 +41,10 @@ const Moderation = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const resp = await api.get('/messages', { params: { page: 1, pageSize: 100, order: 'desc', status: 'all' } });
+        const resp = await api.get('/messages', { params: { page: 1, pageSize: 100, order: 'desc', status: 'all', with_comments: 1 } });
         const items = resp.data?.items || [];
         items.sort((a,b)=> new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         setAllMessages(items);
-        // 预加载每条的评论预览
-        items.forEach(m => preloadComments(m.id));
       } catch (e) {
         toast.error('加载审核数据失败');
       } finally {
@@ -135,42 +132,7 @@ const Moderation = () => {
     setAllMessages(prev => prev.map(m => m.id === messageId ? { ...m, status, reviewed_at: new Date().toISOString(), reject_reason: status==='rejected'?rejectReason:undefined } : m));
   };
 
-  const preloadComments = async (messageId) => {
-    if (commentsByMsg[messageId]) return;
-    setCommentsByMsg(prev => ({ ...prev, [messageId]: { loading: true, items: [], total: 0 } }));
-    try {
-      const r = await api.get(`/messages/${messageId}/comments`, { params: { page: 1, pageSize: 10 } });
-      const items = r?.data?.items || [];
-      const total = r?.data?.total || items.length;
-      setCommentsByMsg(prev => ({ ...prev, [messageId]: { loading: false, items, total } }));
-    } catch {
-      setCommentsByMsg(prev => ({ ...prev, [messageId]: { loading: false, items: [], total: 0 } }));
-    }
-  };
 
-  const toggleExpandComments = async (messageId) => {
-    setExpanded(prev => ({ ...prev, [messageId]: !prev[messageId] }));
-    const opened = !expanded[messageId];
-    if (opened) {
-      setCommentsByMsg(prev => ({ ...prev, [messageId]: { ...(prev[messageId]||{}), loading: true } }));
-      try {
-        const r = await api.get(`/messages/${messageId}/comments`, { params: { page: 1, pageSize: 100 } });
-        const items = r?.data?.items || [];
-        const total = r?.data?.total || items.length;
-        setCommentsByMsg(prev => ({ ...prev, [messageId]: { loading: false, items, total } }));
-      } catch {
-        setCommentsByMsg(prev => ({ ...prev, [messageId]: { loading: false, items: [], total: 0 } }));
-      }
-    }
-  };
-
-  const showCommentsFor = (messageId) => {
-    if (!commentsByMsg[messageId]) { preloadComments(messageId); }
-    setExpanded(prev => ({ ...prev, [messageId]: true }));
-  };
-  const hideCommentsFor = (messageId) => {
-    setExpanded(prev => ({ ...prev, [messageId]: false }));
-  };
 
   const approveComment = async (commentId, messageId) => {
     try {
@@ -304,23 +266,23 @@ const Moderation = () => {
         )}
 
         {/* 评论区域：默认展示前几条；卡片 hover 自动展开更多，移出收起 */}
-        <div className="pt-2" onMouseEnter={()=> showCommentsFor(message.id)} onMouseLeave={()=> hideCommentsFor(message.id)}>
+        <div className="pt-2" onMouseEnter={()=> setExpanded(prev => ({ ...prev, [message.id]: true }))} onMouseLeave={()=> setExpanded(prev => ({ ...prev, [message.id]: false }))}>
           {!expanded[message.id] && (
             <div className="text-xs text-muted-foreground mb-2">鼠标移入查看更多评论</div>
           )}
           {expanded[message.id] && (
             <div className="mt-3 space-y-2">
-              {commentsByMsg[message.id]?.loading && (
-                <div className="text-xs text-muted-foreground">加载评论中…</div>
-              )}
-              {(commentsByMsg[message.id]?.items || []).length === 0 && !commentsByMsg[message.id]?.loading && (
-                <div className="text-xs text-muted-foreground">暂无评论</div>
-              )}
+
               {(() => {
-                const items = (commentsByMsg[message.id]?.items || []);
-                const total = commentsByMsg[message.id]?.total || items.length;
+                const items = message.comments?.items || [];
+                const total = message.comments?.total || items.length;
                 const display = expanded[message.id] ? items : items.slice(0, PREVIEW_LIMIT);
                 const hasMore = items.length > PREVIEW_LIMIT || total > PREVIEW_LIMIT;
+                
+                if (items.length === 0) {
+                  return <div className="text-xs text-muted-foreground">暂无评论</div>;
+                }
+                
                 return display.map((c) => (
                 <div key={c.id} className="p-2 border rounded-md">
                   <div className="flex items-start justify-between">
@@ -368,13 +330,23 @@ const Moderation = () => {
                 </div>
               )); })()}
               {(() => {
-                const items = (commentsByMsg[message.id]?.items || []);
-                const total = commentsByMsg[message.id]?.total || items.length;
+                const items = message.comments?.items || [];
+                const total = message.comments?.total || items.length;
                 const hasMore = (items.length > PREVIEW_LIMIT || total > PREVIEW_LIMIT) && !expanded[message.id];
                 if (!hasMore) return null;
                 return (
-                  <Button size="sm" variant="link" className="h-auto p-0 text-xs" onClick={()=> toggleExpandComments(message.id)}>
-                    查看全部 {total} 条评论
+                  <Button size="sm" variant="link" className="h-auto p-0 text-xs" onClick={()=> setExpanded(prev => ({ ...prev, [message.id]: !prev[message.id] }))}>
+                    {expanded[message.id] ? (
+                      <>
+                        <ChevronUp className="w-3 h-3 mr-1" />
+                        收起
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="w-3 h-3 mr-1" />
+                        查看全部 {total} 条评论
+                      </>
+                    )}
                   </Button>
                 );
               })()}
@@ -385,25 +357,33 @@ const Moderation = () => {
         {
           <div className="flex space-x-2 pt-2">
             {message.status === 'rejected' ? (
-              <Button 
-                size="sm" 
-                variant="default"
-                onClick={() => handleApprove(message.id)}
-                disabled={loading}
-              >
-                <Eye className="w-4 h-4 mr-1" />
-                展示
-              </Button>
+            <Button 
+              size="sm" 
+              variant="default"
+              onClick={() => handleApprove(message.id)}
+              disabled={loading}
+              className="relative overflow-hidden group hover:scale-105 transition-all duration-300 ease-out shadow-md hover:shadow-lg"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-green-400/20 to-blue-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <div className="relative flex items-center">
+                <Eye className="w-4 h-4 mr-1 group-hover:rotate-12 transition-transform duration-300" />
+                <span className="group-hover:translate-x-0.5 transition-transform duration-300">展示</span>
+              </div>
+            </Button>
             ) : (
-              <Button 
-                size="sm" 
-                variant="destructive"
-                onClick={() => handleReject(message.id)}
-                disabled={loading}
-              >
-                <EyeOff className="w-4 h-4 mr-1" />
-                隐藏
-              </Button>
+            <Button 
+              size="sm" 
+              variant="destructive"
+              onClick={() => handleReject(message.id)}
+              disabled={loading}
+              className="relative overflow-hidden group hover:scale-105 transition-all duration-300 ease-out shadow-md hover:shadow-lg"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-red-400/20 to-pink-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <div className="relative flex items-center">
+                <EyeOff className="w-4 h-4 mr-1 group-hover:-rotate-12 transition-transform duration-300" />
+                <span className="group-hover:translate-x-0.5 transition-transform duration-300">隐藏</span>
+              </div>
+            </Button>
             )}
             {(message.user_email || message.anon_email || message.anon_student_id) && (
               <Button size="sm" variant="outline" onClick={() => handleQuickBan(message)} disabled={loading}>
@@ -589,11 +569,7 @@ const Moderation = () => {
               </Button>
             </div>
           </DialogFooter>
-          {loading && (
-            <div className="absolute inset-0 bg-white/60 dark:bg-black/40 rounded-lg flex items-center justify-center">
-              <Loader2 className="w-6 h-6 animate-spin" />
-            </div>
-          )}
+
         </DialogContent>
       </Dialog>
 
@@ -627,11 +603,7 @@ const Moderation = () => {
               {rejectSubmitting ? (<><Loader2 className="w-4 h-4 mr-1 animate-spin"/>提交中...</>) : '确认'}
             </Button>
           </DialogFooter>
-          {rejectSubmitting && (
-            <div className="absolute inset-0 bg-white/60 dark:bg-black/40 rounded-lg flex items-center justify-center">
-              <Loader2 className="w-6 h-6 animate-spin" />
-            </div>
-          )}
+
         </DialogContent>
       </Dialog>
 
@@ -677,11 +649,7 @@ const Moderation = () => {
               {banSubmitting ? (<><Loader2 className="w-4 h-4 mr-1 animate-spin"/>提交中...</>) : '确认'}
             </Button>
           </DialogFooter>
-          {banSubmitting && (
-            <div className="absolute inset-0 bg-white/60 dark:bg-black/40 rounded-lg flex items-center justify-center">
-              <Loader2 className="w-6 h-6 animate-spin" />
-            </div>
-          )}
+
         </DialogContent>
       </Dialog>
     </div>
