@@ -38,6 +38,21 @@ const Dashboard = () => {
     weeklyGrowth: 0
   });
 
+  const [quickStats, setQuickStats] = useState({
+    // 审核效率
+    avgReviewTime: 0,
+    approvalRate: 0,
+    todayReviewed: 0,
+    // 用户活跃度
+    dailyActiveUsers: 0,
+    weeklyActiveUsers: 0,
+    monthlyActiveUsers: 0,
+    // 内容质量
+    avgWordCount: 0,
+    imagePercentage: 0,
+    anonymousPercentage: 0
+  });
+
   const [chartData, setChartData] = useState({
     daily: [],
     weekly: [],
@@ -56,7 +71,7 @@ const Dashboard = () => {
           totalMessages: sv.totals?.messages ?? 0,
           pendingMessages: sv.messages?.pending ?? 0,
           approvedMessages: sv.messages?.approved ?? 0,
-          rejectedMessages: sv.messages?.rejected ?? 0,
+          rejectedMessages: sv.messages?.hidden ?? sv.messages?.rejected ?? 0, // 兼容 hidden 和 rejected
           todayMessages: today,
           weeklyGrowth: 0
         });
@@ -68,13 +83,31 @@ const Dashboard = () => {
           messages: it.total ?? it.count ?? 0,
           users: (userSeriesResp?.data?.items || [])[idx]?.total ?? 0,
         }));
-        const weekly = daily.map((d, i) => ({ week: `第${i+1}天`, messages: d.messages, approved: Math.round(d.messages*0.9), rejected: Math.max(0, d.messages - Math.round(d.messages*0.9)) }));
+        const weekly = daily.map((d, i) => ({ week: `第${i+1}天`, messages: d.messages, approved: Math.round(d.messages*0.9), hidden: Math.max(0, d.messages - Math.round(d.messages*0.9)) }));
         const status = [
           { name: '已通过', value: sv.messages?.approved ?? 0, color: '#10b981' },
-          { name: '已拒绝', value: sv.messages?.rejected ?? 0, color: '#ef4444' },
+          { name: '已隐藏', value: sv.messages?.hidden ?? sv.messages?.rejected ?? 0, color: '#ef4444' },
           { name: '待审核', value: sv.messages?.pending ?? 0, color: '#f59e0b' },
         ];
         setChartData({ daily, weekly, status });
+
+        // 加载快速统计数据
+        const quickStatsResp = await api.get('/stats/quick');
+        const qs = quickStatsResp?.data || {};
+        setQuickStats({
+          // 审核效率
+          avgReviewTime: qs.review?.avgTime ?? 0,
+          approvalRate: qs.review?.approvalRate ?? 0,
+          todayReviewed: qs.review?.todayReviewed ?? 0,
+          // 用户活跃度
+          dailyActiveUsers: qs.activity?.dailyActive ?? 0,
+          weeklyActiveUsers: qs.activity?.weeklyActive ?? 0,
+          monthlyActiveUsers: qs.activity?.monthlyActive ?? 0,
+          // 内容质量
+          avgWordCount: qs.quality?.avgWordCount ?? 0,
+          imagePercentage: qs.quality?.imagePercentage ?? 0,
+          anonymousPercentage: qs.quality?.anonymousPercentage ?? 0
+        });
       } catch (_) {}
     };
     load();
@@ -115,7 +148,7 @@ const Dashboard = () => {
       </div>
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <StatCard
           title="总用户数"
           value={stats.totalUsers}
@@ -145,6 +178,12 @@ const Dashboard = () => {
           value={stats.pendingMessages}
           icon={Clock}
           color="yellow"
+        />
+        <StatCard
+          title="已隐藏"
+          value={stats.rejectedMessages}
+          icon={XCircle}
+          color="red"
         />
       </div>
 
@@ -244,10 +283,10 @@ const Dashboard = () => {
               />
               <Line 
                 type="monotone" 
-                dataKey="rejected" 
+                dataKey="hidden" 
                 stroke="#ef4444" 
                 strokeWidth={2}
-                name="已拒绝"
+                name="已隐藏"
               />
             </LineChart>
           </ResponsiveContainer>
@@ -263,15 +302,15 @@ const Dashboard = () => {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">平均审核时间</span>
-              <Badge variant="outline">2.3小时</Badge>
+              <Badge variant="outline">{quickStats.avgReviewTime > 0 ? `${quickStats.avgReviewTime}小时` : '暂无数据'}</Badge>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">通过率</span>
-              <Badge variant="default">92%</Badge>
+              <Badge variant="default">{quickStats.approvalRate > 0 ? `${quickStats.approvalRate}%` : '暂无数据'}</Badge>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">今日已审核</span>
-              <Badge variant="outline">15条</Badge>
+              <Badge variant="outline">{quickStats.todayReviewed}条</Badge>
             </div>
           </CardContent>
         </Card>
@@ -283,15 +322,15 @@ const Dashboard = () => {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">日活跃用户</span>
-              <Badge variant="default">45</Badge>
+              <Badge variant="default">{quickStats.dailyActiveUsers}</Badge>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">周活跃用户</span>
-              <Badge variant="default">128</Badge>
+              <Badge variant="default">{quickStats.weeklyActiveUsers}</Badge>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">月活跃用户</span>
-              <Badge variant="default">156</Badge>
+              <Badge variant="default">{quickStats.monthlyActiveUsers}</Badge>
             </div>
           </CardContent>
         </Card>
@@ -303,15 +342,15 @@ const Dashboard = () => {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">平均字数</span>
-              <Badge variant="outline">85字</Badge>
+              <Badge variant="outline">{quickStats.avgWordCount > 0 ? `${quickStats.avgWordCount}字` : '暂无数据'}</Badge>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">包含图片</span>
-              <Badge variant="outline">23%</Badge>
+              <Badge variant="outline">{quickStats.imagePercentage > 0 ? `${quickStats.imagePercentage}%` : '暂无数据'}</Badge>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">匿名发布</span>
-              <Badge variant="outline">67%</Badge>
+              <Badge variant="outline">{quickStats.anonymousPercentage > 0 ? `${quickStats.anonymousPercentage}%` : '暂无数据'}</Badge>
             </div>
           </CardContent>
         </Card>

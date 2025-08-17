@@ -141,7 +141,7 @@ const Home = () => {
     const statusMap = {
       'pending': { label: '待审核', variant: 'secondary' },
       'approved': { label: '已通过', variant: 'default' },
-      'rejected': { label: '已拒绝', variant: 'destructive' },
+      'rejected': { label: '已隐藏', variant: 'destructive' },
       'draft': { label: '草稿', variant: 'outline' }
     };
     
@@ -295,7 +295,7 @@ const Home = () => {
         <Card className="text-center">
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-pink-600">{pubCounts.rejected}</div>
-            <p className="text-sm text-muted-foreground">已拒绝</p>
+            <p className="text-sm text-muted-foreground">已隐藏</p>
           </CardContent>
         </Card>
       </div>
@@ -500,7 +500,7 @@ const Home = () => {
                         })}
                         
                         {/* 查看更多/收起 */}
-                        {comments.length > 2 && (
+                        {mergedComments.length > 2 && (
                           <Button
                             variant="link"
                             size="sm"

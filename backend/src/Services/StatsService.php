@@ -176,6 +176,29 @@ final class StatsService
     }
 
     /**
+     * Quick stats for dashboard
+     */
+    public function quickStats(array $user): array
+    {
+        $this->acl->ensure($user['role'] ?? 'user', 'audit:read');
+        
+        // 审核效率统计
+        $review = $this->getReviewStats();
+        
+        // 用户活跃度统计
+        $activity = $this->getActivityStats();
+        
+        // 内容质量统计
+        $quality = $this->getQualityStats();
+        
+        return [
+            'review' => $review,
+            'activity' => $activity,
+            'quality' => $quality
+        ];
+    }
+
+    /**
      * Public counts for homepage (no auth required)
      */
     public function publicCounts(): array
@@ -192,6 +215,133 @@ final class StatsService
         }
         $counts['total'] = $counts['approved'] + $counts['pending'] + $counts['hidden'];
         return $counts;
+    }
+
+    /**
+     * 获取审核效率统计
+     */
+    private function getReviewStats(): array
+    {
+        // 平均审核时间（小时）
+        $stmt = $this->pdo->query('
+            SELECT AVG(TIMESTAMPDIFF(HOUR, m.created_at, m.reviewed_at)) as avg_time
+            FROM messages m 
+            WHERE m.reviewed_at IS NOT NULL 
+            AND m.status IN ("approved", "rejected")
+        ');
+        $avgTime = (float)$stmt->fetchColumn() ?: 0;
+        
+        // 通过率
+        $stmt = $this->pdo->query('
+            SELECT 
+                COUNT(CASE WHEN status = "approved" THEN 1 END) as approved_count,
+                COUNT(CASE WHEN status IN ("approved", "rejected") THEN 1 END) as total_reviewed
+            FROM messages 
+            WHERE reviewed_at IS NOT NULL
+        ');
+        $row = $stmt->fetch();
+        $approvedCount = (int)$row['approved_count'];
+        $totalReviewed = (int)$row['total_reviewed'];
+        $approvalRate = $totalReviewed > 0 ? round(($approvedCount / $totalReviewed) * 100) : 0;
+        
+        // 今日已审核
+        $stmt = $this->pdo->query('
+            SELECT COUNT(*) as count
+            FROM messages 
+            WHERE reviewed_at >= CURDATE()
+        ');
+        $todayReviewed = (int)$stmt->fetchColumn();
+        
+        return [
+            'avgTime' => round($avgTime, 1),
+            'approvalRate' => $approvalRate,
+            'todayReviewed' => $todayReviewed
+        ];
+    }
+    
+    /**
+     * 获取用户活跃度统计
+     */
+    private function getActivityStats(): array
+    {
+        // 日活跃用户（今日有操作的用户）
+        $stmt = $this->pdo->query('
+            SELECT COUNT(DISTINCT user_id) as count
+            FROM audit_logs 
+            WHERE user_id IS NOT NULL 
+            AND created_at >= CURDATE()
+        ');
+        $dailyActive = (int)$stmt->fetchColumn();
+        
+        // 周活跃用户（本周有操作的用户）
+        $stmt = $this->pdo->query('
+            SELECT COUNT(DISTINCT user_id) as count
+            FROM audit_logs 
+            WHERE user_id IS NOT NULL 
+            AND created_at >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)
+        ');
+        $weeklyActive = (int)$stmt->fetchColumn();
+        
+        // 月活跃用户（本月有操作的用户）
+        $stmt = $this->pdo->query('
+            SELECT COUNT(DISTINCT user_id) as count
+            FROM audit_logs 
+            WHERE user_id IS NOT NULL 
+            AND created_at >= DATE_FORMAT(CURDATE(), "%Y-%m-01")
+        ');
+        $monthlyActive = (int)$stmt->fetchColumn();
+        
+        return [
+            'dailyActive' => $dailyActive,
+            'weeklyActive' => $weeklyActive,
+            'monthlyActive' => $monthlyActive
+        ];
+    }
+    
+    /**
+     * 获取内容质量统计
+     */
+    private function getQualityStats(): array
+    {
+        // 平均字数
+        $stmt = $this->pdo->query('
+            SELECT AVG(CHAR_LENGTH(content)) as avg_length
+            FROM messages 
+            WHERE deleted_at IS NULL
+        ');
+        $avgWordCount = (int)$stmt->fetchColumn() ?: 0;
+        
+        // 包含图片的百分比
+        $stmt = $this->pdo->query('
+            SELECT 
+                COUNT(CASE WHEN image_url IS NOT NULL AND image_url != "" THEN 1 END) as with_image,
+                COUNT(*) as total
+            FROM messages 
+            WHERE deleted_at IS NULL
+        ');
+        $row = $stmt->fetch();
+        $withImage = (int)$row['with_image'];
+        $total = (int)$row['total'];
+        $imagePercentage = $total > 0 ? round(($withImage / $total) * 100) : 0;
+        
+        // 匿名发布的百分比
+        $stmt = $this->pdo->query('
+            SELECT 
+                COUNT(CASE WHEN is_anonymous = 1 THEN 1 END) as anonymous,
+                COUNT(*) as total
+            FROM messages 
+            WHERE deleted_at IS NULL
+        ');
+        $row = $stmt->fetch();
+        $anonymous = (int)$row['anonymous'];
+        $total = (int)$row['total'];
+        $anonymousPercentage = $total > 0 ? round(($anonymous / $total) * 100) : 0;
+        
+        return [
+            'avgWordCount' => $avgWordCount,
+            'imagePercentage' => $imagePercentage,
+            'anonymousPercentage' => $anonymousPercentage
+        ];
     }
 
     private function getDbVersion(string $driver): string

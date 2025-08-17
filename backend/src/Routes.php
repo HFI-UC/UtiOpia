@@ -71,6 +71,7 @@ final class Routes
             $group->get('/logs', [self::class, 'listLogs']);
             // Stats
             $group->get('/stats/overview', [self::class, 'statsOverview']);
+            $group->get('/stats/quick', [self::class, 'statsQuick']);
             $group->get('/stats/messages', [self::class, 'statsMessagesSeries']);
             $group->get('/stats/audit', [self::class, 'statsAuditSeries']);
             $group->get('/stats/users', [self::class, 'statsUsersSeries']);
@@ -372,6 +373,14 @@ final class Routes
         [, $container, $user] = self::ctxAuth($request);
         $svc = $container->get(\UtiOpia\Services\StatsService::class);
         $result = $svc->overview($user);
+        return self::json($response, $result);
+    }
+
+    public static function statsQuick(Request $request, Response $response): Response
+    {
+        [, $container, $user] = self::ctxAuth($request);
+        $svc = $container->get(\UtiOpia\Services\StatsService::class);
+        $result = $svc->quickStats($user);
         return self::json($response, $result);
     }
 

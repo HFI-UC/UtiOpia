@@ -176,7 +176,7 @@ const Admin = () => {
           color="green"
         />
         <StatCard
-          title="已拒绝"
+          title="已隐藏"
           value={stats.rejectedMessages}
           icon={XCircle}
           trend="down"

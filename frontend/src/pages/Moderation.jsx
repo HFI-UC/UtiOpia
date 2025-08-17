@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   CheckCircle, 
   XCircle, 
@@ -33,6 +34,7 @@ const Moderation = () => {
   const [banSubmitting, setBanSubmitting] = useState(false);
   const [expanded, setExpanded] = useState({}); // messageId -> boolean
   const [commentsByMsg, setCommentsByMsg] = useState({}); // messageId -> { loading, items, total }
+  const [activeTab, setActiveTab] = useState('displayed'); // 'displayed' or 'hidden'
   const PREVIEW_LIMIT = 2;
 
   // 加载真实数据
@@ -40,7 +42,7 @@ const Moderation = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const resp = await api.get('/messages', { params: { page: 1, pageSize: 100, order: 'desc' } });
+        const resp = await api.get('/messages', { params: { page: 1, pageSize: 100, order: 'desc', status: 'all' } });
         const items = resp.data?.items || [];
         items.sort((a,b)=> new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         setAllMessages(items);
@@ -104,7 +106,7 @@ const Moderation = () => {
     try {
       await api.post(`/messages/${messageId}/approve`);
       updateMessageStatusInState(messageId, 'approved');
-      toast.success('内容已通过审核');
+      toast.success('内容已展示');
     } catch (error) {
       const msg = error.response?.data?.error || error.message || '操作失败';
       toast.error(msg);
@@ -120,7 +122,7 @@ const Moderation = () => {
     try {
       await api.post(`/messages/${messageId}/reject`, { reason: rejectReason });
       updateMessageStatusInState(messageId, 'rejected', rejectReason);
-      toast.success('内容已拒绝');
+      toast.success('内容已隐藏');
     } catch (error) {
       const msg = error.response?.data?.error || error.message || '操作失败';
       toast.error(msg);
@@ -291,7 +293,7 @@ const Moderation = () => {
         {message.status === 'rejected' && message.reject_reason && (
           <div className="flex items-center space-x-2 p-3 bg-red-50 rounded-lg border border-red-200">
             <AlertTriangle className="w-4 h-4 text-red-500" />
-            <span className="text-sm text-red-700">拒绝原因：{message.reject_reason}</span>
+            <span className="text-sm text-red-700">隐藏原因：{message.reject_reason}</span>
           </div>
         )}
         
@@ -442,32 +444,63 @@ const Moderation = () => {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <XCircle className="w-5 h-5 text-red-500" />
-              <div>
-                <p className="text-sm text-muted-foreground">已隐藏</p>
-                <p className="text-xl font-bold">{allMessages.filter(m => m.status === 'rejected').length}</p>
+              <div className="flex items-center space-x-2">
+                <EyeOff className="w-5 h-5 text-red-500" />
+                <div>
+                  <p className="text-sm text-muted-foreground">已隐藏</p>
+                  <p className="text-xl font-bold">{allMessages.filter(m => m.status === 'rejected').length}</p>
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Unified List (time desc) */}
-            <div className="space-y-4">
-        {allMessages.length > 0 ? (
-          allMessages.map(message => (
-            <MessageCard key={message.id} message={message} />
-          ))
+      {/* Grouped View */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="displayed">
+            <Eye className="w-4 h-4 mr-2" />
+            已展示 ({allMessages.filter(m => m.status === 'approved').length})
+          </TabsTrigger>
+          <TabsTrigger value="hidden">
+            <EyeOff className="w-4 h-4 mr-2" />
+            已隐藏 ({allMessages.filter(m => m.status === 'rejected').length})
+          </TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="displayed" className="space-y-4">
+          {allMessages.filter(m => m.status === 'approved').length > 0 ? (
+            allMessages.filter(m => m.status === 'approved').map(message => (
+              <MessageCard key={message.id} message={message} />
+            ))
           ) : (
             <Card>
               <CardContent className="p-8 text-center">
-                <Eye className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">暂无内容</h3>
-              <p className="text-muted-foreground">当前没有纸条</p>
+                <CheckCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium mb-2">暂无已展示内容</h3>
+                <p className="text-muted-foreground">当前没有已展示的纸条</p>
               </CardContent>
             </Card>
           )}
-      </div>
+        </TabsContent>
+        
+        <TabsContent value="hidden" className="space-y-4">
+          {allMessages.filter(m => m.status === 'rejected').length > 0 ? (
+            allMessages.filter(m => m.status === 'rejected').map(message => (
+              <MessageCard key={message.id} message={message} />
+            ))
+          ) : (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <EyeOff className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium mb-2">暂无已隐藏内容</h3>
+                <p className="text-muted-foreground">当前没有已隐藏的纸条</p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
 
       {/* Detail Modal */}
       <Dialog open={!!detail} onOpenChange={(o)=>{ if(!o){ setDetail(null); setTrail([]);} }}>
@@ -480,9 +513,9 @@ const Moderation = () => {
           </DialogHeader>
           <div className="space-y-4">
             <div className="flex items-center space-x-2">
-              {detail?.status === 'pending' && (<Badge variant="secondary"><Clock className="w-3 h-3 mr-1"/>待审核</Badge>)}
-              {detail?.status === 'approved' && (<Badge variant="default"><CheckCircle className="w-3 h-3 mr-1"/>已通过</Badge>)}
-              {detail?.status === 'rejected' && (<Badge variant="destructive"><XCircle className="w-3 h-3 mr-1"/>已拒绝</Badge>)}
+              {detail?.status === 'pending' && (<Badge variant="secondary"><Clock className="w-3 h-1"/>待审核</Badge>)}
+              {detail?.status === 'approved' && (<Badge variant="default"><CheckCircle className="w-3 h-3 mr-1"/>已展示</Badge>)}
+              {detail?.status === 'rejected' && (<Badge variant="destructive"><EyeOff className="w-3 h-3 mr-1"/>已隐藏</Badge>)}
             </div>
             <div className="text-sm whitespace-pre-wrap break-words">
               {detail?.content}
@@ -513,7 +546,7 @@ const Moderation = () => {
             {detail?.status === 'rejected' && detail?.reject_reason && (
               <div className="flex items-center space-x-2 p-3 bg-red-50 rounded-lg border border-red-200">
                 <AlertTriangle className="w-4 h-4 text-red-500" />
-                <span className="text-sm text-red-700">拒绝原因：{detail.reject_reason}</span>
+                <span className="text-sm text-red-700">隐藏原因：{detail.reject_reason}</span>
               </div>
             )}
             {/* 审计轨迹 */}
@@ -556,7 +589,7 @@ const Moderation = () => {
       <Dialog open={rejectDialog.open} onOpenChange={(o)=> setRejectDialog(prev => ({ ...prev, open: o }))}>
         <DialogContent className="relative">
           <DialogHeader>
-            <DialogTitle>请输入拒绝理由</DialogTitle>
+            <DialogTitle>请输入隐藏理由</DialogTitle>
           </DialogHeader>
           <div className="space-y-2">
             <textarea className="w-full border rounded-md p-2 text-sm" rows={4} placeholder="内容不当" value={rejectDialog.text} onChange={(e)=> setRejectDialog(prev => ({ ...prev, text: e.target.value }))} />
@@ -570,7 +603,7 @@ const Moderation = () => {
                 await api.post(`/messages/${rejectDialog.id}/reject`, { reason: rejectDialog.text });
                 // 统一使用 allMessages 状态
                 setAllMessages(prev => prev.map(m => m.id === rejectDialog.id ? { ...m, status: 'rejected', reviewed_at: new Date().toISOString(), reject_reason: rejectDialog.text } : m));
-                toast.success('内容已拒绝');
+                toast.success('内容已隐藏');
               } catch (error) {
                 const msg = error.response?.data?.error || error.message || '操作失败';
                 toast.error(msg);
