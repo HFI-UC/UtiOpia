@@ -87,6 +87,41 @@ final class MessageService
                 unset($item);
             }
         } catch (\Throwable) {}
+        // 可选：联动返回评论，减少前端额外请求
+        $withComments = (int)($query['with_comments'] ?? 1) === 1;
+        if ($withComments && !empty($items)) {
+            $messageIds = array_map(static fn($it) => (int)$it['id'], $items);
+            $placeholders = implode(',', array_fill(0, count($messageIds), '?'));
+            // 管理视图总是可见实名；普通视图对匿名做脱敏
+            $viewerIdInt = (int)$viewerId;
+            $canModerateInt = $canModerate ? 1 : 0;
+            $sqlComments = 'SELECT c.id, c.message_id, c.user_id, c.is_anonymous, c.content, c.parent_id, c.root_id, '
+                . 'c.status, c.created_at, c.reviewed_at, c.reviewed_by, '
+                . 'CASE WHEN c.is_anonymous = 1 AND ' . $canModerateInt . ' = 0 AND (c.user_id IS NULL OR c.user_id <> ' . $viewerIdInt . ') THEN NULL ELSE u.email END AS user_email, '
+                . 'CASE WHEN c.is_anonymous = 1 AND ' . $canModerateInt . ' = 0 AND (c.user_id IS NULL OR c.user_id <> ' . $viewerIdInt . ') THEN NULL ELSE u.nickname END AS user_nickname '
+                . 'FROM message_comments c '
+                . 'LEFT JOIN users u ON u.id = c.user_id '
+                . 'WHERE c.message_id IN (' . $placeholders . ') AND c.deleted_at IS NULL ' . (!$canModerate ? 'AND c.status = "approved" ' : '')
+                . 'ORDER BY COALESCE(c.root_id, c.id) ASC, c.id ASC';
+            $stc = $this->pdo->prepare($sqlComments);
+            foreach ($messageIds as $idx => $mid) {
+                $stc->bindValue($idx + 1, $mid, PDO::PARAM_INT);
+            }
+            $stc->execute();
+            $rows = $stc->fetchAll();
+            $midToComments = [];
+            foreach ($rows as $row) {
+                $mid = (int)$row['message_id'];
+                if (!isset($midToComments[$mid])) $midToComments[$mid] = [];
+                $midToComments[$mid][] = $row;
+            }
+            foreach ($items as &$it) {
+                $mid = (int)$it['id'];
+                $list = $midToComments[$mid] ?? [];
+                $it['comments'] = [ 'items' => $list, 'total' => count($list) ];
+            }
+            unset($it);
+        }
         $total = (int)$this->pdo->query('SELECT FOUND_ROWS()')->fetchColumn();
         return ['items' => $items, 'total' => $total, 'page' => $page, 'pageSize' => $pageSize];
     }

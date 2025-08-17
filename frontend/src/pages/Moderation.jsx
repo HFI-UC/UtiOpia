@@ -162,6 +162,14 @@ const Moderation = () => {
     }
   };
 
+  const showCommentsFor = (messageId) => {
+    if (!commentsByMsg[messageId]) { preloadComments(messageId); }
+    setExpanded(prev => ({ ...prev, [messageId]: true }));
+  };
+  const hideCommentsFor = (messageId) => {
+    setExpanded(prev => ({ ...prev, [messageId]: false }));
+  };
+
   const approveComment = async (commentId, messageId) => {
     try {
       await api.post(`/comments/${commentId}/approve`);
@@ -293,11 +301,11 @@ const Moderation = () => {
           </div>
         )}
 
-        {/* 评论区域（管理员可展开并审核评论） */}
-        <div className="pt-2">
-          <Button size="sm" variant="outline" onClick={() => toggleExpandComments(message.id)} disabled={commentsByMsg[message.id]?.loading}>
-            {expanded[message.id] ? '收起评论' : '查看评论'}
-          </Button>
+        {/* 评论区域：默认展示前几条；卡片 hover 自动展开更多，移出收起 */}
+        <div className="pt-2" onMouseEnter={()=> showCommentsFor(message.id)} onMouseLeave={()=> hideCommentsFor(message.id)}>
+          {!expanded[message.id] && (
+            <div className="text-xs text-muted-foreground mb-2">鼠标移入查看更多评论</div>
+          )}
           {expanded[message.id] && (
             <div className="mt-3 space-y-2">
               {commentsByMsg[message.id]?.loading && (
@@ -445,20 +453,20 @@ const Moderation = () => {
       </div>
 
       {/* Unified List (time desc) */}
-      <div className="space-y-4">
+            <div className="space-y-4">
         {allMessages.length > 0 ? (
           allMessages.map(message => (
             <MessageCard key={message.id} message={message} />
           ))
-        ) : (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <Eye className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          ) : (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <Eye className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium mb-2">暂无内容</h3>
               <p className="text-muted-foreground">当前没有纸条</p>
-            </CardContent>
-          </Card>
-        )}
+              </CardContent>
+            </Card>
+          )}
       </div>
 
       {/* Detail Modal */}

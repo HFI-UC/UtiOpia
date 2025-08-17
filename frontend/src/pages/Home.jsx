@@ -309,10 +309,13 @@ const Home = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {messages.map((message, index) => {
-            const comments = commentsByMsg[message.id]?.items || [];
-            const hasComments = comments.length > 0;
+            const fallbackComments = commentsByMsg[message.id]?.items || [];
+            const mergedComments = Array.isArray(message.comments?.items) && message.comments.items.length > 0
+              ? message.comments.items
+              : fallbackComments;
+            const totalCount = message.comments?.total ?? mergedComments.length;
             const showAllComments = expandedComments[message.id];
-            const displayComments = showAllComments ? comments : comments.slice(0, 2);
+            const displayComments = showAllComments ? mergedComments : mergedComments.slice(0, 2);
             
             return (
             <Card 
@@ -512,7 +515,7 @@ const Home = () => {
                             ) : (
                               <>
                                 <ChevronDown className="w-3 h-3 mr-1" />
-                                查看全部 {comments.length} 条评论
+                                查看全部 {totalCount} 条评论
                               </>
                             )}
                           </Button>

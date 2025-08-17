@@ -20,7 +20,7 @@ const useMessagesStore = create((set, get) => ({
     try {
       const currentPage = reset ? 1 : page;
       const response = await api.get('/messages', {
-        params: { page: currentPage, pageSize }
+        params: { page: currentPage, pageSize, with_comments: 1 }
       });
 
       const { items = [], total = 0 } = response.data;
