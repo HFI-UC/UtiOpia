@@ -156,6 +156,19 @@ HTML;
 		return $this->send($to, $title, $this->baseTemplate($title, $content, $buttons));
 	}
 
+	public function sendMessageHidden(string $to, string $nickname, int $messageId, string $contentText, string $reason = ''): bool
+	{
+		$site = $this->settings['site'] ?? ['url' => ''];
+		$title = '已隐藏：您的纸条已被隐藏';
+		$excerpt = $this->excerpt($contentText);
+		$reasonHtml = $reason !== '' ? '<p><strong>原因：</strong>' . htmlspecialchars($reason) . '</p>' : '';
+		$content = '<p>亲爱的 <strong>' . htmlspecialchars($nickname) . '</strong>，您的纸条因违反社区规范已被隐藏。</p>'
+			. $reasonHtml
+			. '<p><strong>内容摘要：</strong>' . htmlspecialchars($excerpt) . '</p>';
+		$buttons = [ ['text' => '查看留言墙', 'url' => (string)($site['url'] ?? '')] ];
+		return $this->send($to, $title, $this->baseTemplate($title, $content, $buttons));
+	}
+
 	public function sendUserRoleChanged(string $to, string $nickname, string $newRole): bool
 	{
 		$title = '账户角色变更通知';

@@ -568,12 +568,8 @@ const Moderation = () => {
               setRejectSubmitting(true);
               try {
                 await api.post(`/messages/${rejectDialog.id}/reject`, { reason: rejectDialog.text });
-                const message = pendingMessages.find(m => m.id === rejectDialog.id);
-                if (message) {
-                  const rejectedMessage = { ...message, status: 'rejected', reviewed_at: new Date().toISOString(), reject_reason: rejectDialog.text };
-                  setPendingMessages(prev => prev.filter(m => m.id !== rejectDialog.id));
-                  setReviewedMessages(prev => [rejectedMessage, ...prev]);
-                }
+                // 统一使用 allMessages 状态
+                setAllMessages(prev => prev.map(m => m.id === rejectDialog.id ? { ...m, status: 'rejected', reviewed_at: new Date().toISOString(), reject_reason: rejectDialog.text } : m));
                 toast.success('内容已拒绝');
               } catch (error) {
                 const msg = error.response?.data?.error || error.message || '操作失败';

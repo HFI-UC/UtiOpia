@@ -86,7 +86,8 @@ final class StatsService
             'messages' => [
                 'pending' => $statusCounts['pending'] ?? 0,
                 'approved' => $statusCounts['approved'] ?? 0,
-                'rejected' => $statusCounts['rejected'] ?? 0,
+                // 语义统一：rejected == hidden
+                'hidden' => $statusCounts['rejected'] ?? 0,
                 'last24h' => $messages24h,
             ],
             'logs' => [
@@ -180,14 +181,16 @@ final class StatsService
     public function publicCounts(): array
     {
         $stmt = $this->pdo->query('SELECT status, COUNT(*) c FROM messages WHERE deleted_at IS NULL OR deleted_at IS NULL GROUP BY status');
-        $counts = ['approved' => 0, 'pending' => 0, 'rejected' => 0];
+        $counts = ['approved' => 0, 'pending' => 0, 'hidden' => 0];
         foreach ($stmt->fetchAll() as $row) {
             $status = (string)$row['status'];
-            if (isset($counts[$status])) {
+            if ($status === 'rejected') {
+                $counts['hidden'] = (int)$row['c'];
+            } else if (isset($counts[$status])) {
                 $counts[$status] = (int)$row['c'];
             }
         }
-        $counts['total'] = $counts['approved'] + $counts['pending'] + $counts['rejected'];
+        $counts['total'] = $counts['approved'] + $counts['pending'] + $counts['hidden'];
         return $counts;
     }
 

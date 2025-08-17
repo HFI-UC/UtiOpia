@@ -27,14 +27,14 @@ final class ModerationService
         $this->pdo->prepare('UPDATE messages SET status = "rejected", reject_reason = ?, reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP WHERE id = ?')
             ->execute([$reason, $actor['id'], $messageId]);
         $this->logger->log('message.reject', $actor['id'], ['message_id' => $messageId, 'reason' => $reason]);
-        // 通知作者（模板：未通过）。若为游客匿名，发送至匿名邮箱
+        // 通知作者（模板：已隐藏）。若为游客匿名，发送至匿名邮箱
         $stmt = $this->pdo->prepare('SELECT m.is_anonymous, m.anon_email, m.content, u.email, u.nickname FROM messages m LEFT JOIN users u ON m.user_id = u.id WHERE m.id = ?');
         $stmt->execute([$messageId]);
         if ($row = $stmt->fetch()) {
             if ((int)$row['is_anonymous'] === 1 && !empty($row['anon_email'])) {
-                $this->mailer->sendMessageRejected((string)$row['anon_email'], '同学', $messageId, (string)$row['content'], $reason);
+                $this->mailer->sendMessageHidden((string)$row['anon_email'], '同学', $messageId, (string)$row['content'], $reason);
             } else if (!empty($row['email'])) {
-                $this->mailer->sendMessageRejected((string)$row['email'], (string)$row['nickname'], $messageId, (string)$row['content'], $reason);
+                $this->mailer->sendMessageHidden((string)$row['email'], (string)$row['nickname'], $messageId, (string)$row['content'], $reason);
             }
         }
         return ['ok' => true];
