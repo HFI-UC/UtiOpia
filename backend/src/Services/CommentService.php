@@ -26,8 +26,9 @@ final class CommentService
         }
         $sql = 'SELECT SQL_CALC_FOUND_ROWS '
             . 'c.id, c.message_id, c.user_id, c.is_anonymous, c.content, c.parent_id, c.root_id, c.status, c.created_at, c.reviewed_at, c.reviewed_by, '
-            . 'CASE WHEN c.is_anonymous = 1 AND (c.user_id IS NULL OR c.user_id <> :viewer_id) THEN NULL ELSE u.email END AS user_email, '
-            . 'CASE WHEN c.is_anonymous = 1 AND (c.user_id IS NULL OR c.user_id <> :viewer_id) THEN NULL ELSE u.nickname END AS user_nickname '
+            . 'CASE WHEN c.is_anonymous = 1 AND :can_moderate = 0 AND (c.user_id IS NULL OR c.user_id <> :viewer_id) THEN NULL ELSE u.email END AS user_email, '
+            . 'CASE WHEN c.is_anonymous = 1 AND :can_moderate = 0 AND (c.user_id IS NULL OR c.user_id <> :viewer_id) THEN NULL ELSE u.nickname END AS user_nickname, '
+            . 'CASE WHEN c.is_anonymous = 1 AND :can_moderate = 0 AND (c.user_id IS NULL OR c.user_id <> :viewer_id) THEN NULL ELSE u.student_id END AS user_student_id '
             . 'FROM message_comments c '
             . 'LEFT JOIN users u ON u.id = c.user_id '
             . 'WHERE ' . $where . ' '
@@ -36,6 +37,7 @@ final class CommentService
         $stmt = $this->pdo->prepare($sql);
         $stmt->bindValue(':mid', $messageId, PDO::PARAM_INT);
         $stmt->bindValue(':viewer_id', $viewerId, PDO::PARAM_INT);
+        $stmt->bindValue(':can_moderate', $canModerate ? 1 : 0, PDO::PARAM_INT);
         $stmt->bindValue(':limit', $pageSize, PDO::PARAM_INT);
         $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();

@@ -315,70 +315,70 @@ const Home = () => {
             const displayComments = showAllComments ? comments : comments.slice(0, 2);
             
             return (
-              <Card 
-                key={message.id}
-                className={`group hover:shadow-lg transition-all duration-300 ${
-                  index < 3 ? 'ring-2 ring-yellow-200 bg-gradient-to-br from-yellow-50 to-orange-50' : ''
-                }`}
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center space-x-2">
-                      <Clock className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">
-                        {formatTime(message.created_at)}
-                      </span>
-                      {index < 3 && <Star className="w-4 h-4 text-yellow-500 fill-current" />}
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      {getStatusBadge(message.status)}
-                      {canEdit(message) && (
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => handleEdit(message)}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => handleDelete(message)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
+            <Card 
+              key={message.id}
+              className={`group hover:shadow-lg transition-all duration-300 ${
+                index < 3 ? 'ring-2 ring-yellow-200 bg-gradient-to-br from-yellow-50 to-orange-50' : ''
+              }`}
+            >
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Clock className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">
+                      {formatTime(message.created_at)}
+                    </span>
+                    {index < 3 && <Star className="w-4 h-4 text-yellow-500 fill-current" />}
                   </div>
-                </CardHeader>
+                  <div className="flex items-center space-x-2">
+                    {getStatusBadge(message.status)}
+                    {canEdit(message) && (
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleEdit(message)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleDelete(message)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardHeader>
+              
+              <CardContent className="space-y-4">
+                <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                  {message.content}
+                </p>
                 
-                <CardContent className="space-y-4">
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                    {message.content}
-                  </p>
-                  
-                  {message.image_url && (
-                    <div className="rounded-lg overflow-hidden">
-                      <img 
-                        src={message.image_url} 
-                        alt="纸条图片" 
-                        className="w-full h-48 object-cover hover:scale-105 transition-transform duration-300"
-                      />
-                    </div>
-                  )}
-
+                {message.image_url && (
+                  <div className="rounded-lg overflow-hidden">
+                    <img 
+                      src={message.image_url} 
+                      alt="纸条图片" 
+                      className="w-full h-48 object-cover hover:scale-105 transition-transform duration-300"
+                    />
+                  </div>
+                )}
+              
                   {/* 作者信息和操作按钮 */}
                   <div className="flex items-center justify-between pt-2 border-t">
-                    <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2">
                       <Tooltip delayDuration={150}>
                         <TooltipTrigger asChild>
                           <Avatar className="w-6 h-6 cursor-default">
                             <AvatarFallback className="text-xs bg-gradient-to-br from-blue-500 to-purple-500 text-white">
-                              {message.user_email ? message.user_email.charAt(0).toUpperCase() : <User className="w-3 h-3" />}
-                            </AvatarFallback>
-                          </Avatar>
+                        {message.user_email ? message.user_email.charAt(0).toUpperCase() : <User className="w-3 h-3" />}
+                      </AvatarFallback>
+                    </Avatar>
                         </TooltipTrigger>
                         {(message.user_email || message.user_nickname) && (
                           <TooltipContent side="top" sideOffset={6}>
@@ -386,6 +386,7 @@ const Home = () => {
                           </TooltipContent>
                         )}
                       </Tooltip>
+                      {message.is_anonymous ? (<Badge variant="secondary" className="text-[10px]">匿名</Badge>) : null}
                       <Badge variant="outline" className="text-xs">#{message.id}</Badge>
                     </div>
                     
@@ -574,7 +575,7 @@ const Home = () => {
                                       <span className="mx-1">或</span>
                                       <Link to={`/register?redirect=${encodeURIComponent(location.pathname)}`} className="text-blue-600 hover:underline">注册</Link>
                                       <span className="ml-1">后参与讨论</span>
-                                    </span>
+                    </span>
                                   )}
                                 </div>
                                 <div className="flex items-center space-x-2">
@@ -630,7 +631,7 @@ const Home = () => {
                     </div>
                   </div>
                 </CardContent>
-              </Card>
+            </Card>
             );
           })}
         </div>

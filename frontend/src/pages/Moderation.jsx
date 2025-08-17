@@ -3,8 +3,8 @@ import api from '../lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
   CheckCircle, 
@@ -23,35 +23,29 @@ import {
 import { toast } from 'sonner';
 
 const Moderation = () => {
-  const [pendingMessages, setPendingMessages] = useState([]);
-  const [reviewedMessages, setReviewedMessages] = useState([]);
+  const [allMessages, setAllMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [detail, setDetail] = useState(null);
   const [trail, setTrail] = useState([]);
   const [rejectDialog, setRejectDialog] = useState({ open: false, id: null, text: '' });
-  const [banDialog, setBanDialog] = useState({ open: false, choice: null, options: [], reason: '' });
+  const [banDialog, setBanDialog] = useState({ open: false, selected: {}, options: [], reason: '' });
   const [rejectSubmitting, setRejectSubmitting] = useState(false);
   const [banSubmitting, setBanSubmitting] = useState(false);
   const [expanded, setExpanded] = useState({}); // messageId -> boolean
-  const [commentsByMsg, setCommentsByMsg] = useState({}); // messageId -> { loading, items }
+  const [commentsByMsg, setCommentsByMsg] = useState({}); // messageId -> { loading, items, total }
+  const PREVIEW_LIMIT = 2;
 
   // 加载真实数据
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [pendingResp, approvedResp, rejectedResp] = await Promise.all([
-          api.get('/messages', { params: { status: 'pending', pageSize: 50, page: 1 } }),
-          api.get('/messages', { params: { status: 'approved', pageSize: 10, page: 1 } }),
-          api.get('/messages', { params: { status: 'rejected', pageSize: 10, page: 1 } }),
-        ]);
-        setPendingMessages(pendingResp.data?.items || []);
-        const approvedItems = approvedResp.data?.items || [];
-        const rejectedItems = rejectedResp.data?.items || [];
-        setReviewedMessages([
-          ...approvedItems.map(it => ({ ...it, status: 'approved' })),
-          ...rejectedItems.map(it => ({ ...it, status: 'rejected' })),
-        ]);
+        const resp = await api.get('/messages', { params: { page: 1, pageSize: 100, order: 'desc' } });
+        const items = resp.data?.items || [];
+        items.sort((a,b)=> new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        setAllMessages(items);
+        // 预加载每条的评论预览
+        items.forEach(m => preloadComments(m.id));
       } catch (e) {
         toast.error('加载审核数据失败');
       } finally {
@@ -101,7 +95,8 @@ const Moderation = () => {
       toast.error('无可封禁的标识');
       return;
     }
-    setBanDialog({ open: true, choice: options[0], options, reason: '' });
+    const selected = Object.fromEntries(options.map(o => [o.value, true]));
+    setBanDialog({ open: true, selected, options, reason: '' });
   };
 
   const handleApprove = async (messageId) => {
@@ -135,32 +130,34 @@ const Moderation = () => {
   };
 
   const updateMessageStatusInState = (messageId, status, rejectReason = '') => {
-    setPendingMessages(prev => prev.filter(m => m.id !== messageId));
-    setReviewedMessages(prev => {
-      const inReviewed = prev.find(m => m.id === messageId);
-      if (inReviewed) {
-        return prev.map(m => m.id === messageId ? { ...m, status, reviewed_at: new Date().toISOString(), reject_reason: status==='rejected'?rejectReason:undefined } : m);
-      }
-      const fromPending = pendingMessages.find(m => m.id === messageId);
-      if (fromPending) {
-        const newItem = { ...fromPending, status, reviewed_at: new Date().toISOString(), reject_reason: status==='rejected'?rejectReason:undefined };
-        return [newItem, ...prev];
-      }
-      return prev;
-    });
+    setAllMessages(prev => prev.map(m => m.id === messageId ? { ...m, status, reviewed_at: new Date().toISOString(), reject_reason: status==='rejected'?rejectReason:undefined } : m));
+  };
+
+  const preloadComments = async (messageId) => {
+    if (commentsByMsg[messageId]) return;
+    setCommentsByMsg(prev => ({ ...prev, [messageId]: { loading: true, items: [], total: 0 } }));
+    try {
+      const r = await api.get(`/messages/${messageId}/comments`, { params: { page: 1, pageSize: 10 } });
+      const items = r?.data?.items || [];
+      const total = r?.data?.total || items.length;
+      setCommentsByMsg(prev => ({ ...prev, [messageId]: { loading: false, items, total } }));
+    } catch {
+      setCommentsByMsg(prev => ({ ...prev, [messageId]: { loading: false, items: [], total: 0 } }));
+    }
   };
 
   const toggleExpandComments = async (messageId) => {
     setExpanded(prev => ({ ...prev, [messageId]: !prev[messageId] }));
     const opened = !expanded[messageId];
-    if (opened && !commentsByMsg[messageId]) {
-      setCommentsByMsg(prev => ({ ...prev, [messageId]: { loading: true, items: [] } }));
+    if (opened) {
+      setCommentsByMsg(prev => ({ ...prev, [messageId]: { ...(prev[messageId]||{}), loading: true } }));
       try {
         const r = await api.get(`/messages/${messageId}/comments`, { params: { page: 1, pageSize: 100 } });
         const items = r?.data?.items || [];
-        setCommentsByMsg(prev => ({ ...prev, [messageId]: { loading: false, items } }));
+        const total = r?.data?.total || items.length;
+        setCommentsByMsg(prev => ({ ...prev, [messageId]: { loading: false, items, total } }));
       } catch {
-        setCommentsByMsg(prev => ({ ...prev, [messageId]: { loading: false, items: [] } }));
+        setCommentsByMsg(prev => ({ ...prev, [messageId]: { loading: false, items: [], total: 0 } }));
       }
     }
   };
@@ -198,7 +195,7 @@ const Moderation = () => {
     }
   };
 
-  const MessageCard = ({ message, showActions = false }) => (
+  const MessageCard = ({ message }) => (
     <Card className="mb-4">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
@@ -243,14 +240,7 @@ const Moderation = () => {
                 已隐藏
               </Badge>
             )}
-            <div className="flex items-center space-x-1">
-              <Button size="sm" variant={message.status==='approved' ? 'outline' : 'default'} onClick={() => handleApprove(message.id)} disabled={loading}>
-                <Eye className="w-3 h-3 mr-1" />展示
-              </Button>
-              <Button size="sm" variant="destructive" onClick={() => handleReject(message.id)} disabled={loading}>
-                <EyeOff className="w-3 h-3 mr-1" />隐藏
-              </Button>
-            </div>
+            {/* 统一到下方，仅保留隐藏按钮，这里移除顶部操作 */}
           </div>
         </div>
       </CardHeader>
@@ -316,10 +306,36 @@ const Moderation = () => {
               {(commentsByMsg[message.id]?.items || []).length === 0 && !commentsByMsg[message.id]?.loading && (
                 <div className="text-xs text-muted-foreground">暂无评论</div>
               )}
-              {(commentsByMsg[message.id]?.items || []).map((c) => (
+              {(() => {
+                const items = (commentsByMsg[message.id]?.items || []);
+                const total = commentsByMsg[message.id]?.total || items.length;
+                const display = expanded[message.id] ? items : items.slice(0, PREVIEW_LIMIT);
+                const hasMore = items.length > PREVIEW_LIMIT || total > PREVIEW_LIMIT;
+                return display.map((c) => (
                 <div key={c.id} className="p-2 border rounded-md">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm whitespace-pre-wrap break-words">{c.content}</div>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start space-x-2">
+                      <Avatar className="w-6 h-6 mt-0.5">
+                        <AvatarFallback className="text-[10px] bg-muted">
+                          {(c.user_email || '').slice(0,1).toUpperCase() || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+                          <span className="font-medium text-sm text-foreground">{c.user_nickname || c.user_email || '用户'}</span>
+                          {c.user_student_id && <Badge variant="outline">{c.user_student_id}</Badge>}
+                          {c.is_anonymous ? (<Badge variant="secondary">匿名</Badge>) : null}
+                        </div>
+                        <Tooltip delayDuration={150}>
+                          <TooltipTrigger asChild>
+                            <div className="text-sm break-words line-clamp-2 cursor-default">{c.content}</div>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" sideOffset={6}>
+                            <div className="max-w-[60ch] whitespace-pre-wrap text-sm">{c.content}</div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                    </div>
                     <div className="flex items-center space-x-2">
                       {c.status === 'approved' && (<Badge variant="outline">已展示</Badge>)}
                       {c.status === 'rejected' && (<Badge variant="destructive">已隐藏</Badge>)}
@@ -333,49 +349,48 @@ const Moderation = () => {
                     <Button size="sm" variant="destructive" onClick={()=>rejectComment(c.id, message.id)}>
                       <EyeOff className="w-3 h-3 mr-1" />隐藏
                     </Button>
+                    {(c.user_email || c.user_student_id) && (
+                      <Button size="sm" variant="outline" onClick={()=> handleQuickBan({ user_email: c.user_email, anon_student_id: c.user_student_id })}>
+                        <Ban className="w-3 h-3 mr-1" />封禁
+                      </Button>
+                    )}
                   </div>
                 </div>
-              ))}
+              )); })()}
+              {(() => {
+                const items = (commentsByMsg[message.id]?.items || []);
+                const total = commentsByMsg[message.id]?.total || items.length;
+                const hasMore = (items.length > PREVIEW_LIMIT || total > PREVIEW_LIMIT) && !expanded[message.id];
+                if (!hasMore) return null;
+                return (
+                  <Button size="sm" variant="link" className="h-auto p-0 text-xs" onClick={()=> toggleExpandComments(message.id)}>
+                    查看全部 {total} 条评论
+                  </Button>
+                );
+              })()}
             </div>
           )}
         </div>
         
-        {showActions && (
+        {
           <div className="flex space-x-2 pt-2">
-            <Button 
-              size="sm" 
-              onClick={() => handleApprove(message.id)}
-              disabled={loading}
-            >
-              <CheckCircle className="w-4 h-4 mr-1" />
-              通过
-            </Button>
             <Button 
               size="sm" 
               variant="destructive"
               onClick={() => handleReject(message.id)}
               disabled={loading}
             >
-              <XCircle className="w-4 h-4 mr-1" />
-              拒绝
+              <EyeOff className="w-4 h-4 mr-1" />
+              隐藏
             </Button>
             {(message.user_email || message.anon_email || message.anon_student_id) && (
-              <Button 
-                size="sm" 
-                variant="outline"
-                onClick={() => handleQuickBan(message)}
-                disabled={loading}
-              >
+              <Button size="sm" variant="outline" onClick={() => handleQuickBan(message)} disabled={loading}>
                 <Ban className="w-4 h-4 mr-1" />
                 封禁
               </Button>
             )}
-            <Button size="sm" variant="outline" onClick={() => setDetail(message)}>
-              <Eye className="w-4 h-4 mr-1" />
-              详情
-            </Button>
           </div>
-        )}
+        }
       </CardContent>
     </Card>
   );
@@ -391,14 +406,14 @@ const Moderation = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
               <Clock className="w-5 h-5 text-yellow-500" />
               <div>
-                <p className="text-sm text-muted-foreground">待审核</p>
-                <p className="text-xl font-bold">{pendingMessages.length}</p>
+                <p className="text-sm text-muted-foreground">总计</p>
+                <p className="text-xl font-bold">{allMessages.length}</p>
               </div>
             </div>
           </CardContent>
@@ -409,10 +424,8 @@ const Moderation = () => {
             <div className="flex items-center space-x-2">
               <CheckCircle className="w-5 h-5 text-green-500" />
               <div>
-                <p className="text-sm text-muted-foreground">已通过</p>
-                <p className="text-xl font-bold">
-                  {reviewedMessages.filter(m => m.status === 'approved').length}
-                </p>
+                <p className="text-sm text-muted-foreground">已展示</p>
+                <p className="text-xl font-bold">{allMessages.filter(m => m.status === 'approved').length}</p>
               </div>
             </div>
           </CardContent>
@@ -423,98 +436,30 @@ const Moderation = () => {
             <div className="flex items-center space-x-2">
               <XCircle className="w-5 h-5 text-red-500" />
               <div>
-                <p className="text-sm text-muted-foreground">已拒绝</p>
-                <p className="text-xl font-bold">
-                  {reviewedMessages.filter(m => m.status === 'rejected').length}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <MessageSquare className="w-5 h-5 text-blue-500" />
-              <div>
-                <p className="text-sm text-muted-foreground">总计</p>
-                <p className="text-xl font-bold">
-                  {pendingMessages.length + reviewedMessages.length}
-                </p>
+                <p className="text-sm text-muted-foreground">已隐藏</p>
+                <p className="text-xl font-bold">{allMessages.filter(m => m.status === 'rejected').length}</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Content Tabs */}
-      <Tabs defaultValue="pending" className="space-y-6">
-        <div className="flex items-center justify-between">
-          <TabsList>
-            <TabsTrigger value="pending" className="flex items-center space-x-2">
-              <Clock className="w-4 h-4" />
-              <span>待审核 ({pendingMessages.length})</span>
-            </TabsTrigger>
-            <TabsTrigger value="reviewed" className="flex items-center space-x-2">
-              <Eye className="w-4 h-4" />
-              <span>已审核 ({reviewedMessages.length})</span>
-            </TabsTrigger>
-          </TabsList>
-          
-          <Button variant="outline" size="sm">
-            <Filter className="w-4 h-4 mr-2" />
-            筛选
-          </Button>
-        </div>
-
-        <TabsContent value="pending" className="space-y-4">
-          {pendingMessages.length > 0 ? (
-            <div className="space-y-4">
-              {pendingMessages.map(message => (
-                <MessageCard 
-                  key={message.id} 
-                  message={message} 
-                  showActions={true}
-                />
-              ))}
-            </div>
-          ) : (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">暂无待处理内容</h3>
-                <p className="text-muted-foreground">
-                  所有提交的内容都已完成审核
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        <TabsContent value="reviewed" className="space-y-4">
-          {reviewedMessages.length > 0 ? (
-            <div className="space-y-4">
-              {reviewedMessages.map(message => (
-                <MessageCard 
-                  key={message.id} 
-                  message={message} 
-                  showActions={false}
-                />
-              ))}
-            </div>
-          ) : (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <Eye className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">暂无记录</h3>
-                <p className="text-muted-foreground">
-                  还没有完成任何内容审核
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-      </Tabs>
+      {/* Unified List (time desc) */}
+      <div className="space-y-4">
+        {allMessages.length > 0 ? (
+          allMessages.map(message => (
+            <MessageCard key={message.id} message={message} />
+          ))
+        ) : (
+          <Card>
+            <CardContent className="p-8 text-center">
+              <Eye className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">暂无内容</h3>
+              <p className="text-muted-foreground">当前没有纸条</p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
       {/* Detail Modal */}
       <Dialog open={!!detail} onOpenChange={(o)=>{ if(!o){ setDetail(null); setTrail([]);} }}>
@@ -585,20 +530,10 @@ const Moderation = () => {
           <DialogFooter className="justify-between">
             <div className="text-xs text-muted-foreground">审核人：{detail?.reviewed_by || '-'} {detail?.reviewed_at ? `· ${formatTime(detail.reviewed_at)}` : ''}</div>
             <div className="space-x-2">
-              <Button size="sm" onClick={()=>detail && handleApprove(detail.id)} disabled={loading}>
-                {loading ? <Loader2 className="w-4 h-4 mr-1 animate-spin"/> : <CheckCircle className="w-4 h-4 mr-1"/>}
-                {loading ? '处理中...' : '通过'}
-              </Button>
               <Button size="sm" variant="destructive" onClick={()=>detail && handleReject(detail.id)} disabled={loading}>
-                {loading ? <Loader2 className="w-4 h-4 mr-1 animate-spin"/> : <XCircle className="w-4 h-4 mr-1"/>}
-                {loading ? '处理中...' : '拒绝'}
+                {loading ? <Loader2 className="w-4 h-4 mr-1 animate-spin"/> : <EyeOff className="w-4 h-4 mr-1"/>}
+                {loading ? '处理中...' : '隐藏'}
               </Button>
-              {(detail?.user_email || detail?.anon_email || detail?.anon_student_id) && (
-                <Button size="sm" variant="outline" onClick={()=>detail && handleQuickBan(detail)} disabled={loading}>
-                  {loading ? <Loader2 className="w-4 h-4 mr-1 animate-spin"/> : <Ban className="w-4 h-4 mr-1"/>}
-                  {loading ? '处理中...' : '封禁'}
-                </Button>
-              )}
             </div>
           </DialogFooter>
           {loading && (
@@ -660,25 +595,34 @@ const Moderation = () => {
           <div className="space-y-3">
             <div className="space-y-2">
               {banDialog.options.map(opt => (
-                <Button key={opt.value} variant={banDialog.choice?.value===opt.value?'default':'outline'} className="w-full justify-start" onClick={()=> setBanDialog(prev => ({ ...prev, choice: opt }))}>{opt.label}</Button>
+                <label key={opt.value} className="flex items-center space-x-2 border rounded-md p-2 cursor-pointer">
+                  <input type="checkbox" checked={!!banDialog.selected[opt.value]} onChange={(e)=>{
+                    const checked = e.target.checked;
+                    setBanDialog(prev => ({ ...prev, selected: { ...prev.selected, [opt.value]: checked } }));
+                  }} />
+                  <span>{opt.label}</span>
+                </label>
               ))}
             </div>
             <textarea className="w-full border rounded-md p-2 text-sm" rows={3} placeholder="封禁原因（可选）" value={banDialog.reason} onChange={(e)=> setBanDialog(prev => ({ ...prev, reason: e.target.value }))} />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={()=> setBanDialog({ open: false, choice: null, options: [], reason: '' })}>取消</Button>
+            <Button variant="outline" onClick={()=> setBanDialog({ open: false, selected: {}, options: [], reason: '' })}>取消</Button>
             <Button onClick={async ()=>{
-              if (!banDialog.choice) return;
+              const chosen = (banDialog.options||[]).filter(opt => !!banDialog.selected[opt.value]);
+              if (chosen.length === 0) return;
               try {
                 setBanSubmitting(true);
-                await api.post('/bans', { type: banDialog.choice.type, value: banDialog.choice.value, reason: banDialog.reason });
+                for (const opt of chosen) {
+                  await api.post('/bans', { type: opt.type, value: opt.value, reason: banDialog.reason });
+                }
                 toast.success('封禁成功');
               } catch (e) {
                 const msg = e.response?.data?.error || e.message || '封禁失败';
                 toast.error(msg);
               } finally {
                 setBanSubmitting(false);
-                setBanDialog({ open: false, choice: null, options: [], reason: '' });
+                setBanDialog({ open: false, selected: {}, options: [], reason: '' });
               }
             }} disabled={banSubmitting}>
               {banSubmitting ? (<><Loader2 className="w-4 h-4 mr-1 animate-spin"/>提交中...</>) : '确认'}
