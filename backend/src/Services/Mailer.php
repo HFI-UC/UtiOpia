@@ -220,6 +220,17 @@ HTML;
 		$buttons = [ ['text' => '返回留言墙', 'url' => (string)($site['url'] ?? '')] ];
 		return $this->send($to, $title, $this->baseTemplate($title, $content, $buttons));
 	}
+
+	public function sendMessageRestored(string $to, string $nickname, int $messageId, string $contentText): bool
+	{
+		$site = $this->settings['site'] ?? ['url' => ''];
+		$title = '已恢复：您的纸条已重新展示';
+		$excerpt = $this->excerpt($contentText);
+		$content = '<p>亲爱的 <strong>' . htmlspecialchars($nickname) . '</strong>，您的纸条已重新通过审核，现已恢复对外展示。</p>'
+			. '<p><strong>内容摘要：</strong>' . htmlspecialchars($excerpt) . '</p>';
+		$buttons = [ ['text' => '查看留言墙', 'url' => (string)($site['url'] ?? '')] ];
+		return $this->send($to, $title, $this->baseTemplate($title, $content, $buttons));
+	}
 }
 
 

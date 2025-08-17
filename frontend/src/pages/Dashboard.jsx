@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { 
   BarChart, 
   Bar, 
@@ -36,6 +37,12 @@ const Dashboard = () => {
     rejectedMessages: 0,
     todayMessages: 0,
     weeklyGrowth: 0
+  });
+
+  const [trends, setTrends] = useState({
+    usersGrowth: 0,
+    messagesGrowth: 0,
+    todayGrowth: 0
   });
 
   const [quickStats, setQuickStats] = useState({
@@ -85,6 +92,33 @@ const Dashboard = () => {
           messages: it.total ?? it.count ?? 0,
           users: (userSeriesResp?.data?.items || [])[idx]?.total ?? 0,
         }));
+        
+        // 计算趋势百分比
+        const calculateGrowth = (current, previous) => {
+          if (previous === 0) return current > 0 ? 100 : 0;
+          return Math.round(((current - previous) / previous) * 100);
+        };
+        
+        // 计算本周与上周的对比
+        const currentWeekData = await loadWeeklyData(0);
+        const lastWeekData = await loadWeeklyData(1);
+        
+        const currentWeekTotal = currentWeekData.reduce((sum, day) => sum + day.messages, 0);
+        const lastWeekTotal = lastWeekData.reduce((sum, day) => sum + day.messages, 0);
+        
+        // 计算今日与昨日的对比
+        const todayData = daily[daily.length - 1] || { messages: 0 };
+        const yesterdayData = daily[daily.length - 2] || { messages: 0 };
+        
+        // 计算用户增长（基于总用户数的简单估算）
+        const currentUsers = sv.users?.total ?? sv.totals?.users ?? 0;
+        const estimatedLastWeekUsers = Math.max(0, currentUsers - (currentWeekTotal || 0));
+        
+        setTrends({
+          usersGrowth: calculateGrowth(currentUsers, estimatedLastWeekUsers),
+          messagesGrowth: calculateGrowth(currentWeekTotal, lastWeekTotal),
+          todayGrowth: calculateGrowth(todayData.messages, yesterdayData.messages)
+        });
         
         // 加载周度趋势数据
         const weeklyData = await loadWeeklyData(selectedWeek);
@@ -194,24 +228,24 @@ const Dashboard = () => {
           title="总用户数"
           value={stats.totalUsers}
           icon={Users}
-          trend="up"
-          trendValue="+12 本周"
+          trend={trends.usersGrowth >= 0 ? "up" : "down"}
+          trendValue={`${trends.usersGrowth >= 0 ? '+' : ''}${trends.usersGrowth}% 本周`}
           color="blue"
         />
         <StatCard
           title="总纸条数"
           value={stats.totalMessages}
           icon={MessageSquare}
-          trend="up"
-          trendValue="+34 本周"
+          trend={trends.messagesGrowth >= 0 ? "up" : "down"}
+          trendValue={`${trends.messagesGrowth >= 0 ? '+' : ''}${trends.messagesGrowth}% 本周`}
           color="green"
         />
         <StatCard
           title="今日新增"
           value={stats.todayMessages}
           icon={Calendar}
-          trend="up"
-          trendValue="+2 较昨日"
+          trend={trends.todayGrowth >= 0 ? "up" : "down"}
+          trendValue={`${trends.todayGrowth >= 0 ? '+' : ''}${trends.todayGrowth}% 较昨日`}
           color="purple"
         />
         <StatCard

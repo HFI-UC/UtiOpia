@@ -384,15 +384,27 @@ const Moderation = () => {
         
         {
           <div className="flex space-x-2 pt-2">
-            <Button 
-              size="sm" 
-              variant="destructive"
-              onClick={() => handleReject(message.id)}
-              disabled={loading}
-            >
-              <EyeOff className="w-4 h-4 mr-1" />
-              隐藏
-            </Button>
+            {message.status === 'rejected' ? (
+              <Button 
+                size="sm" 
+                variant="default"
+                onClick={() => handleApprove(message.id)}
+                disabled={loading}
+              >
+                <Eye className="w-4 h-4 mr-1" />
+                展示
+              </Button>
+            ) : (
+              <Button 
+                size="sm" 
+                variant="destructive"
+                onClick={() => handleReject(message.id)}
+                disabled={loading}
+              >
+                <EyeOff className="w-4 h-4 mr-1" />
+                隐藏
+              </Button>
+            )}
             {(message.user_email || message.anon_email || message.anon_student_id) && (
               <Button size="sm" variant="outline" onClick={() => handleQuickBan(message)} disabled={loading}>
                 <Ban className="w-4 h-4 mr-1" />

@@ -408,6 +408,16 @@ const Home = () => {
                         variant="ghost"
                         size="sm"
                         className="h-8 px-2 text-muted-foreground"
+                        onClick={() => {
+                          if (!isAuthed) {
+                            navigate(`/login?redirect=${encodeURIComponent(location.pathname)}`);
+                            return;
+                          }
+                          setFocusedInput(prev => ({ ...prev, [message.id]: true }));
+                          setTimeout(() => {
+                            commentInputRefs.current[message.id]?.focus();
+                          }, 100);
+                        }}
                       >
                         <MessageCircle className="w-4 h-4" />
                         <span className="ml-1 text-sm">{commentsByMsg[message.id]?.total || 0}</span>

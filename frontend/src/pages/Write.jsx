@@ -641,11 +641,7 @@ const Write = () => {
               {confirmSubmitting ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />提交中...</>) : '确认'}
             </Button>
           </DialogFooter>
-          {confirmSubmitting && (
-            <div className="absolute inset-0 bg-white/60 dark:bg-black/40 rounded-lg flex items-center justify-center">
-              <Loader2 className="w-6 h-6 animate-spin" />
-            </div>
-          )}
+
         </DialogContent>
       </Dialog>
     </div>
