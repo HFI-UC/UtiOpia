@@ -50,16 +50,27 @@ const Home = () => {
         column-gap: 1.5rem;
         column-rule: 1px solid transparent;
         padding: 0.5rem;
+        contain: layout style paint;
+        min-height: 200px;
       }
       .message-card {
         display: inline-block;
         width: 100%;
+        max-width: 200%; /* 最大占用2张纸条的横向空间 */
         margin-bottom: 1.5rem;
         break-inside: avoid;
         page-break-inside: avoid;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         transform: translateZ(0);
         will-change: transform;
+        contain: layout style;
+        backface-visibility: hidden;
+        /* 防止水平溢出 */
+        overflow-x: hidden;
+        /* 确保长文本能够正确换行 */
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        word-break: break-word;
       }
       .message-card:hover {
         transform: translateY(-2px) translateZ(0);
@@ -68,6 +79,128 @@ const Home = () => {
       .message-card:focus-within {
         transform: translateY(-1px) translateZ(0);
       }
+      
+      /* 长文本内容强制换行和优化 */
+      .message-card .text-content {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        word-break: break-word;
+        hyphens: auto;
+        max-width: 100%;
+        overflow: hidden;
+        line-height: 1.6;
+        text-align: justify;
+        /* 确保长单词也能换行 */
+        overflow-wrap: anywhere;
+        /* 中文标点符号优化 */
+        text-justify: inter-ideograph;
+      }
+      
+      /* 图片容器优化 */
+      .message-card .image-container {
+        contain: layout style;
+        margin: 0.5rem 0;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        background: #f8f9fa;
+        /* 图片加载时的占位样式 */
+        min-height: 100px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .message-card .image-container img {
+        width: 100%;
+        height: auto;
+        max-height: 24rem;
+        object-fit: contain;
+        border-radius: 0.5rem;
+        transition: all 0.3s ease;
+        /* 图片加载完成后的样式 */
+        opacity: 1;
+        transform: scale(1);
+      }
+      
+      .message-card .image-container img:hover {
+        transform: scale(1.02);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+      
+      /* 图片加载状态 */
+      .message-card .image-container.loading {
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 200% 100%;
+        animation: loading 1.5s infinite;
+      }
+      
+      @keyframes loading {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+      }
+      
+      /* 优化评论区域的布局 */
+      .message-card .space-y-3 {
+        contain: layout;
+        margin-top: 1rem;
+      }
+      
+      /* 评论展开/收起动画 */
+      .message-card .comments-section {
+        transition: all 0.3s ease;
+        overflow: hidden;
+      }
+      
+      .message-card .comments-section.collapsed {
+        max-height: 0;
+        opacity: 0;
+      }
+      
+      .message-card .comments-section.expanded {
+        max-height: 1000px;
+        opacity: 1;
+      }
+      
+      /* 平滑的列切换动画 */
+      .messages-container {
+        transition: column-count 0.3s ease;
+      }
+      
+      /* 卡片内容区域优化 */
+      .message-card .card-content {
+        padding: 1rem;
+        line-height: 1.6;
+      }
+      
+      /* 确保按钮和交互元素在卡片内正确显示 */
+      .message-card button,
+      .message-card input,
+      .message-card textarea {
+        position: relative;
+        z-index: 1;
+      }
+      
+      /* 优化卡片阴影和边框 */
+      .message-card {
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+      }
+      
+      .message-card:hover {
+        border-color: #d1d5db;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      }
+      
+      /* 特殊卡片样式（前三名） */
+      .message-card.ring-2 {
+        border-color: #fbbf24;
+        box-shadow: 0 0 0 2px #fbbf24, 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      }
+      
+      .message-card.ring-2:hover {
+        box-shadow: 0 0 0 2px #f59e0b, 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      }
+      
       @media (max-width: 640px) {
         .messages-container {
           columns: 1;
@@ -75,6 +208,7 @@ const Home = () => {
         }
         .message-card {
           margin-bottom: 1rem;
+          max-width: 100%;
         }
       }
       @media (min-width: 641px) and (max-width: 768px) {
@@ -82,11 +216,17 @@ const Home = () => {
           columns: 1;
           column-gap: 1.25rem;
         }
+        .message-card {
+          max-width: 100%;
+        }
       }
       @media (min-width: 769px) and (max-width: 1024px) {
         .messages-container {
           columns: 2;
           column-gap: 1.5rem;
+        }
+        .message-card {
+          max-width: 150%;
         }
       }
       @media (min-width: 1025px) and (max-width: 1280px) {
@@ -94,78 +234,63 @@ const Home = () => {
           columns: 3;
           column-gap: 1.5rem;
         }
+        .message-card {
+          max-width: 200%;
+        }
       }
       @media (min-width: 1281px) {
         .messages-container {
           columns: 4;
           column-gap: 1.5rem;
         }
+        .message-card {
+          max-width: 200%;
+        }
       }
+      
       /* 确保卡片内容不会在列之间断开 */
       .message-card > * {
         break-inside: avoid;
       }
+      
       /* 优化动画性能 */
       .message-card * {
         will-change: transform;
       }
-      /* 瀑布流布局优化 */
-      .messages-container {
-        contain: layout style paint;
-        min-height: 200px;
-      }
-      .message-card {
-        contain: layout style;
-        backface-visibility: hidden;
-      }
-      /* 确保图片不会破坏布局 */
-      .message-card img {
-        max-width: 100%;
-        height: auto;
-        display: block;
-      }
-      /* 优化评论区域的布局 */
-      .message-card .space-y-3 {
-        contain: layout;
-      }
-      /* 平滑的列切换动画 */
-      .messages-container {
-        transition: column-count 0.3s ease;
-      }
     `;
     document.head.appendChild(style);
     
-      // 监听窗口大小变化，优化瀑布流布局
-  const handleResize = () => {
-    const container = document.querySelector('.messages-container');
-    if (container) {
-      // 强制重新计算列布局
-      container.style.display = 'none';
-      container.offsetHeight;
-      container.style.display = '';
-    }
-  };
-  
-  // 优化瀑布流初始布局
-  const optimizeWaterfallLayout = () => {
-    setIsLayoutOptimizing(true);
-    setTimeout(() => {
+    // 监听窗口大小变化，优化瀑布流布局
+    const handleResize = () => {
       const container = document.querySelector('.messages-container');
       if (container) {
+        // 强制重新计算列布局
         container.style.display = 'none';
         container.offsetHeight;
         container.style.display = '';
       }
-      setTimeout(() => setIsLayoutOptimizing(false), 100);
-    }, 100);
-  };
-  
-  window.addEventListener('resize', handleResize);
-  
-  return () => {
-    document.head.removeChild(style);
-    window.removeEventListener('resize', handleResize);
-  };
+    };
+    
+    // 优化瀑布流初始布局
+    const optimizeWaterfallLayout = () => {
+      setIsLayoutOptimizing(true);
+      setTimeout(() => {
+        const container = document.querySelector('.messages-container');
+        if (container) {
+          container.style.display = 'none';
+          container.offsetHeight;
+          container.style.display = '';
+        }
+        setTimeout(() => setIsLayoutOptimizing(false), 100);
+      }, 100);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      document.head.removeChild(style);
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
   const navigate = useNavigate();
   const { 
@@ -219,6 +344,33 @@ const Home = () => {
       }, 300);
     }
   }, [messages]);
+
+  // 动态调整卡片高度
+  const adjustCardHeight = (messageId) => {
+    const card = document.querySelector(`[data-message-id="${messageId}"]`);
+    if (card) {
+      const content = card.querySelector('.card-content');
+      const comments = card.querySelector('.comments-section');
+      
+      if (content && comments) {
+        const contentHeight = content.scrollHeight;
+        const commentsHeight = comments.scrollHeight;
+        const totalHeight = contentHeight + commentsHeight + 100; // 添加一些padding
+        
+        card.style.minHeight = `${totalHeight}px`;
+        card.style.height = 'auto';
+      }
+    }
+  };
+
+  // 监听评论展开/收起，调整卡片高度
+  useEffect(() => {
+    Object.keys(expandedComments).forEach(messageId => {
+      if (expandedComments[messageId]) {
+        setTimeout(() => adjustCardHeight(messageId), 100);
+      }
+    });
+  }, [expandedComments]);
 
   // 公共统计
   const [pubCounts, setPubCounts] = useState({ approved: 0, pending: 0, rejected: 0, total: 0 });
@@ -358,22 +510,17 @@ const Home = () => {
     
     // 动态调整卡片高度并触发瀑布流重新布局
     setTimeout(() => {
-      const card = document.querySelector(`[data-message-id="${messageId}"]`);
-      if (card) {
-        // 重置高度样式
-        card.style.height = 'auto';
-        card.style.minHeight = 'fit-content';
-        
-        // 强制触发瀑布流重新计算
-        const container = card.closest('.messages-container');
-        if (container) {
-          // 添加一个微小的延迟来确保DOM更新完成
-          setTimeout(() => {
-            container.style.display = 'none';
-            container.offsetHeight; // 强制重排
-            container.style.display = '';
-          }, 50);
-        }
+      adjustCardHeight(messageId);
+      
+      // 强制触发瀑布流重新计算
+      const container = document.querySelector('.messages-container');
+      if (container) {
+        // 添加一个微小的延迟来确保DOM更新完成
+        setTimeout(() => {
+          container.style.display = 'none';
+          container.offsetHeight; // 强制重排
+          container.style.display = '';
+        }, 50);
       }
     }, 100);
   };
@@ -409,10 +556,13 @@ const Home = () => {
       if (r?.data?.id) {
         setCommentInput(prev => ({ ...prev, [messageId]: '' }));
         setReplyTo(prev => ({ ...prev, [messageId]: null }));
-        setCommentAnon(prev => ({ ...prev, [messageId]: false }));
-        setFocusedInput(prev => ({ ...prev, [messageId]: false }));
+        setCommentAnon(prev => ({ ...prev, [message.id]: false }));
+        setFocusedInput(prev => ({ ...prev, [message.id]: false }));
         await loadCommentsFor(messageId);
         toast.success('评论已发布');
+        
+        // 调整卡片高度
+        setTimeout(() => adjustCardHeight(messageId), 150);
         
         // 优化瀑布流布局
         setTimeout(() => {
@@ -542,17 +692,56 @@ const Home = () => {
                 </div>
               </CardHeader>
               
-              <CardContent className="space-y-4">
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">
+              <CardContent className="space-y-4 card-content">
+                <p className="text-sm leading-relaxed whitespace-pre-wrap text-content">
                   {message.content}
                 </p>
                 
                 {message.image_url && (
-                  <div className="rounded-lg overflow-hidden">
+                  <div className="rounded-lg overflow-hidden image-container">
                     <img 
                       src={message.image_url} 
                       alt="纸条图片" 
-                      className="w-full h-48 object-cover hover:scale-105 transition-transform duration-300"
+                      className="w-full h-auto object-contain hover:scale-105 transition-transform duration-300"
+                      onLoad={(e) => {
+                        // 图片加载完成后触发布局重新计算
+                        const img = e.target;
+                        const card = img.closest('.message-card');
+                        if (card) {
+                          // 延迟触发布局重新计算，确保图片尺寸已确定
+                          setTimeout(() => {
+                            const container = document.querySelector('.messages-container');
+                            if (container) {
+                              container.style.display = 'none';
+                              container.offsetHeight;
+                              container.style.display = '';
+                            }
+                            // 调整卡片高度
+                            adjustCardHeight(message.id);
+                          }, 100);
+                        }
+                      }}
+                      onError={(e) => {
+                        // 图片加载失败时的处理
+                        const img = e.target;
+                        const container = img.closest('.image-container');
+                        if (container) {
+                          container.innerHTML = `
+                            <div class="flex items-center justify-center h-32 text-muted-foreground">
+                              <div class="text-center">
+                                <div class="text-4xl mb-2">🖼️</div>
+                                <div class="text-sm">图片加载失败</div>
+                              </div>
+                            </div>
+                          `;
+                        }
+                      }}
+                      style={{
+                        // 动态调整图片显示
+                        maxWidth: '100%',
+                        height: 'auto',
+                        objectFit: 'contain'
+                      }}
                     />
                   </div>
                 )}
@@ -611,7 +800,7 @@ const Home = () => {
                   </div>
 
                   {/* 评论区 */}
-                  <div className="space-y-3">
+                  <div className={`space-y-3 comments-section ${showAllComments ? 'expanded' : 'collapsed'}`}>
                     {/* 评论列表 */}
                     {displayComments.map((comment) => {
                       const isReply = !!comment.parent_id;
