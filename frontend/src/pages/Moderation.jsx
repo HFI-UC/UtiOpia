@@ -408,47 +408,6 @@ const Moderation = () => {
         </p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Clock className="w-5 h-5 text-yellow-500" />
-              <div>
-                <p className="text-sm text-muted-foreground">总计</p>
-                <p className="text-xl font-bold">{allMessages.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <CheckCircle className="w-5 h-5 text-green-500" />
-              <div>
-                <p className="text-sm text-muted-foreground">已展示</p>
-                <p className="text-xl font-bold">{allMessages.filter(m => m.status === 'approved').length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <div className="flex items-center space-x-2">
-                <EyeOff className="w-5 h-5 text-red-500" />
-              <div>
-                  <p className="text-sm text-muted-foreground">已隐藏</p>
-                  <p className="text-xl font-bold">{allMessages.filter(m => m.status === 'rejected').length}</p>
-            </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Grouped View */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2">

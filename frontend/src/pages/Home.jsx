@@ -129,15 +129,19 @@ const Home = () => {
     fetchMessages(true);
   }, [fetchMessages]);
 
-  // 监听消息变化，优化瀑布流布局
-
-  // 公共统计
-  const [pubCounts, setPubCounts] = useState({ approved: 0, pending: 0, rejected: 0, total: 0 });
+  // 公共统计（用于首页顶部展示）
+  const [pubCounts, setPubCounts] = useState({ approved: 0, rejected: 0, total: 0 });
   useEffect(() => {
     const loadCounts = async () => {
       try {
         const r = await api.get('/stats/public-counts');
-        setPubCounts(r?.data || { approved: 0, pending: 0, rejected: 0, total: 0 });
+        const d = r?.data || { approved: 0, total: 0 };
+        // Backend now returns { approved, hidden, total }. Map hidden -> rejected for UI wording.
+        setPubCounts({
+          approved: d.approved || 0,
+          rejected: (d.rejected ?? d.hidden) || 0,
+          total: d.total || 0,
+        });
       } catch (err) {
         console.error(err);
       }
@@ -167,10 +171,10 @@ const Home = () => {
     };
   }, [isLoading, isDone]);
 
-  // 计算每张卡片的行跨度，确保横向（行优先）瀑布流
+  // 计算每张卡片的行跨度
   useEffect(() => {
     const ROW_HEIGHT = 8;   // 与 CSS grid-auto-rows 一致
-    const GAP = 16;         // 与 CSS gap 一致（1rem，Tailwind 默认 16px）
+    const GAP = 16;         // 与 CSS gap 一致（1rem）
 
     const resizeObservers = [];
     const calc = (id, el) => {
@@ -340,8 +344,8 @@ const Home = () => {
         </Button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Stats（移除“待审批”） */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="text-center">
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-blue-600">{pubCounts.approved}</div>
@@ -350,13 +354,7 @@ const Home = () => {
         </Card>
         <Card className="text-center">
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-purple-600">{pubCounts.pending}</div>
-            <p className="text-sm text-muted-foreground">待审批</p>
-          </CardContent>
-        </Card>
-        <Card className="text-center">
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-pink-600">{pubCounts.hidden}</div>
+            <div className="text-2xl font-bold text-pink-600">{pubCounts.rejected}</div>
             <p className="text-sm text-muted-foreground">已隐藏</p>
           </CardContent>
         </Card>
@@ -623,7 +621,7 @@ const Home = () => {
                                 placeholder={isAuthed ? '写下你的评论...' : '登录后参与评论'}
                                 value={commentInput[message.id] || ''}
                                 onChange={(e) => setCommentInput(prev => ({ ...prev, [message.id]: e.target.value }))}
-                                disabled={!isAuthed || submittingComment[message.id]}
+                                disabled={!isAuthed || submittingComment[messageId]}
                                 className="min-h-[60px] text-sm resize-none"
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {

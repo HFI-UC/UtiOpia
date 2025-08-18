@@ -269,18 +269,23 @@ final class StatsService
      */
     public function publicCounts(): array
     {
-        $stmt = $this->pdo->query('SELECT status, COUNT(*) c FROM messages WHERE deleted_at IS NULL OR deleted_at IS NULL GROUP BY status');
-        $counts = ['approved' => 0, 'pending' => 0, 'hidden' => 0];
+        // Aggregate by status; treat rejected as "hidden" for public semantics
+        $stmt = $this->pdo->query('SELECT status, COUNT(*) AS c FROM messages WHERE deleted_at IS NULL GROUP BY status');
+        $approved = 0;
+        $hidden = 0; // mapped from rejected
         foreach ($stmt->fetchAll() as $row) {
             $status = (string)$row['status'];
-            if ($status === 'rejected') {
-                $counts['hidden'] = (int)$row['c'];
-            } else if (isset($counts[$status])) {
-                $counts[$status] = (int)$row['c'];
-            }
+            $c = (int)$row['c'];
+            if ($status === 'approved') $approved = $c;
+            if ($status === 'rejected') $hidden = $c;
         }
-        $counts['total'] = $counts['approved'] + $counts['pending'] + $counts['hidden'];
-        return $counts;
+        // Total should include all non-deleted messages regardless of status
+        $total = (int)$this->pdo->query('SELECT COUNT(*) FROM messages WHERE deleted_at IS NULL')->fetchColumn();
+        return [
+            'approved' => $approved,
+            'hidden' => $hidden,
+            'total' => $total,
+        ];
     }
 
     /**
