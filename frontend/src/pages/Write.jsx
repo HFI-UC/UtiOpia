@@ -157,7 +157,7 @@ const Write = () => {
       setLoadingStats(true);
       try {
         // Always get total approved count via list endpoint (public)
-        const totalReq = api.get('/messages', { params: { status: 'approved', pageSize: 1, page: 1 } });
+        const totalReq = api.get('/messages', { params: { status: 'approved', pageSize: 1, page: 1, public: 1 } });
 
         // Prefer admin stats if permitted; otherwise fallback to client-aggregate
         let todayCount = null;
@@ -189,7 +189,7 @@ const Write = () => {
           const sevenDaysAgo = new Date(startOfToday.getTime() - 6 * 24 * 60 * 60 * 1000); // inclusive 7 days window
 
           while (!done && page <= maxPages) {
-            const resp = await api.get('/messages', { params: { status: 'approved', pageSize, page } });
+            const resp = await api.get('/messages', { params: { status: 'approved', pageSize, page, public: 1 } });
             const items = resp?.data?.items || [];
             if (items.length === 0) break;
             for (const m of items) {

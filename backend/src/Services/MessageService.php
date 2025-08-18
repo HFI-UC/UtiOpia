@@ -18,11 +18,17 @@ final class MessageService
         $pageSize = min(50, max(1, (int)($query['pageSize'] ?? 10)));
         $offset = ($page - 1) * $pageSize;
         $requestedStatus = (string)($query['status'] ?? 'approved');
+        $forcePublic = ((int)($query['public'] ?? 0) === 1);
         $canModerate = false;
         try {
             $this->acl->ensure($user['role'], 'message:approve');
             $canModerate = true;
         } catch (\Throwable) {}
+        if ($forcePublic) {
+            // 即使有审核权限，也强制走公开视角
+            $canModerate = false;
+            $requestedStatus = 'approved';
+        }
         $status = $canModerate ? $requestedStatus : 'approved';
         // 基础字段对所有访问者开放；敏感字段仅对具有审核权限的角色开放
         $viewerId = (int)($user['id'] ?? 0);
@@ -55,7 +61,7 @@ final class MessageService
         if ($status !== 'all') {
             $where = 'WHERE m.status = :status';
         }
-        // 普通用户不显示软删除
+        // 普通用户（或强制公开视图）不显示软删除
         if (!$canModerate) {
             $where = $where === '' ? 'WHERE m.deleted_at IS NULL' : ($where . ' AND m.deleted_at IS NULL');
         }

@@ -21,7 +21,7 @@ const useMessagesStore = create((set, get) => ({
     try {
       const currentPage = reset ? 1 : page;
       const response = await api.get('/messages', {
-        params: { page: currentPage, pageSize, with_comments: 1 }
+        params: { page: currentPage, pageSize, with_comments: 1, public: 1 }
       });
 
       const { items = [], total = 0 } = response.data;
@@ -107,25 +107,21 @@ const useMessagesStore = create((set, get) => ({
 
   // 点赞/取消点赞
   toggleLike: async (id) => {
-    const { messages } = get();
     try {
-      const resp = await api.post(`/messages/${id}/like`);
-      const liked = !!resp?.data?.liked;
-      set({
-        messages: messages.map(m => {
-          if (m.id !== id) return m;
-          const currentLiked = !!m.liked_by_me;
-          const nextLiked = liked;
-          const delta = (nextLiked ? 1 : 0) - (currentLiked ? 1 : 0);
-          return {
-            ...m,
-            liked_by_me: nextLiked,
-            likes_count: Math.max(0, (m.likes_count || 0) + delta)
-          };
-        })
-      });
+      await api.post(`/messages/${id}/like`);
+      set((state) => ({
+        messages: state.messages.map(msg =>
+          msg.id === id
+            ? {
+                ...msg,
+                likes_count: (msg.liked_by_me ? (msg.likes_count - 1) : (msg.likes_count + 1)),
+                liked_by_me: !msg.liked_by_me
+              }
+            : msg
+        )
+      }));
     } catch (error) {
-      const message = error.response?.data?.error || error.message || '操作失败';
+      const message = error.response?.data?.error || error.message || '点赞失败';
       set({ error: message });
       throw new Error(message);
     }

@@ -66,6 +66,29 @@ export const maskSensitiveValue = (value, fieldName) => {
 export const processLogData = (data, showSensitive = false) => {
   if (!data || typeof data !== 'object') return data;
   
+  // 先定义 processValue，避免在定义前使用导致运行时错误
+  const processValue = (value, key) => {
+    if (value === null || value === undefined) return value;
+    
+    if (typeof value === 'object') {
+      if (Array.isArray(value)) {
+        return value.map(item => processValue(item, key));
+      }
+      const result = {};
+      for (const [k, v] of Object.entries(value)) {
+        result[k] = processValue(v, k);
+      }
+      return result;
+    }
+    
+    // 脱敏处理
+    if (!showSensitive && isSensitiveField(key)) {
+      return maskSensitiveValue(value, key);
+    }
+    
+    return value;
+  };
+
   const processed = {};
   const categorized = {
     request: {},
@@ -115,29 +138,6 @@ export const processLogData = (data, showSensitive = false) => {
   if (postData && typeof postData === 'object') {
     categorized.body = processValue(postData, '$_POST') || {};
   }
-  
-  // 递归处理对象
-  const processValue = (value, key) => {
-    if (value === null || value === undefined) return value;
-    
-    if (typeof value === 'object') {
-      if (Array.isArray(value)) {
-        return value.map(item => processValue(item, key));
-      }
-      const result = {};
-      for (const [k, v] of Object.entries(value)) {
-        result[k] = processValue(v, k);
-      }
-      return result;
-    }
-    
-    // 脱敏处理
-    if (!showSensitive && isSensitiveField(key)) {
-      return maskSensitiveValue(value, key);
-    }
-    
-    return value;
-  };
   
   // 处理并分类数据
   for (const [key, value] of Object.entries(data)) {
