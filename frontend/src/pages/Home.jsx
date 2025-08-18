@@ -38,6 +38,58 @@ import api from '../lib/api';
 import useAuthStore from '../stores/authStore';
 import Turnstile from '../components/Turnstile';
 
+// Masonry（CSS Grid 行优先）+ 轻微随机旋转：横向加载顺序，尽量紧密填充
+const masonryStyles = `
+  /* 使用 CSS Grid 实现行优先 Masonry。通过 JS 计算行跨度实现紧密排列 */
+  .messages-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-auto-rows: 8px;     /* 基准行高（配合 span 计算）*/
+    gap: 1rem;               /* 行/列间距 */
+    align-items: start;
+    grid-auto-flow: row dense; /* 紧密填充 */
+    width: 100%;
+  }
+
+  .messages-container .message-card {
+    width: 100%;
+    transform-origin: center top;
+    transition: transform 200ms ease, box-shadow 200ms ease;
+  }
+
+  /* 轻微的“随意”排版效果（很小的旋转/位移） */
+  .messages-container .message-card:nth-child(6n+1) { transform: rotate(-0.4deg); }
+  .messages-container .message-card:nth-child(6n+2) { transform: rotate(0.35deg); }
+  .messages-container .message-card:nth-child(6n+3) { transform: rotate(-0.25deg); }
+  .messages-container .message-card:nth-child(6n+4) { transform: rotate(0.15deg); }
+  .messages-container .message-card:nth-child(6n+5) { transform: rotate(-0.15deg); }
+  .messages-container .message-card:nth-child(6n+6) { transform: rotate(0.25deg); }
+  .messages-container .message-card:hover { transform: rotate(0deg) translateY(-2px); }
+
+  /* 内部内容保护与换行 */
+  .messages-container .message-card .group { display: flex; flex-direction: column; }
+  .messages-container img { max-width: 100%; height: auto; }
+  .messages-container .message-card * { max-width: 100%; box-sizing: border-box; }
+  .messages-container .message-card p,
+  .messages-container .message-card .text-sm {
+    word-break: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+    line-height: 1.6;
+  }
+
+  @media (max-width: 480px) {
+    .messages-container { gap: 0.75rem; grid-template-columns: 1fr; }
+  }
+
+  /* 评论展开动画：淡入 + 轻微下滑 */
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .fade-in-down { animation: fadeSlideIn 240ms ease both; }
+`;
+
 const Home = () => {
   const navigate = useNavigate();
   const {
@@ -69,6 +121,9 @@ const Home = () => {
   const [focusedInput, setFocusedInput] = useState({}); // messageId -> bool
   const [submittingComment, setSubmittingComment] = useState({}); // messageId -> bool
   const commentInputRefs = useRef({}); // messageId -> ref
+  // Masonry: 行跨度计算用
+  const [rowSpans, setRowSpans] = useState({}); // messageId -> rows
+  const cardRefs = useRef({}); // messageId -> element
 
   useEffect(() => {
     fetchMessages(true);
@@ -93,18 +148,56 @@ const Home = () => {
   // 无限滚动
   useEffect(() => {
     const handleScroll = () => {
-      if (
-        window.innerHeight + document.documentElement.scrollTop
-        >= document.documentElement.offsetHeight - 200
-        && !isLoading && !isDone
-      ) {
+      const scrollBottom = window.innerHeight + (window.pageYOffset || document.documentElement.scrollTop);
+      const docHeight = document.documentElement.offsetHeight;
+      if (scrollBottom >= docHeight - 100 && !isLoading && !isDone) {
         fetchMessages();
       }
     };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    const maybeFill = () => {
+      if (!isLoading && !isDone && document.documentElement.offsetHeight <= window.innerHeight + 40) {
+        fetchMessages();
+      }
+    };
+    const fillTimer = setInterval(maybeFill, 200);
+    return () => {
+      clearInterval(fillTimer);
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [isLoading, isDone]);
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [fetchMessages, isLoading, isDone]);
+  // 计算每张卡片的行跨度，确保横向（行优先）瀑布流
+  useEffect(() => {
+    const ROW_HEIGHT = 8;   // 与 CSS grid-auto-rows 一致
+    const GAP = 16;         // 与 CSS gap 一致（1rem，Tailwind 默认 16px）
+
+    const resizeObservers = [];
+    const calc = (id, el) => {
+      if (!el) return;
+      const h = el.getBoundingClientRect().height;
+      const rows = Math.max(1, Math.ceil((h + GAP) / (ROW_HEIGHT + GAP)));
+      setRowSpans((prev) => (prev[id] === rows ? prev : { ...prev, [id]: rows }));
+    };
+
+    Object.entries(cardRefs.current).forEach(([id, el]) => {
+      if (!el) return;
+      calc(id, el);
+      const ro = new ResizeObserver(() => calc(id, el));
+      ro.observe(el);
+      resizeObservers.push(ro);
+    });
+
+    const onResize = () => {
+      Object.entries(cardRefs.current).forEach(([id, el]) => calc(id, el));
+    };
+    window.addEventListener('resize', onResize);
+
+    return () => {
+      window.removeEventListener('resize', onResize);
+      resizeObservers.forEach((ro) => ro.disconnect());
+    };
+  }, [messages]);
 
   const formatTime = (dateStr) => {
     const date = new Date(dateStr);
@@ -226,6 +319,9 @@ const Home = () => {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
+      {/* 瀑布流布局样式 */}
+      <style dangerouslySetInnerHTML={{ __html: masonryStyles }} />
+      
       {/* Hero Section */}
       <div className="text-center space-y-6 py-12">
         <div className="space-y-4">
@@ -275,7 +371,7 @@ const Home = () => {
           </div>
         </div>
 
-        <div className="messages-container grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="messages-container">
           {messages.map((message, index) => {
             const mergedComments = message.comments?.items || [];
             const totalCount = message.comments?.total ?? mergedComments.length;
@@ -286,7 +382,9 @@ const Home = () => {
             <Card
               key={message.id}
               data-message-id={message.id}
-              className={`group hover:shadow-lg transition-all duration-500 ease-out ${
+              ref={(el) => (cardRefs.current[message.id] = el)}
+              style={{ gridRowEnd: `span ${rowSpans[message.id] || 1}` }}
+              className={`message-card group hover:shadow-lg transition-all duration-500 ease-out h-fit ${
                 index < 3 ? 'ring-2 ring-yellow-200 bg-gradient-to-br from-yellow-50 to-orange-50' : ''
               }`}
             >
@@ -393,13 +491,14 @@ const Home = () => {
                   {/* 评论区 */}
                   <div className="space-y-3">
                     {/* 评论列表 */}
-                    {displayComments.map((comment) => {
+                    {displayComments.map((comment, cIdx) => {
                       const isReply = !!comment.parent_id;
                       const isOwner = !!(user && message.user_id && comment.user_id && Number(message.user_id) === Number(comment.user_id));
                       const showIdentity = !(comment.is_anonymous && (!user || Number(user.id) !== Number(comment.user_id)));
+                      const animateIn = showAllComments && cIdx >= 2; // 展开时第3条起淡入下滑
                       
                       return (
-                        <div key={comment.id} className={`group ${isReply ? 'ml-6' : ''}`}>
+                        <div key={comment.id} className={`group ${isReply ? 'ml-6' : ''} ${animateIn ? 'fade-in-down' : ''}`}>
                           <div className="flex items-start space-x-2">
                             <Tooltip delayDuration={150}>
                               <TooltipTrigger asChild>

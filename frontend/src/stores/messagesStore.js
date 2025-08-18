@@ -5,7 +5,8 @@ const useMessagesStore = create((set, get) => ({
   messages: [],
   total: 0,
   page: 1,
-  pageSize: 10,
+  // 增加默认 pageSize，确保能一次性拉取更多纸条，避免只显示 10 条
+  pageSize: 50,
   isLoading: false,
   isDone: false,
   error: null,
