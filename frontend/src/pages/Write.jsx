@@ -30,7 +30,7 @@ import api from '../lib/api';
 const Write = () => {
   const navigate = useNavigate();
   const { createMessage, isLoading, error, clearError } = useMessagesStore();
-  const { user, token } = useAuthStore();
+  const { token } = useAuthStore();
   
   const [formData, setFormData] = useState({
     content: '',
@@ -41,7 +41,6 @@ const Write = () => {
     anonPassphrase: ''
   });
   const [turnstileToken, setTurnstileToken] = useState('');
-  const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -76,8 +75,6 @@ const Write = () => {
       toast.error('请选择图片文件');
       return;
     }
-    
-    setImageFile(file);
     
     // 创建预览
     const reader = new FileReader();
@@ -118,7 +115,6 @@ const Write = () => {
       toast.success('图片上传成功！');
     } catch (error) {
       toast.error('图片上传失败：' + error.message);
-      setImageFile(null);
       setImagePreview('');
     } finally {
       setUploadingImage(false);
@@ -126,7 +122,6 @@ const Write = () => {
   };
 
   const removeImage = () => {
-    setImageFile(null);
     setImagePreview('');
     setFormData(prev => ({ ...prev, imageUrl: '' }));
   };
@@ -176,7 +171,7 @@ const Write = () => {
             const todayItem = items.find(it => it.date === todayStr);
             todayCount = todayItem ? (todayItem.total ?? todayItem.count ?? 0) : 0;
             weekCount = items.reduce((sum, it) => sum + (it.total ?? it.count ?? 0), 0);
-          } catch (_) {
+          } catch {
             // No permission or error → fallback below
           }
         }
@@ -217,7 +212,7 @@ const Write = () => {
         const totalResp = await totalReq;
         const total = totalResp?.data?.total ?? null;
         setStats({ today: todayCount, week: weekCount, total });
-      } catch (_) {
+      } catch {
         setStats({ today: null, week: null, total: null });
       } finally {
         setLoadingStats(false);
@@ -272,10 +267,10 @@ const Write = () => {
       await createMessage(messageData);
       toast.success('纸条发布成功，已对外展示！');
       navigate('/');
-    } catch (err) {
-      // 错误已经在store中处理
-    }
-  };
+      } catch {
+        // 错误已经在store中处理
+      }
+    };
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -629,15 +624,17 @@ const Write = () => {
           <p className="text-sm text-muted-foreground">你将以实名发布，其他用户可看到“由你发布”的标识。是否继续？</p>
           <DialogFooter>
             <Button variant="outline" onClick={()=>setConfirmOpen(false)}>取消</Button>
-            <Button onClick={async ()=>{ 
-              try { 
-                setConfirmSubmitting(true);
-                await createMessage({ content: formData.content, image_url: formData.imageUrl, turnstile_token: turnstileToken, is_anonymous: false }); 
-                toast.success('纸条发布成功，已对外展示！'); 
-                setConfirmOpen(false);
-                navigate('/'); 
-              } catch {} finally { setConfirmSubmitting(false); }
-            }} disabled={confirmSubmitting}>
+              <Button onClick={async ()=>{
+                try {
+                  setConfirmSubmitting(true);
+                  await createMessage({ content: formData.content, image_url: formData.imageUrl, turnstile_token: turnstileToken, is_anonymous: false });
+                  toast.success('纸条发布成功，已对外展示！');
+                  setConfirmOpen(false);
+                  navigate('/');
+                } catch (e) {
+                  toast.error(e.response?.data?.error || e.message || '发布失败');
+                } finally { setConfirmSubmitting(false); }
+              }} disabled={confirmSubmitting}>
               {confirmSubmitting ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />提交中...</>) : '确认'}
             </Button>
           </DialogFooter>

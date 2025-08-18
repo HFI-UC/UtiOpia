@@ -7,11 +7,11 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  CheckCircle, 
-  XCircle, 
-  Clock, 
-  Eye, 
+import {
+  CheckCircle,
+  XCircle,
+  Clock,
+  Eye,
   EyeOff,
   AlertTriangle,
   User,
@@ -19,7 +19,9 @@ import {
   MessageSquare,
   Filter,
   Ban,
-  Loader2
+  Loader2,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -34,6 +36,7 @@ const Moderation = () => {
   const [banSubmitting, setBanSubmitting] = useState(false);
   const [expanded, setExpanded] = useState({}); // messageId -> boolean
   const [activeTab, setActiveTab] = useState('displayed'); // 'displayed' or 'hidden'
+  const [, setCommentsByMsg] = useState({});
   const PREVIEW_LIMIT = 2;
 
   // 加载真实数据
@@ -45,11 +48,11 @@ const Moderation = () => {
         const items = resp.data?.items || [];
         items.sort((a,b)=> new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         setAllMessages(items);
-      } catch (e) {
-        toast.error('加载审核数据失败');
-      } finally {
-        setLoading(false);
-      }
+        } catch {
+          toast.error('加载审核数据失败');
+        } finally {
+          setLoading(false);
+        }
     };
     fetchData();
   }, []);
@@ -274,14 +277,12 @@ const Moderation = () => {
             <div className="mt-3 space-y-2">
 
               {(() => {
-                const items = message.comments?.items || [];
-                const total = message.comments?.total || items.length;
-                const display = expanded[message.id] ? items : items.slice(0, PREVIEW_LIMIT);
-                const hasMore = items.length > PREVIEW_LIMIT || total > PREVIEW_LIMIT;
-                
-                if (items.length === 0) {
-                  return <div className="text-xs text-muted-foreground">暂无评论</div>;
-                }
+                  const items = message.comments?.items || [];
+                  const display = expanded[message.id] ? items : items.slice(0, PREVIEW_LIMIT);
+
+                  if (items.length === 0) {
+                    return <div className="text-xs text-muted-foreground">暂无评论</div>;
+                  }
                 
                 return display.map((c) => (
                 <div key={c.id} className="p-2 border rounded-md">

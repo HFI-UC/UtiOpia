@@ -89,10 +89,10 @@ const Register = () => {
       // 注册成功后自动登录
       await login(formData.email, formData.password, turnstileToken);
       navigate('/');
-    } catch (err) {
-      // 错误已经在store中处理
-    }
-  };
+      } catch {
+        // 错误已经在store中处理
+      }
+    };
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center py-8">
