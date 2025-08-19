@@ -42,6 +42,9 @@ final class Routes
             $group->put('/messages/{id}', [self::class, 'updateMessage']);
             $group->delete('/messages/{id}', [self::class, 'deleteMessage']);
 
+            // Search
+            $group->get('/search', [self::class, 'search']);
+
             // Likes
             $group->post('/messages/{id}/like', [self::class, 'toggleLike']);
 
@@ -160,6 +163,14 @@ final class Routes
         [$query, $container, $user] = self::ctxAuthOptional($request, true);
         $svc = $container->get(\UtiOpia\Services\MessageService::class);
         $result = $svc->list($query, $user);
+        return self::json($response, $result);
+    }
+
+    public static function search(Request $request, Response $response): Response
+    {
+        [$query, $container, $user] = self::ctxAuthOptional($request, true);
+        $svc = $container->get(\UtiOpia\Services\SearchService::class);
+        $result = $svc->search($query, $user);
         return self::json($response, $result);
     }
 

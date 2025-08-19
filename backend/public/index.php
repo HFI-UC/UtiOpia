@@ -126,6 +126,17 @@ $container->set(\UtiOpia\Services\LikeService::class, function ($c) {
 $container->set(\UtiOpia\Services\CommentService::class, function ($c) {
     return new \UtiOpia\Services\CommentService($c->get(PDO::class), $c->get(\UtiOpia\Services\AuditLogger::class), $c->get(\UtiOpia\Services\ACL::class));
 });
+$container->set(\UtiOpia\Services\SearchService::class, function ($c) {
+    return new \UtiOpia\Services\SearchService($c->get(PDO::class), $c->get(\UtiOpia\Services\ACL::class));
+});
+
+// Global container accessor for services
+if (!function_exists('app_container_get')) {
+    function app_container_get(string $id) {
+        global $container;
+        return $container->get($id);
+    }
+}
 
 // Error middleware (after services are available)
 $app->add(new UErrorMiddleware($container->get(\UtiOpia\Services\AuditLogger::class)));

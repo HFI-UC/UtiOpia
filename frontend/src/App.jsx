@@ -11,6 +11,7 @@ import MessageDetail from './pages/MessageDetail';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Write from './pages/Write';
+import Search from './pages/Search';
 import Admin from './pages/Admin';
 import Moderation from './pages/Moderation';
 import Dashboard from './pages/Dashboard';
@@ -39,6 +40,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/write" element={<Write />} />
+            <Route path="/search" element={<Search />} />
             <Route path="/messages/:id" element={<MessageDetail />} />
             <Route 
               path="/admin" 

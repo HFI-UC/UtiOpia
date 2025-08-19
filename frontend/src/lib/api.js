@@ -35,6 +35,12 @@ api.interceptors.response.use(
   }
 );
 
+// 搜索API
+export const search = {
+  // 搜索纸条和评论
+  searchAll: (params) => api.get('/search', { params }),
+};
+
 export default api;
 export { API_BASE };
 

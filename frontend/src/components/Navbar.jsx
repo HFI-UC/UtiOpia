@@ -18,7 +18,8 @@ import {
   Shield,
   BarChart3,
   FileText,
-  Ban
+  Ban,
+  Search
 } from 'lucide-react';
 import useAuthStore from '../stores/authStore';
 
@@ -65,6 +66,13 @@ const Navbar = () => {
             >
               <PenTool className="w-4 h-4" />
               <span>写纸条</span>
+            </Link>
+            <Link 
+              to="/search" 
+              className="flex items-center space-x-2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Search className="w-4 h-4" />
+              <span>搜索</span>
             </Link>
           </div>
 
