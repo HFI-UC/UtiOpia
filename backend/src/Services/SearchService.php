@@ -75,10 +75,23 @@ final class SearchService
         ";
 
         $stmt = $this->pdo->prepare($messageSearchSql);
-        $params = [$searchPattern, $searchPattern, $searchPattern, $searchPattern, $searchPattern];
+        
+        // 构建参数数组，注意顺序必须与SQL中的占位符顺序一致
+        $params = [];
+        
+        // 如果有viewerId，先添加liked_by_me的占位符参数
         if ($viewerId > 0) {
-            array_unshift($params, $viewerId);
+            $params[] = $viewerId;
         }
+        
+        // 添加搜索模式的参数
+        $params[] = $searchPattern; // m.content LIKE ?
+        $params[] = $searchPattern; // m.anon_email LIKE ?
+        $params[] = $searchPattern; // m.anon_student_id LIKE ?
+        $params[] = $searchPattern; // u.email LIKE ?
+        $params[] = $searchPattern; // u.nickname LIKE ?
+        
+        // 添加分页参数
         $params[] = $pageSize;
         $params[] = $offset;
         
@@ -169,11 +182,25 @@ final class SearchService
             LIMIT ? OFFSET ?
         ";
 
-        $params = [$viewerId];
+        // 构建参数数组，注意顺序必须与SQL中的占位符顺序一致
+        $params = [];
+        
+        // 第一个占位符：CASE WHEN m.is_anonymous = 1 AND (m.user_id IS NULL OR m.user_id <> ?) THEN NULL ELSE m.user_id END AS user_id
+        $params[] = $viewerId;
+        
+        // 如果有viewerId，添加liked_by_me的占位符参数
         if ($viewerId > 0) {
             $params[] = $viewerId;
         }
-        $params = array_merge($params, [$searchPattern, $searchPattern, $searchPattern, $pageSize, $offset]);
+        
+        // 添加搜索模式的参数
+        $params[] = $searchPattern; // m.content LIKE ?
+        $params[] = $searchPattern; // u.email LIKE ?
+        $params[] = $searchPattern; // u.nickname LIKE ?
+        
+        // 添加分页参数
+        $params[] = $pageSize;
+        $params[] = $offset;
         
         $stmt = $this->pdo->prepare($messageSearchSql);
         $stmt->execute($params);
@@ -250,15 +277,20 @@ final class SearchService
         
         $sqlComments = 'SELECT c.id, c.message_id, c.user_id, c.is_anonymous, c.content, c.parent_id, c.root_id, '
             . 'c.status, c.created_at, c.reviewed_at, c.reviewed_by, '
-            . 'CASE WHEN c.is_anonymous = 1 AND ' . $canModerateInt . ' = 0 AND (c.user_id IS NULL OR c.user_id <> ' . $viewerId . ') THEN NULL ELSE u.email END AS user_email, '
-            . 'CASE WHEN c.is_anonymous = 1 AND ' . $canModerateInt . ' = 0 AND (c.user_id IS NULL OR c.user_id <> ' . $viewerId . ') THEN NULL ELSE u.nickname END AS user_nickname '
+            . 'CASE WHEN c.is_anonymous = 1 AND ? = 0 AND (c.user_id IS NULL OR c.user_id <> ?) THEN NULL ELSE u.email END AS user_email, '
+            . 'CASE WHEN c.is_anonymous = 1 AND ? = 0 AND (c.user_id IS NULL OR c.user_id <> ?) THEN NULL ELSE u.nickname END AS user_nickname '
             . 'FROM message_comments c '
             . 'LEFT JOIN users u ON u.id = c.user_id '
             . 'WHERE c.message_id IN (' . $placeholders . ') AND c.deleted_at IS NULL ' . (!$canModerate ? 'AND c.status = "approved" ' : '')
             . 'ORDER BY COALESCE(c.root_id, c.id) ASC, c.id ASC';
         
         $stmt = $this->pdo->prepare($sqlComments);
-        $stmt->execute($messageIds);
+        
+        // 构建参数数组：canModerateInt, viewerId, canModerateInt, viewerId, 然后是messageIds
+        $params = [$canModerateInt, $viewerId, $canModerateInt, $viewerId];
+        $params = array_merge($params, $messageIds);
+        
+        $stmt->execute($params);
         $rows = $stmt->fetchAll();
 
         $midToComments = [];
