@@ -79,7 +79,7 @@ final class SearchService
         // 构建参数数组，注意顺序必须与SQL中的占位符顺序一致
         $params = [];
         
-        // 如果有viewerId，先添加liked_by_me的占位符参数
+        // 第一个占位符：messageCols中的liked_by_me查询（如果存在）
         if ($viewerId > 0) {
             $params[] = $viewerId;
         }
