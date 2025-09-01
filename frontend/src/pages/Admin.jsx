@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import api from '../lib/api';
 import { Input } from '@/components/ui/input';
@@ -28,6 +29,9 @@ import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContai
 
 const Admin = () => {
   const { isLiquidGlass } = useTheme();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') || 'system';
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalMessages: 0,
@@ -152,6 +156,12 @@ const Admin = () => {
     </Card>
   );
 
+  // 当 URL 查询参数变化时，同步当前 Tab（支持直接跳到 /admin?tab=announcements）
+  useEffect(() => {
+    const t = searchParams.get('tab') || 'system';
+    if (t !== activeTab) setActiveTab(t);
+  }, [searchParams]);
+
   return (
     <div className={`max-w-7xl mx-auto space-y-8 ${isLiquidGlass ? 'glass-wrapper' : ''}`}>
       {/* Header */}
@@ -231,7 +241,7 @@ const Admin = () => {
       </Card>
 
       {/* Management Tabs */}
-      <Tabs defaultValue="system" className="space-y-6">
+  <Tabs value={activeTab} onValueChange={(v)=>{ setActiveTab(v); const sp = new URLSearchParams(searchParams); sp.set('tab', v); setSearchParams(sp, { replace: true }); }} className="space-y-6">
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="system">系统设置</TabsTrigger>
           <TabsTrigger value="users">用户管理</TabsTrigger>

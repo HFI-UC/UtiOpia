@@ -230,11 +230,18 @@ html, body, #root { height: 100%; }
 	100% { box-shadow: 0 0 0 0 rgba(251,191,36,0.00), 0 6px 18px rgba(251,191,36,0.18); }
 }
 
+@keyframes breatheScale { /* breathing scale for subtle emphasis */
+	0%   { transform: scale(1); }
+	50%  { transform: scale(1.008); }
+	100% { transform: scale(1); }
+}
+
 .message-highlight-default {
 	border-radius: 1rem; /* ~rounded-2xl */
 	outline: 2px solid rgba(251,191,36,0.85);
 	outline-offset: 2px;
-	animation: highlightPulse 1.6s ease-out infinite;
+	will-change: box-shadow, transform;
+	animation: highlightPulse 1.6s ease-out infinite, breatheScale 2.4s ease-in-out infinite;
 }
 
 @keyframes glassGlow {
@@ -245,7 +252,8 @@ html, body, #root { height: 100%; }
 
 .ios-glass .message-highlight-glass {
 	border-radius: 1rem; /* ensure rounded for halo */
-	animation: glassGlow 1.8s ease-in-out infinite;
+	will-change: box-shadow, transform;
+	animation: glassGlow 1.8s ease-in-out infinite, breatheScale 2.8s ease-in-out infinite;
 }
 
 /* Respect reduced motion preferences */

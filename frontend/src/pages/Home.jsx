@@ -41,7 +41,7 @@ import useMessagesStore from '../stores/messagesStore';
 import api from '../lib/api';
 import useAuthStore from '../stores/authStore';
 import Turnstile from '../components/Turnstile';
-import AnnouncementBanner from '@/components/AnnouncementBanner';
+import AnnouncementDialog from '@/components/AnnouncementDialog';
 
 // Masonry（CSS Grid 行优先）+ 轻微随机旋转：横向加载顺序，尽量紧密填充
 const masonryStyles = `
@@ -437,8 +437,8 @@ const Home = () => {
       {/* 瀑布流布局样式 */}
       <style dangerouslySetInnerHTML={{ __html: masonryStyles }} />
       
-  {/* Announcement */}
-  <AnnouncementBanner className="mb-4" />
+  {/* Announcement as Dialog */}
+  <AnnouncementDialog />
 
   {/* Hero Section */}
       <div className="text-center space-y-6 py-12">

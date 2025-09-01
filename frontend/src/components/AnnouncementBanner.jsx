@@ -26,7 +26,11 @@ export default function AnnouncementBanner({ className }) {
           const dismissed = localStorage.getItem(`announcement:dismissed:${a.id}`);
           if (!dismissed) setItem(a);
         }
-      } catch (_) {}
+      } catch (err) {
+        // 在开发与排查阶段输出错误，帮助定位首页不显示公告的原因（如 401/500/CORS/网络错误）
+        // 生产环境只是 console.warn，不会打断 UI
+        console.warn('[AnnouncementBanner] 获取最新公告失败', err);
+      }
     })();
     return () => { mounted = false; };
   }, []);
