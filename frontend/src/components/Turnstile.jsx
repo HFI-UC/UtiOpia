@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useTheme } from '../contexts/ThemeContext';
 
 const SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
 
@@ -33,6 +34,7 @@ function loadTurnstileScriptOnce() {
 const Turnstile = ({ onVerified }) => {
   const containerRef = useRef(null);
   const widgetIdRef = useRef(null);
+  const { resolvedTheme } = useTheme();
   const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
 
   useEffect(() => {
@@ -54,7 +56,7 @@ const Turnstile = ({ onVerified }) => {
 
         widgetIdRef.current = window.turnstile.render(containerRef.current, {
           sitekey: siteKey,
-          theme: 'light',
+          theme: resolvedTheme || 'light',
           size: 'normal',
           callback: (token) => {
             onVerified?.(token);
@@ -86,7 +88,7 @@ const Turnstile = ({ onVerified }) => {
         } catch (_) {}
       }
     };
-  }, [siteKey, onVerified]);
+  }, [siteKey, onVerified, resolvedTheme]);
 
   return <div ref={containerRef} className="turnstile-container" />;
 };

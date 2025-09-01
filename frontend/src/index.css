@@ -1,0 +1,224 @@
+:root {
+	color-scheme: light dark;
+	/* Liquid theme background image config (you can change these URLs) */
+	--liquid-bg-img-light: url('/backgrounds/liquid-light.png');
+	--liquid-bg-img-dark: url('/backgrounds/liquid-dark.png');
+	/* Per-theme opacities for better contrast control */
+	--liquid-bg-img-opacity: 0.55; /* fallback */
+	--liquid-bg-img-opacity-light: 0.55;
+	--liquid-bg-img-opacity-dark: 0.5;
+	--liquid-bg-img-size: cover;
+	--liquid-bg-img-position: center;
+}
+
+html, body, #root { height: 100%; }
+
+/* Optional polishing for liquid mode */
+.liquid-glass body {
+	background: radial-gradient(1200px 600px at 50% -200px, rgba(59,130,246,0.15), transparent),
+							radial-gradient(1000px 500px at 80% 20%, rgba(168,85,247,0.12), transparent),
+							radial-gradient(900px 450px at 20% 10%, rgba(236,72,153,0.10), transparent);
+}
+
+/* Animated liquid background: light/dark variants with smooth keyframe transition */
+@keyframes bgFadeSwap {
+	0% { opacity: 0; }
+	100% { opacity: 1; }
+}
+
+.liquid-page-bg {
+	position: relative;
+	min-height: 100%;
+	overflow: hidden;
+}
+.liquid-page-bg::before,
+.liquid-page-bg::after {
+	content: '';
+	position: fixed;
+	inset: -20% -10% -10% -10%;
+	pointer-events: none;
+	opacity: 1;
+	animation: bgFadeSwap 420ms ease both;
+	transition: opacity 420ms ease;
+	z-index: 0;
+}
+
+/* Light variant */
+.light.liquid-glass .liquid-page-bg::before {
+	background:
+		radial-gradient(1200px 700px at 10% -10%, rgba(99,102,241,0.26) 0%, rgba(99,102,241,0.0) 60%),
+		radial-gradient(1000px 600px at 90% 0%, rgba(236,72,153,0.26) 0%, rgba(236,72,153,0.0) 60%),
+		radial-gradient(1100px 750px at 50% 120%, rgba(56,189,248,0.22) 0%, rgba(56,189,248,0.0) 65%),
+		linear-gradient(180deg, rgba(255,255,255,1) 0%, rgba(248,250,252,1) 100%);
+}
+
+.light.liquid-glass .liquid-page-bg::after {
+	background: var(--liquid-bg-img-light);
+	background-size: var(--liquid-bg-img-size);
+	background-position: var(--liquid-bg-img-position);
+	background-repeat: no-repeat;
+	opacity: var(--liquid-bg-img-opacity-light, var(--liquid-bg-img-opacity));
+}
+
+/* Dark variant */
+.dark.liquid-glass .liquid-page-bg::before {
+	background:
+		radial-gradient(1200px 700px at 10% -10%, rgba(99,102,241,0.35) 0%, rgba(99,102,241,0.0) 60%),
+		radial-gradient(1000px 600px at 90% 0%, rgba(236,72,153,0.35) 0%, rgba(236,72,153,0.0) 60%),
+		radial-gradient(1100px 750px at 50% 120%, rgba(56,189,248,0.28) 0%, rgba(56,189,248,0.0) 65%),
+		linear-gradient(180deg, rgba(2,6,23,1) 0%, rgba(15,23,42,1) 100%);
+	filter: saturate(1.1) brightness(0.95);
+}
+
+.dark.liquid-glass .liquid-page-bg::after {
+	background: var(--liquid-bg-img-dark);
+	background-size: var(--liquid-bg-img-size);
+	background-position: var(--liquid-bg-img-position);
+	background-repeat: no-repeat;
+	opacity: var(--liquid-bg-img-opacity-dark, var(--liquid-bg-img-opacity));
+}
+
+/* Ensure content sits above background layers */
+.liquid-page-bg > * { position: relative; z-index: 1; }
+
+.dark .glass-wrapper { color: #fff; }
+
+/* Helper for liquid cards */
+.glass-wrapper .card,
+.glass-wrapper .message-card {
+	background-clip: padding-box;
+}
+
+/* Ensure LiquidGlass overlay layers don't affect layout or Masonry calc */
+.liquid-card-container {
+	position: relative;
+}
+.liquid-card-container > .bg-black,
+.liquid-card-container > span[style*="mix-blend"],
+.liquid-card-container > div[style*="mix-blend"],
+.liquid-card-container > svg[aria-hidden="true"] {
+	position: absolute !important;
+	top: 0 !important;
+	left: 0 !important;
+	right: 0 !important;
+	bottom: 0 !important;
+	width: 100% !important;
+	height: 100% !important;
+	pointer-events: none !important;
+}
+
+/* Fix potential transform centering drift for overlay siblings */
+.liquid-card-container > .bg-black,
+.liquid-card-container > span[style*="mix-blend"],
+.liquid-card-container > div[style*="radial-gradient"],
+.liquid-card-container > svg[aria-hidden="true"] {
+	transform: none !important;
+}
+
+/* Prevent images from bleeding weirdly on glass */
+.glass-wrapper img {
+	display: block;
+}
+
+/* StableGlass: CSS-only, layout-safe glass card */
+.stable-glass {
+	position: relative;
+	border-radius: var(--glass-radius, 20px);
+	isolation: isolate;
+	overflow: clip;
+	background: rgba(255, 255, 255, 0.5);
+	-webkit-backdrop-filter: blur(18px) saturate(1.6);
+	backdrop-filter: blur(18px) saturate(1.6);
+	border: 1px solid rgba(255, 255, 255, 0.35);
+	box-shadow: 0 10px 30px -14px rgba(0,0,0,0.35);
+}
+.dark .stable-glass {
+	background: rgba(15, 23, 42, 0.5);
+	border-color: rgba(255, 255, 255, 0.12);
+	box-shadow: 0 10px 30px -16px rgba(0,0,0,0.6);
+}
+.stable-glass::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	background: linear-gradient(
+		135deg,
+		rgba(255,255,255,0.0) 0%,
+		rgba(255,255,255,0.22) 28%,
+		rgba(255,255,255,0.10) 55%,
+		rgba(255,255,255,0.0) 100%
+	);
+	mix-blend-mode: overlay;
+}
+.stable-glass::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	pointer-events: none;
+	padding: 1px;
+		-webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+		mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+	-webkit-mask-composite: xor;
+	mask-composite: exclude;
+	box-shadow: 0 0 0 0.5px rgba(255,255,255,0.6) inset, 0 1px 3px rgba(255,255,255,0.35) inset;
+	opacity: 0.42;
+}
+.stable-glass-overlight {
+	box-shadow: 0 24px 80px rgba(0,0,0,0.55);
+}
+
+/* Subtle wrapper shadow to align with rounded corners */
+.glass-wrapper.rounded-2xl {
+	box-shadow: 0 10px 28px -16px rgba(0,0,0,.35);
+}
+
+/* Slight halo to make cards pop on complex backgrounds when transparent */
+.message-card .glass-wrapper .card,
+.message-card .glass-wrapper [data-slot="card"] {
+	outline: 1px solid rgba(255,255,255,0.08);
+	outline-offset: -1px;
+}
+
+/* Improve text visibility in liquid glass mode */
+.liquid-glass .glass-wrapper {
+	color: #ffffff;
+	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.liquid-glass .glass-wrapper .text-muted-foreground {
+	color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.liquid-glass .glass-wrapper h1,
+.liquid-glass .glass-wrapper h2,
+.liquid-glass .glass-wrapper h3,
+.liquid-glass .glass-wrapper p,
+.liquid-glass .glass-wrapper span,
+.liquid-glass .glass-wrapper div {
+	color: #ffffff;
+}
+
+/* Ensure numbers and important text stand out */
+.liquid-glass .glass-wrapper .text-2xl {
+	color: #ffffff;
+	font-weight: 700;
+	text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+/* Non-liquid themes: set background images for light/dark as well */
+.light:not(.liquid-glass) .min-h-screen {
+	background-image: url('/backgrounds/liquid-light.png');
+	background-size: var(--liquid-bg-img-size, cover);
+	background-position: var(--liquid-bg-img-position, center);
+	background-repeat: no-repeat;
+	/* keep background color via Tailwind's bg-background; image will render on top */
+}
+
+.dark:not(.liquid-glass) .min-h-screen {
+	background-image: url('/backgrounds/liquid-dark.png');
+	background-size: var(--liquid-bg-img-size, cover);
+	background-position: var(--liquid-bg-img-position, center);
+	background-repeat: no-repeat;
+}

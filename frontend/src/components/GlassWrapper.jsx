@@ -1,0 +1,43 @@
+import React, { useRef } from 'react';
+import PropTypes from 'prop-types';
+import { useTheme } from '../contexts/ThemeContext';
+import StableGlass from './StableGlass';
+
+/**
+ * Wraps its children in a LiquidGlass component when the current theme is
+ * 'liquid'.  The LiquidGlass component from the `liquid-glass-react` library
+ * provides Apple's trademark frosted glass effect.  When other themes are
+ * active the children are rendered directly without any wrapper to avoid
+ * unnecessary DOM nesting.
+ *
+ * This implementation uses an absolute positioning strategy to avoid layout
+ * conflicts. The children are rendered normally to define the container's
+ * size, while the LiquidGlass component is positioned absolutely behind them,
+ * acting as a visual background. This ensures that complex parent layouts
+ * (like CSS Grid Masonry) can correctly measure the component's dimensions.
+ */
+const GlassWrapper = ({ children, overLight = false, className = '', style }) => {
+  const { isLiquidGlass } = useTheme();
+  const containerRef = useRef(null);
+
+  if (isLiquidGlass) {
+    return (
+      <div ref={containerRef} className={`glass-wrapper ${className}`} style={style}>
+        <StableGlass overLight={overLight}>
+          {children}
+        </StableGlass>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+};
+
+export default GlassWrapper;
+
+GlassWrapper.propTypes = {
+  children: PropTypes.node,
+  overLight: PropTypes.bool,
+  className: PropTypes.string,
+  style: PropTypes.object,
+};

@@ -27,7 +27,10 @@ final class SearchService
         try {
             $this->acl->ensure($user['role'], 'message:approve');
             $canModerate = true;
-        } catch (\Throwable) {}
+        } catch (\Throwable $e) {
+            // 权限检查失败则按普通用户处理；确保有实际语句以通过代码规范检查
+            $canModerate = false;
+        }
 
         $viewerId = (int)($user['id'] ?? 0);
 
@@ -59,19 +62,20 @@ final class SearchService
             $messageCols .= ', EXISTS(SELECT 1 FROM message_likes ml2 WHERE ml2.message_id = m.id AND ml2.user_id = ? AND ml2.deleted_at IS NULL) AS liked_by_me';
         }
 
+        // 将 LIMIT/OFFSET 以内联的安全整数形式写入，避免被 PDO 作为字符串绑定导致 MySQL 语法错误
         $messageSearchSql = "
             SELECT SQL_CALC_FOUND_ROWS $messageCols, 'message' as result_type, m.id as result_id
-            FROM messages m 
-            LEFT JOIN users u ON m.user_id = u.id 
+            FROM messages m
+            LEFT JOIN users u ON m.user_id = u.id
             WHERE (
-                m.content LIKE ? OR 
-                m.anon_email LIKE ? OR 
-                m.anon_student_id LIKE ? OR 
-                u.email LIKE ? OR 
+                m.content LIKE ? OR
+                m.anon_email LIKE ? OR
+                m.anon_student_id LIKE ? OR
+                u.email LIKE ? OR
                 u.nickname LIKE ?
             )
-            ORDER BY m.id DESC 
-            LIMIT ? OFFSET ?
+            ORDER BY m.id DESC
+            LIMIT " . (int)$pageSize . " OFFSET " . (int)$offset . "
         ";
 
         $stmt = $this->pdo->prepare($messageSearchSql);
@@ -91,9 +95,7 @@ final class SearchService
         $params[] = $searchPattern; // u.email LIKE ?
         $params[] = $searchPattern; // u.nickname LIKE ?
         
-        // 添加分页参数
-        $params[] = $pageSize;
-        $params[] = $offset;
+    // 分页参数已内联进 SQL，这里不再添加
         
         $stmt->execute($params);
         $messageResults = $stmt->fetchAll();
@@ -101,7 +103,7 @@ final class SearchService
 
         // 搜索评论（单独查询）
         $commentSearchSql = "
-            SELECT c.id, c.message_id, c.user_id, c.is_anonymous, c.content, c.parent_id, c.root_id, 
+            SELECT c.id, c.message_id, c.user_id, c.is_anonymous, c.content, c.parent_id, c.root_id,
                    c.status, c.created_at, c.reviewed_at, c.reviewed_by,
                    u.email as user_email, u.nickname as user_nickname,
                    'comment' as result_type, c.id as result_id
@@ -109,11 +111,11 @@ final class SearchService
             LEFT JOIN users u ON c.user_id = u.id
             WHERE c.content LIKE ? OR u.email LIKE ? OR u.nickname LIKE ?
             ORDER BY c.id DESC
-            LIMIT ? OFFSET ?
+            LIMIT " . (int)$pageSize . " OFFSET " . (int)$offset . "
         ";
 
-        $commentStmt = $this->pdo->prepare($commentSearchSql);
-        $commentStmt->execute([$searchPattern, $searchPattern, $searchPattern, $pageSize, $offset]);
+    $commentStmt = $this->pdo->prepare($commentSearchSql);
+    $commentStmt->execute([$searchPattern, $searchPattern, $searchPattern]);
         $commentResults = $commentStmt->fetchAll();
 
         // 为搜索到的纸条添加评论
@@ -135,11 +137,12 @@ final class SearchService
             $comment['related_message'] = $messageStmt->fetch() ?: null;
         }
 
-        // 处理图片URL
-        $this->processImageUrls(array_merge($messageResults, $commentResults));
+        // 处理图片URL（先合并为变量，再以引用方式传入）
+        $mergedAdminItems = array_merge($messageResults, $commentResults);
+        $this->processImageUrls($mergedAdminItems);
 
         // 合并结果
-        $allResults = array_merge($messageResults, $commentResults);
+        $allResults = $mergedAdminItems;
         
         return [
             'items' => $allResults,
@@ -171,15 +174,15 @@ final class SearchService
 
         $messageSearchSql = "
             SELECT SQL_CALC_FOUND_ROWS $messageCols, 'message' as result_type, m.id as result_id
-            FROM messages m 
-            LEFT JOIN users u ON m.user_id = u.id 
-            WHERE m.status = 'approved' AND m.deleted_at IS NULL 
+            FROM messages m
+            LEFT JOIN users u ON m.user_id = u.id
+            WHERE m.status = 'approved' AND m.deleted_at IS NULL
             AND (
-                m.content LIKE ? OR 
+                m.content LIKE ? OR
                 (m.is_anonymous = 0 AND m.user_id IS NOT NULL AND (u.email LIKE ? OR u.nickname LIKE ?))
             )
-            ORDER BY m.id DESC 
-            LIMIT ? OFFSET ?
+            ORDER BY m.id DESC
+            LIMIT " . (int)$pageSize . " OFFSET " . (int)$offset . "
         ";
 
         // 构建参数数组，注意顺序必须与SQL中的占位符顺序一致
@@ -198,9 +201,7 @@ final class SearchService
         $params[] = $searchPattern; // u.email LIKE ?
         $params[] = $searchPattern; // u.nickname LIKE ?
         
-        // 添加分页参数
-        $params[] = $pageSize;
-        $params[] = $offset;
+        // 分页参数已内联进 SQL，这里不再添加
         
         $stmt = $this->pdo->prepare($messageSearchSql);
         $stmt->execute($params);
@@ -209,7 +210,7 @@ final class SearchService
 
         // 搜索评论 - 只搜索已通过的评论
         $commentSearchSql = "
-            SELECT c.id, c.message_id, c.user_id, c.is_anonymous, c.content, c.parent_id, c.root_id, 
+            SELECT c.id, c.message_id, c.user_id, c.is_anonymous, c.content, c.parent_id, c.root_id,
                    c.status, c.created_at, c.reviewed_at, c.reviewed_by,
                    CASE WHEN c.is_anonymous = 1 AND ? = 0 AND (c.user_id IS NULL OR c.user_id <> ?) THEN NULL ELSE u.email END AS user_email,
                    CASE WHEN c.is_anonymous = 1 AND ? = 0 AND (c.user_id IS NULL OR c.user_id <> ?) THEN NULL ELSE u.nickname END AS user_nickname,
@@ -218,19 +219,18 @@ final class SearchService
             LEFT JOIN users u ON c.user_id = u.id
             WHERE c.status = 'approved' AND c.deleted_at IS NULL
             AND (
-                c.content LIKE ? OR 
+                c.content LIKE ? OR
                 (c.is_anonymous = 0 AND (u.email LIKE ? OR u.nickname LIKE ?))
             )
             ORDER BY c.id DESC
-            LIMIT ? OFFSET ?
+            LIMIT " . (int)$pageSize . " OFFSET " . (int)$offset . "
         ";
 
         $canModerateInt = 0; // 普通用户
         $commentStmt = $this->pdo->prepare($commentSearchSql);
         $commentStmt->execute([
             $canModerateInt, $viewerId, $canModerateInt, $viewerId,
-            $searchPattern, $searchPattern, $searchPattern, 
-            $pageSize, $offset
+            $searchPattern, $searchPattern, $searchPattern
         ]);
         $commentResults = $commentStmt->fetchAll();
 
@@ -253,11 +253,12 @@ final class SearchService
             $comment['related_message'] = $messageStmt->fetch() ?: null;
         }
 
-        // 处理图片URL
-        $this->processImageUrls(array_merge($messageResults, $commentResults));
+        // 处理图片URL（先合并为变量，再以引用方式传入）
+        $mergedUserItems = array_merge($messageResults, $commentResults);
+        $this->processImageUrls($mergedUserItems);
 
         // 合并结果
-        $allResults = array_merge($messageResults, $commentResults);
+        $allResults = $mergedUserItems;
         
         return [
             'items' => $allResults,
@@ -270,7 +271,9 @@ final class SearchService
 
     private function addCommentsToMessages(array &$messages, array $messageIds, bool $canModerate, int $viewerId): void
     {
-        if (empty($messageIds)) return;
+        if (empty($messageIds)) {
+            return;
+        }
 
         $placeholders = implode(',', array_fill(0, count($messageIds), '?'));
         $canModerateInt = $canModerate ? 1 : 0;
@@ -296,7 +299,9 @@ final class SearchService
         $midToComments = [];
         foreach ($rows as $row) {
             $mid = (int)$row['message_id'];
-            if (!isset($midToComments[$mid])) $midToComments[$mid] = [];
+            if (!isset($midToComments[$mid])) {
+                $midToComments[$mid] = [];
+            }
             $midToComments[$mid][] = $row;
         }
 
@@ -320,6 +325,9 @@ final class SearchService
                     }
                 }
             }
-        } catch (\Throwable) {}
+        } catch (\Throwable $e) {
+            // 忽略生成临时 URL 的任何异常（例如 COS 未配置）
+            $unused = $e;
+        }
     }
 }

@@ -345,6 +345,78 @@
         }
       }
     },
+    "/api/search": {
+      "get": {
+        "tags": ["搜索"],
+        "summary": "搜索留言",
+        "description": "根据关键词搜索留言内容",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "description": "搜索关键词",
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "每页条数",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "搜索结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Message"
+                      }
+                    },
+                    "total": {
+                      "type": "integer",
+                      "description": "总数"
+                    },
+                    "page": {
+                      "type": "integer",
+                      "description": "当前页码"
+                    },
+                    "pageSize": {
+                      "type": "integer",
+                      "description": "每页条数"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/messages": {
       "get": {
         "tags": ["留言"],
@@ -503,6 +575,44 @@
       }
     },
     "/api/messages/{id}": {
+      "get": {
+        "tags": ["留言"],
+        "summary": "获取留言详情",
+        "description": "获取指定 ID 的留言详细信息",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "留言 ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "留言详情获取成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "留言不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
       "put": {
         "tags": ["留言"],
         "summary": "更新留言",
@@ -613,6 +723,417 @@
         "responses": {
           "200": {
             "description": "删除成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限不足",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/messages/{id}/like": {
+      "post": {
+        "tags": ["点赞"],
+        "summary": "切换留言点赞状态",
+        "description": "为留言点赞或取消点赞",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "留言 ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "点赞状态切换成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "liked": {
+                      "type": "boolean",
+                      "description": "当前点赞状态"
+                    },
+                    "like_count": {
+                      "type": "integer",
+                      "description": "总点赞数"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未授权",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "留言不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/messages/{id}/comments": {
+      "get": {
+        "tags": ["评论"],
+        "summary": "获取留言评论列表",
+        "description": "获取指定留言的评论列表",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "留言 ID",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "每页条数",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "评论列表获取成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Comment"
+                      }
+                    },
+                    "total": {
+                      "type": "integer",
+                      "description": "总数"
+                    },
+                    "page": {
+                      "type": "integer",
+                      "description": "当前页码"
+                    },
+                    "pageSize": {
+                      "type": "integer",
+                      "description": "每页条数"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["评论"],
+        "summary": "创建评论",
+        "description": "为留言创建新评论",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "留言 ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["content"],
+                "properties": {
+                  "content": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1000,
+                    "description": "评论内容"
+                  },
+                  "parent_id": {
+                    "type": "integer",
+                    "description": "父评论 ID（回复评论时使用）"
+                  },
+                  "is_anonymous": {
+                    "type": "boolean",
+                    "description": "是否匿名评论",
+                    "default": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "评论创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "id": {
+                      "type": "integer",
+                      "description": "评论 ID"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "创建失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未授权",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/comments/{id}": {
+      "delete": {
+        "tags": ["评论"],
+        "summary": "删除评论",
+        "description": "删除指定评论",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "评论 ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "删除成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限不足",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "评论不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/comments/{id}/approve": {
+      "post": {
+        "tags": ["审核"],
+        "summary": "审核通过评论",
+        "description": "审核员审核通过指定评论",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "评论 ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "审核通过成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限不足",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/comments/{id}/reject": {
+      "post": {
+        "tags": ["审核"],
+        "summary": "审核拒绝评论",
+        "description": "审核员拒绝指定评论并提供拒绝理由",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "评论 ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["reason"],
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "description": "拒绝理由"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "审核拒绝成功",
             "content": {
               "application/json": {
                 "schema": {
@@ -1377,6 +1898,449 @@
           }
         }
       }
+    },
+    "/api/stats/users": {
+      "get": {
+        "tags": ["统计"],
+        "summary": "获取用户统计时间序列",
+        "description": "获取用户注册数量的时间序列统计",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "description": "统计天数",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 7
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统计获取成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "date": {
+                            "type": "string",
+                            "format": "date",
+                            "description": "日期"
+                          },
+                          "count": {
+                            "type": "integer",
+                            "description": "新增用户数"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stats/quick": {
+      "get": {
+        "tags": ["统计"],
+        "summary": "获取快速统计",
+        "description": "获取系统快速统计信息",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统计获取成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "today": {
+                      "type": "object",
+                      "properties": {
+                        "messages": {
+                          "type": "integer",
+                          "description": "今日留言数"
+                        },
+                        "users": {
+                          "type": "integer",
+                          "description": "今日新增用户数"
+                        },
+                        "comments": {
+                          "type": "integer",
+                          "description": "今日评论数"
+                        }
+                      }
+                    },
+                    "week": {
+                      "type": "object",
+                      "properties": {
+                        "messages": {
+                          "type": "integer",
+                          "description": "本周留言数"
+                        },
+                        "users": {
+                          "type": "integer",
+                          "description": "本周新增用户数"
+                        },
+                        "comments": {
+                          "type": "integer",
+                          "description": "本周评论数"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stats/weekly": {
+      "get": {
+        "tags": ["统计"],
+        "summary": "获取周统计",
+        "description": "获取过去几周的统计数据",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "weeks",
+            "in": "query",
+            "description": "统计周数",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12,
+              "default": 4
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统计获取成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "weeks": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "week_start": {
+                            "type": "string",
+                            "format": "date",
+                            "description": "周开始日期"
+                          },
+                          "messages": {
+                            "type": "integer",
+                            "description": "留言数"
+                          },
+                          "users": {
+                            "type": "integer",
+                            "description": "新增用户数"
+                          },
+                          "comments": {
+                            "type": "integer",
+                            "description": "评论数"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stats/public-counts": {
+      "get": {
+        "tags": ["统计"],
+        "summary": "获取公开统计数据",
+        "description": "获取无需认证的公开统计数据",
+        "responses": {
+          "200": {
+            "description": "统计获取成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "messages": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "description": "总留言数"
+                        },
+                        "approved": {
+                          "type": "integer",
+                          "description": "已审核通过的留言数"
+                        }
+                      }
+                    },
+                    "users": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "description": "总用户数"
+                        }
+                      }
+                    },
+                    "likes": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "description": "总点赞数"
+                        }
+                      }
+                    },
+                    "comments": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "description": "总评论数"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/settings": {
+      "get": {
+        "tags": ["管理工具"],
+        "summary": "获取系统设置",
+        "description": "获取系统配置信息",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "设置获取成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "version": {
+                      "type": "string",
+                      "description": "系统版本"
+                    },
+                    "maintenance_mode": {
+                      "type": "boolean",
+                      "description": "维护模式状态"
+                    },
+                    "registration_enabled": {
+                      "type": "boolean",
+                      "description": "是否开放注册"
+                    },
+                    "moderation_required": {
+                      "type": "boolean",
+                      "description": "是否需要审核"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限不足",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/report": {
+      "post": {
+        "tags": ["管理工具"],
+        "summary": "生成系统报告",
+        "description": "生成系统使用情况报告",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["daily", "weekly", "monthly"],
+                    "description": "报告类型"
+                  },
+                  "start_date": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "开始日期"
+                  },
+                  "end_date": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "结束日期"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "报告生成成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "report_url": {
+                      "type": "string",
+                      "description": "报告下载链接"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限不足",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/maintenance/cleanup": {
+      "post": {
+        "tags": ["管理工具"],
+        "summary": "系统清理",
+        "description": "清理系统临时数据和过期记录",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["logs", "temp_files", "expired_bans", "all"],
+                    "description": "清理类型"
+                  },
+                  "days": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "保留天数",
+                    "default": 30
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "清理完成",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "cleaned": {
+                      "type": "object",
+                      "properties": {
+                        "logs": {
+                          "type": "integer",
+                          "description": "清理的日志条数"
+                        },
+                        "temp_files": {
+                          "type": "integer",
+                          "description": "清理的临时文件数"
+                        },
+                        "expired_bans": {
+                          "type": "integer",
+                          "description": "清理的过期封禁数"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限不足",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1571,6 +2535,137 @@
         },
         "required": ["id", "action", "created_at"]
       },
+      "MessageDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Message"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "like_count": {
+                "type": "integer",
+                "description": "点赞数"
+              },
+              "liked_by_user": {
+                "type": "boolean",
+                "description": "当前用户是否点赞（需登录）"
+              },
+              "comment_count": {
+                "type": "integer",
+                "description": "评论数"
+              },
+              "reject_reason": {
+                "type": "string",
+                "nullable": true,
+                "description": "拒绝理由（状态为 rejected 时显示）"
+              }
+            }
+          }
+        ]
+      },
+      "Comment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "评论 ID"
+          },
+          "message_id": {
+            "type": "integer",
+            "description": "留言 ID"
+          },
+          "user_id": {
+            "type": "integer",
+            "description": "用户 ID"
+          },
+          "is_anonymous": {
+            "type": "boolean",
+            "description": "是否匿名评论"
+          },
+          "content": {
+            "type": "string",
+            "description": "评论内容"
+          },
+          "parent_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "父评论 ID"
+          },
+          "root_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "根评论 ID"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "approved", "rejected"],
+            "description": "评论状态"
+          },
+          "reject_reason": {
+            "type": "string",
+            "nullable": true,
+            "description": "拒绝理由"
+          },
+          "reviewed_by": {
+            "type": "integer",
+            "nullable": true,
+            "description": "审核者 ID"
+          },
+          "reviewed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "审核时间"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "创建时间"
+          },
+          "user_email": {
+            "type": "string",
+            "nullable": true,
+            "description": "用户邮箱（非匿名时显示）"
+          },
+          "user_nickname": {
+            "type": "string",
+            "nullable": true,
+            "description": "用户昵称（非匿名时显示）"
+          },
+          "replies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Comment"
+            },
+            "description": "回复列表"
+          }
+        },
+        "required": ["id", "message_id", "user_id", "is_anonymous", "content", "status", "created_at"]
+      },
+      "Like": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "点赞 ID"
+          },
+          "message_id": {
+            "type": "integer",
+            "description": "留言 ID"
+          },
+          "user_id": {
+            "type": "integer",
+            "description": "用户 ID"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "创建时间"
+          }
+        },
+        "required": ["id", "message_id", "user_id", "created_at"]
+      },
       "StatsOverview": {
         "type": "object",
         "properties": {
@@ -1621,6 +2716,28 @@
               }
             }
           },
+          "likes": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer",
+                "description": "总点赞数"
+              }
+            }
+          },
+          "comments": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer",
+                "description": "总评论数"
+              },
+              "pending": {
+                "type": "integer",
+                "description": "待审核评论数"
+              }
+            }
+          },
           "health": {
             "type": "object",
             "properties": {
@@ -1652,12 +2769,24 @@
       "description": "文件上传相关接口"
     },
     {
+      "name": "搜索",
+      "description": "搜索相关接口"
+    },
+    {
       "name": "留言",
       "description": "留言管理相关接口"
     },
     {
+      "name": "点赞",
+      "description": "点赞相关接口"
+    },
+    {
+      "name": "评论",
+      "description": "评论管理相关接口"
+    },
+    {
       "name": "审核",
-      "description": "留言审核相关接口"
+      "description": "留言和评论审核相关接口"
     },
     {
       "name": "用户管理",
@@ -1674,6 +2803,10 @@
     {
       "name": "统计",
       "description": "统计信息相关接口"
+    },
+    {
+      "name": "管理工具",
+      "description": "系统管理工具接口（管理员权限）"
     }
   ]
 }

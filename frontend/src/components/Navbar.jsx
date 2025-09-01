@@ -22,6 +22,7 @@ import {
   Search
 } from 'lucide-react';
 import useAuthStore from '../stores/authStore';
+import ThemeToggle from './ThemeToggle';
 
 const Navbar = () => {
   const { token, user, logout } = useAuthStore();
@@ -35,7 +36,7 @@ const Navbar = () => {
   const isAdmin = user?.role === 'moderator' || user?.role === 'super_admin';
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur-md">
+    <nav className="sticky top-0 z-50 w-full border-b bg-white/80 dark:bg-black/40 backdrop-blur-md">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
@@ -77,7 +78,9 @@ const Navbar = () => {
           </div>
 
           {/* User Actions */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
+            <ThemeToggle />
+            <div className="w-px h-6 bg-border mx-1 hidden sm:block" />
             {token ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
