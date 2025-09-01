@@ -14,7 +14,7 @@
 html, body, #root { height: 100%; }
 
 /* Optional polishing for liquid mode */
-.liquid-glass body {
+.ios-glass body {
 	background: radial-gradient(1200px 600px at 50% -200px, rgba(59,130,246,0.15), transparent),
 							radial-gradient(1000px 500px at 80% 20%, rgba(168,85,247,0.12), transparent),
 							radial-gradient(900px 450px at 20% 10%, rgba(236,72,153,0.10), transparent);
@@ -44,7 +44,7 @@ html, body, #root { height: 100%; }
 }
 
 /* Light variant */
-.light.liquid-glass .liquid-page-bg::before {
+.light.ios-glass .liquid-page-bg::before {
 	background:
 		radial-gradient(1200px 700px at 10% -10%, rgba(99,102,241,0.26) 0%, rgba(99,102,241,0.0) 60%),
 		radial-gradient(1000px 600px at 90% 0%, rgba(236,72,153,0.26) 0%, rgba(236,72,153,0.0) 60%),
@@ -52,7 +52,7 @@ html, body, #root { height: 100%; }
 		linear-gradient(180deg, rgba(255,255,255,1) 0%, rgba(248,250,252,1) 100%);
 }
 
-.light.liquid-glass .liquid-page-bg::after {
+.light.ios-glass .liquid-page-bg::after {
 	background: var(--liquid-bg-img-light);
 	background-size: var(--liquid-bg-img-size);
 	background-position: var(--liquid-bg-img-position);
@@ -61,7 +61,7 @@ html, body, #root { height: 100%; }
 }
 
 /* Dark variant */
-.dark.liquid-glass .liquid-page-bg::before {
+.dark.ios-glass .liquid-page-bg::before {
 	background:
 		radial-gradient(1200px 700px at 10% -10%, rgba(99,102,241,0.35) 0%, rgba(99,102,241,0.0) 60%),
 		radial-gradient(1000px 600px at 90% 0%, rgba(236,72,153,0.35) 0%, rgba(236,72,153,0.0) 60%),
@@ -70,7 +70,7 @@ html, body, #root { height: 100%; }
 	filter: saturate(1.1) brightness(0.95);
 }
 
-.dark.liquid-glass .liquid-page-bg::after {
+.dark.ios-glass .liquid-page-bg::after {
 	background: var(--liquid-bg-img-dark);
 	background-size: var(--liquid-bg-img-size);
 	background-position: var(--liquid-bg-img-position);
@@ -169,6 +169,21 @@ html, body, #root { height: 100%; }
 	box-shadow: 0 24px 80px rgba(0,0,0,0.55);
 }
 
+/* iOS glass: make any Card inside .glass-wrapper become frosted glass */
+.ios-glass .glass-wrapper [data-slot="card"] {
+	position: relative;
+	background: rgba(255, 255, 255, 0.68) !important;
+	-webkit-backdrop-filter: blur(18px) saturate(1.6);
+	backdrop-filter: blur(18px) saturate(1.6);
+	border-color: rgba(15, 23, 42, 0.08) !important; /* subtle darker border for contrast */
+	box-shadow: 0 10px 30px -14px rgba(0,0,0,0.35);
+}
+.dark.ios-glass .glass-wrapper [data-slot="card"] {
+	background: rgba(15, 23, 42, 0.5) !important; /* slate-900-ish */
+	border-color: rgba(255, 255, 255, 0.12) !important;
+	box-shadow: 0 10px 30px -16px rgba(0,0,0,0.6);
+}
+
 /* Subtle wrapper shadow to align with rounded corners */
 .glass-wrapper.rounded-2xl {
 	box-shadow: 0 10px 28px -16px rgba(0,0,0,.35);
@@ -181,34 +196,68 @@ html, body, #root { height: 100%; }
 	outline-offset: -1px;
 }
 
-/* Improve text visibility in liquid glass mode */
-.liquid-glass .glass-wrapper {
-	color: #ffffff;
-	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+/* Improve text visibility in liquid glass mode, scoped per theme */
+/* Light iOS glass: prefer dark text for contrast; keep shadows subtle */
+.light.ios-glass .glass-wrapper { text-shadow: 0 1px 1px rgba(255, 255, 255, 0.4); }
+.light.ios-glass .glass-wrapper .text-muted-foreground { color: rgba(15,23,42,0.72) !important; }
+.light.ios-glass .glass-wrapper h1,
+.light.ios-glass .glass-wrapper h2,
+.light.ios-glass .glass-wrapper h3 { color: #0f172a; }
+.light.ios-glass .glass-wrapper .text-2xl,
+.light.ios-glass .glass-wrapper .font-bold { color: #0f172a; }
+
+/* Dark iOS glass: keep white text and stronger shadow for clarity */
+.dark.ios-glass .glass-wrapper { text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45); }
+.dark.ios-glass .glass-wrapper .text-muted-foreground { color: rgba(255,255,255,0.82) !important; }
+.dark.ios-glass .glass-wrapper h1,
+.dark.ios-glass .glass-wrapper h2,
+.dark.ios-glass .glass-wrapper h3 { color: #fff; }
+.dark.ios-glass .glass-wrapper .text-2xl,
+.dark.ios-glass .glass-wrapper .font-bold { color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.6); }
+
+/* Badges in glass: improved contrast */
+.light.ios-glass .glass-wrapper [data-slot="badge"] { color: #0f172a; }
+.dark.ios-glass .glass-wrapper [data-slot="badge"] { color: #fff; }
+.ios-glass .glass-wrapper [data-slot="badge"][class*="bg-"],
+.ios-glass .glass-wrapper [data-slot="badge"][class*="border"] { box-shadow: 0 1px 2px rgba(0,0,0,0.35); }
+
+/* ======================== */
+/* Highlight styles (cards) */
+/* ======================== */
+@keyframes highlightPulse {
+	0%   { box-shadow: 0 0 0 0 rgba(251,191,36,0.40), 0 6px 18px rgba(251,191,36,0.18); }
+	50%  { box-shadow: 0 0 0 6px rgba(251,191,36,0.00), 0 12px 28px rgba(251,191,36,0.26); }
+	100% { box-shadow: 0 0 0 0 rgba(251,191,36,0.00), 0 6px 18px rgba(251,191,36,0.18); }
 }
 
-.liquid-glass .glass-wrapper .text-muted-foreground {
-	color: rgba(255, 255, 255, 0.8) !important;
+.message-highlight-default {
+	border-radius: 1rem; /* ~rounded-2xl */
+	outline: 2px solid rgba(251,191,36,0.85);
+	outline-offset: 2px;
+	animation: highlightPulse 1.6s ease-out infinite;
 }
 
-.liquid-glass .glass-wrapper h1,
-.liquid-glass .glass-wrapper h2,
-.liquid-glass .glass-wrapper h3,
-.liquid-glass .glass-wrapper p,
-.liquid-glass .glass-wrapper span,
-.liquid-glass .glass-wrapper div {
-	color: #ffffff;
+@keyframes glassGlow {
+	0%   { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.50), 0 0 0 2px rgba(99,102,241,0.25), 0 8px 26px rgba(99,102,241,0.20); }
+	50%  { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.62), 0 0 0 3px rgba(99,102,241,0.35), 0 14px 40px rgba(99,102,241,0.28); }
+	100% { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.50), 0 0 0 2px rgba(99,102,241,0.25), 0 8px 26px rgba(99,102,241,0.20); }
 }
 
-/* Ensure numbers and important text stand out */
-.liquid-glass .glass-wrapper .text-2xl {
-	color: #ffffff;
-	font-weight: 700;
-	text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+.ios-glass .message-highlight-glass {
+	border-radius: 1rem; /* ensure rounded for halo */
+	animation: glassGlow 1.8s ease-in-out infinite;
+}
+
+/* Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+	.message-highlight-default,
+	.ios-glass .message-highlight-glass {
+		animation: none !important;
+	}
 }
 
 /* Non-liquid themes: set background images for light/dark as well */
-.light:not(.liquid-glass) .min-h-screen {
+.light:not(.ios-glass) .min-h-screen {
 	background-image: url('/backgrounds/liquid-light.png');
 	background-size: var(--liquid-bg-img-size, cover);
 	background-position: var(--liquid-bg-img-position, center);
@@ -216,7 +265,7 @@ html, body, #root { height: 100%; }
 	/* keep background color via Tailwind's bg-background; image will render on top */
 }
 
-.dark:not(.liquid-glass) .min-h-screen {
+.dark:not(.ios-glass) .min-h-screen {
 	background-image: url('/backgrounds/liquid-dark.png');
 	background-size: var(--liquid-bg-img-size, cover);
 	background-position: var(--liquid-bg-img-position, center);

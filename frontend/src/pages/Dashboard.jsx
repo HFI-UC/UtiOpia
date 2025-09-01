@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTheme } from '../contexts/ThemeContext';
 import api from '../lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -21,7 +22,6 @@ import {
   TrendingUp, 
   Users, 
   MessageSquare, 
-  Clock, 
   CheckCircle,
   XCircle,
   Activity,
@@ -29,10 +29,10 @@ import {
 } from 'lucide-react';
 
 const Dashboard = () => {
+  const { isLiquidGlass } = useTheme();
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalMessages: 0,
-    pendingMessages: 0,
     approvedMessages: 0,
     rejectedMessages: 0,
     todayMessages: 0,
@@ -78,7 +78,6 @@ const Dashboard = () => {
         setStats({
           totalUsers: sv.users?.total ?? sv.totals?.users ?? 0,
           totalMessages: sv.totals?.messages ?? 0,
-          pendingMessages: sv.messages?.pending ?? 0,
           approvedMessages: sv.messages?.approved ?? 0,
           rejectedMessages: sv.messages?.hidden ?? sv.messages?.rejected ?? 0, // 兼容 hidden 和 rejected
           todayMessages: today,
@@ -132,7 +131,6 @@ const Dashboard = () => {
         const status = [
           { name: '已通过', value: sv.messages?.approved ?? 0, color: '#10b981' },
           { name: '已隐藏', value: sv.messages?.hidden ?? sv.messages?.rejected ?? 0, color: '#ef4444' },
-          { name: '待审核', value: sv.messages?.pending ?? 0, color: '#f59e0b' },
         ];
         setChartData({ daily, weekly, status });
 
@@ -188,13 +186,18 @@ const Dashboard = () => {
     }
   };
 
+  // Glass-friendly badge styles to improve contrast in dark/iOS glass modes
+  const glassBadgeClass = isLiquidGlass
+    ? "backdrop-blur-sm dark:bg-black/50 bg-white/70 dark:text-white text-slate-900 border-white/30 shadow-sm"
+    : "";
+
   const StatCard = ({ title, value, icon: Icon, trend, trendValue, color = "blue" }) => (
     <Card>
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-muted-foreground">{title}</p>
-            <p className="text-2xl font-bold">{value}</p>
+            <p className={`text-2xl font-bold ${isLiquidGlass ? 'text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]' : ''}`}>{value}</p>
             {trend && (
               <div className="flex items-center mt-1">
                 <TrendingUp className={`w-4 h-4 mr-1 ${trend === 'up' ? 'text-green-500' : 'text-red-500'}`} />
@@ -204,8 +207,23 @@ const Dashboard = () => {
               </div>
             )}
           </div>
-          <div className={`w-12 h-12 bg-${color}-100 rounded-full flex items-center justify-center`}>
-            <Icon className={`w-6 h-6 text-${color}-600`} />
+          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+            color === 'yellow'
+              ? (isLiquidGlass ? 'bg-yellow-400/30 dark:bg-yellow-400/20' : 'bg-yellow-100')
+              : color === 'red'
+              ? (isLiquidGlass ? 'bg-red-400/30 dark:bg-red-400/20' : 'bg-red-100')
+              : color === 'green'
+              ? (isLiquidGlass ? 'bg-green-400/30 dark:bg-green-400/20' : 'bg-green-100')
+              : color === 'purple'
+              ? (isLiquidGlass ? 'bg-purple-400/30 dark:bg-purple-400/20' : 'bg-purple-100')
+              : (isLiquidGlass ? 'bg-blue-400/30 dark:bg-blue-400/20' : 'bg-blue-100')
+          }`}>
+            <Icon className={`${
+              color === 'yellow' ? 'text-yellow-600' :
+              color === 'red' ? 'text-red-600' :
+              color === 'green' ? 'text-green-600' :
+              color === 'purple' ? 'text-purple-600' : 'text-blue-600'
+            } w-6 h-6`} />
           </div>
         </div>
       </CardContent>
@@ -222,8 +240,9 @@ const Dashboard = () => {
         </p>
       </div>
 
-      {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+  {/* Key Metrics */}
+  <div className={isLiquidGlass ? "glass-wrapper" : undefined}>
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="总用户数"
           value={stats.totalUsers}
@@ -248,12 +267,7 @@ const Dashboard = () => {
           trendValue={`${trends.todayGrowth >= 0 ? '+' : ''}${trends.todayGrowth}% 较昨日`}
           color="purple"
         />
-        <StatCard
-          title="待审核"
-          value={stats.pendingMessages}
-          icon={Clock}
-          color="yellow"
-        />
+        {/* 待审核卡片已移除 */}
         <StatCard
           title="已隐藏"
           value={stats.rejectedMessages}
@@ -261,8 +275,10 @@ const Dashboard = () => {
           color="red"
         />
       </div>
+      </div>
 
-      {/* Charts Section */}
+  {/* Charts Section */}
+  <div className={isLiquidGlass ? "glass-wrapper" : undefined}>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Daily Activity */}
         <Card>
@@ -323,8 +339,10 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+      </div>
 
-      {/* Weekly Trends */}
+  {/* Weekly Trends */}
+  <div className={isLiquidGlass ? "glass-wrapper" : undefined}>
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -392,8 +410,10 @@ const Dashboard = () => {
           </ResponsiveContainer>
         </CardContent>
       </Card>
+      </div>
 
-      {/* Quick Stats */}
+  {/* Quick Stats */}
+  <div className={isLiquidGlass ? "glass-wrapper" : undefined}>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
           <CardHeader>
@@ -402,15 +422,15 @@ const Dashboard = () => {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">平均审核时间</span>
-              <Badge variant="outline">{quickStats.avgReviewTime > 0 ? `${quickStats.avgReviewTime}小时` : '暂无数据'}</Badge>
+              <Badge variant="outline" className={glassBadgeClass}>{quickStats.avgReviewTime > 0 ? `${quickStats.avgReviewTime}小时` : '暂无数据'}</Badge>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">通过率</span>
-              <Badge variant="default">{quickStats.approvalRate > 0 ? `${quickStats.approvalRate}%` : '暂无数据'}</Badge>
+              <Badge variant="default" className={glassBadgeClass}>{quickStats.approvalRate > 0 ? `${quickStats.approvalRate}%` : '暂无数据'}</Badge>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">今日已审核</span>
-              <Badge variant="outline">{quickStats.todayReviewed}条</Badge>
+              <Badge variant="outline" className={glassBadgeClass}>{quickStats.todayReviewed}条</Badge>
             </div>
           </CardContent>
         </Card>
@@ -422,19 +442,18 @@ const Dashboard = () => {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">日活跃用户</span>
-              <Badge variant="default">{quickStats.dailyActiveUsers}</Badge>
+              <Badge variant="default" className={glassBadgeClass}>{quickStats.dailyActiveUsers}</Badge>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">周活跃用户</span>
-              <Badge variant="default">{quickStats.weeklyActiveUsers}</Badge>
+              <Badge variant="default" className={glassBadgeClass}>{quickStats.weeklyActiveUsers}</Badge>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">月活跃用户</span>
-              <Badge variant="default">{quickStats.monthlyActiveUsers}</Badge>
+              <Badge variant="default" className={glassBadgeClass}>{quickStats.monthlyActiveUsers}</Badge>
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">内容质量</CardTitle>
@@ -442,18 +461,19 @@ const Dashboard = () => {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">平均字数</span>
-              <Badge variant="outline">{quickStats.avgWordCount > 0 ? `${quickStats.avgWordCount}字` : '暂无数据'}</Badge>
+              <Badge variant="outline" className={glassBadgeClass}>{quickStats.avgWordCount > 0 ? `${quickStats.avgWordCount}字` : '暂无数据'}</Badge>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">包含图片</span>
-              <Badge variant="outline">{quickStats.imagePercentage > 0 ? `${quickStats.imagePercentage}%` : '暂无数据'}</Badge>
+              <Badge variant="outline" className={glassBadgeClass}>{quickStats.imagePercentage > 0 ? `${quickStats.imagePercentage}%` : '暂无数据'}</Badge>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">匿名发布</span>
-              <Badge variant="outline">{quickStats.anonymousPercentage > 0 ? `${quickStats.anonymousPercentage}%` : '暂无数据'}</Badge>
+              <Badge variant="outline" className={glassBadgeClass}>{quickStats.anonymousPercentage > 0 ? `${quickStats.anonymousPercentage}%` : '暂无数据'}</Badge>
             </div>
           </CardContent>
         </Card>
+      </div>
       </div>
     </div>
   );

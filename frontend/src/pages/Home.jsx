@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, forwardRef } from 'react';
 import { cn } from '@/lib/utils';
 import LiquidGlassEffect from '@/components/effects/LiquidGlassEffect';
 import { useTheme } from '../contexts/ThemeContext';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -41,6 +41,7 @@ import useMessagesStore from '../stores/messagesStore';
 import api from '../lib/api';
 import useAuthStore from '../stores/authStore';
 import Turnstile from '../components/Turnstile';
+import AnnouncementBanner from '@/components/AnnouncementBanner';
 
 // Masonry（CSS Grid 行优先）+ 轻微随机旋转：横向加载顺序，尽量紧密填充
 const masonryStyles = `
@@ -142,6 +143,7 @@ ThemedCard.displayName = 'ThemedCard';
 
 const Home = () => {
   const navigate = useNavigate();
+  const [urlSearchParams] = useSearchParams();
   const {
     messages,
     isLoading,
@@ -175,6 +177,7 @@ const Home = () => {
   // Masonry: 行跨度计算用
   const [rowSpans, setRowSpans] = useState({}); // messageId -> rows
   const cardRefs = useRef({}); // messageId -> element
+  const [highlightedId, setHighlightedId] = useState(null);
 
   useEffect(() => {
     fetchMessages(true);
@@ -221,6 +224,55 @@ const Home = () => {
       window.removeEventListener('scroll', handleScroll);
     };
   }, [isLoading, isDone]);
+
+  // Deep-link: focus and highlight a specific message by id from ?message=ID
+  useEffect(() => {
+    const idParam = urlSearchParams.get('message');
+    if (!idParam) return;
+
+    const targetId = Number(idParam);
+    if (!targetId) return;
+
+    let cancelled = false;
+
+    const tryFocus = () => {
+      const el = cardRefs.current[targetId];
+      if (el && !cancelled) {
+        try {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } catch (_) {}
+        setHighlightedId(targetId);
+        // Remove highlight after a few seconds
+        setTimeout(() => {
+          if (!cancelled) setHighlightedId(null);
+        }, 4500);
+        return true;
+      }
+      return false;
+    };
+
+    const ensureVisible = async () => {
+      // Try immediate
+      if (tryFocus()) return;
+      // Progressive load if not found yet
+      let guard = 0;
+      while (!cancelled && !isDone && guard < 24) { // cap to avoid endless loop
+        guard++;
+        try { await fetchMessages(); } catch (_) {}
+        await new Promise(r => setTimeout(r, 200));
+        if (tryFocus()) return;
+      }
+      // Final attempt in case it loaded between loops
+      if (tryFocus()) return;
+      if (!cancelled) {
+        // 可能该纸条不在公开列表或已被隐藏
+        try { const { toast } = await import('sonner'); toast?.info?.('未找到指定纸条，可能已隐藏或删除'); } catch (_) {}
+      }
+    };
+
+    ensureVisible();
+    return () => { cancelled = true; };
+  }, [urlSearchParams, fetchMessages, isDone]);
 
   // 计算每张卡片的行跨度
   useEffect(() => {
@@ -381,11 +433,14 @@ const Home = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className={cn("max-w-6xl mx-auto space-y-8", isLiquidGlass && "glass-wrapper")}> 
       {/* 瀑布流布局样式 */}
       <style dangerouslySetInnerHTML={{ __html: masonryStyles }} />
       
-      {/* Hero Section */}
+  {/* Announcement */}
+  <AnnouncementBanner className="mb-4" />
+
+  {/* Hero Section */}
       <div className="text-center space-y-6 py-12">
         <div className="space-y-4">
           <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
@@ -413,16 +468,16 @@ const Home = () => {
 
       {/* Stats（移除“待审批”） */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="relative text-center">
+        <div className={cn("relative text-center", isLiquidGlass && "rounded-2xl overflow-hidden")}> 
           <LiquidGlassEffect />
           <Card className="bg-transparent">
             <CardContent className="pt-6">
               <div className="text-2xl font-bold text-blue-600">{pubCounts.approved}</div>
-              <p className="text-sm text-muted-foreground">已通过</p>
+              <p className="text-sm text-muted-foreground">已展示</p>
             </CardContent>
           </Card>
         </div>
-        <div className="relative text-center">
+        <div className={cn("relative text-center", isLiquidGlass && "rounded-2xl overflow-hidden")}>
           <LiquidGlassEffect />
           <Card className="bg-transparent">
             <CardContent className="pt-6">
@@ -708,7 +763,11 @@ const Home = () => {
                   key={message.id}
                   ref={(el) => (cardRefs.current[message.id] = el)}
                   style={{ gridRowEnd: `span ${rowSpans[message.id] || 1}` }}
-                  className={`message-card group relative ${isLiquidGlass ? 'no-tilt' : ''}`}
+                  className={cn(
+                    'message-card group relative',
+                    isLiquidGlass && 'no-tilt rounded-2xl overflow-hidden',
+                    highlightedId === message.id && (isLiquidGlass ? 'message-highlight-glass' : 'message-highlight-default')
+                  )}
                 >
                   <LiquidGlassEffect />
                   {cardContent}

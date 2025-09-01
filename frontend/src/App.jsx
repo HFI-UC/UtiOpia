@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { Page, Navbar as KNavbar, Block } from 'konsta/react';
+// Konsta 已在 main.jsx 挂载 Provider；本文件不直接使用 Page/Navbar
 import { Toaster } from 'sonner';
 import { useEffect } from 'react';
 import useAuthStore from './stores/authStore';
@@ -40,47 +40,41 @@ function App() {
   return (
     <Router>
       <div className={`min-h-screen ${isLiquidGlass ? 'liquid-page-bg' : 'bg-background'}`}>
-        {isLiquidGlass ? (
-          <Page>
-            <KNavbar title="UtiOpia" right={null} />
-            <Block className="max-w-6xl mx-auto px-4 py-6">
-              <Routes>
-                <Route path="/" element={<GlassHome />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/write" element={<GlassWrite />} />
-                <Route path="/search" element={<GlassSearch />} />
-                <Route path="/messages/:id" element={<MessageDetail />} />
-                <Route path="/admin" element={<ProtectedRoute roles={['moderator','super_admin']}><Admin /></ProtectedRoute>} />
-                <Route path="/dashboard" element={<ProtectedRoute roles={['moderator','super_admin']}><Dashboard /></ProtectedRoute>} />
-                <Route path="/moderation" element={<ProtectedRoute roles={['moderator','super_admin']}><Moderation /></ProtectedRoute>} />
-                <Route path="/logs" element={<ProtectedRoute roles={['moderator','super_admin']}><Logs /></ProtectedRoute>} />
-                <Route path="/bans" element={<ProtectedRoute roles={['moderator','super_admin']}><Bans /></ProtectedRoute>} />
-                <Route path="/theme-demo" element={<ThemeDemo />} />
-              </Routes>
-            </Block>
-          </Page>
-        ) : (
-          <>
-            <Navbar />
-            <main className="container mx-auto px-4 py-8">
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/write" element={<Write />} />
-                <Route path="/search" element={<Search />} />
-                <Route path="/messages/:id" element={<MessageDetail />} />
-                <Route path="/admin" element={<ProtectedRoute roles={['moderator','super_admin']}><Admin /></ProtectedRoute>} />
-                <Route path="/dashboard" element={<ProtectedRoute roles={['moderator','super_admin']}><Dashboard /></ProtectedRoute>} />
-                <Route path="/moderation" element={<ProtectedRoute roles={['moderator','super_admin']}><Moderation /></ProtectedRoute>} />
-                <Route path="/logs" element={<ProtectedRoute roles={['moderator','super_admin']}><Logs /></ProtectedRoute>} />
-                <Route path="/bans" element={<ProtectedRoute roles={['moderator','super_admin']}><Bans /></ProtectedRoute>} />
-                <Route path="/theme-demo" element={<ThemeDemo />} />
-              </Routes>
-            </main>
-          </>
-        )}
+        {/* 两种模式下都使用原 Navbar，保持一致的导航外观与能力 */}
+        <Navbar />
+        <main className="container mx-auto px-4 py-8">
+          {isLiquidGlass ? (
+            <Routes>
+              <Route path="/" element={<GlassHome />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/write" element={<GlassWrite />} />
+              <Route path="/search" element={<GlassSearch />} />
+              <Route path="/messages/:id" element={<MessageDetail />} />
+              <Route path="/admin" element={<ProtectedRoute roles={['moderator','super_admin']}><Admin /></ProtectedRoute>} />
+              <Route path="/dashboard" element={<ProtectedRoute roles={['moderator','super_admin']}><Dashboard /></ProtectedRoute>} />
+              <Route path="/moderation" element={<ProtectedRoute roles={['moderator','super_admin']}><Moderation /></ProtectedRoute>} />
+              <Route path="/logs" element={<ProtectedRoute roles={['moderator','super_admin']}><Logs /></ProtectedRoute>} />
+              <Route path="/bans" element={<ProtectedRoute roles={['moderator','super_admin']}><Bans /></ProtectedRoute>} />
+              <Route path="/theme-demo" element={<ThemeDemo />} />
+            </Routes>
+          ) : (
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/write" element={<Write />} />
+              <Route path="/search" element={<Search />} />
+              <Route path="/messages/:id" element={<MessageDetail />} />
+              <Route path="/admin" element={<ProtectedRoute roles={['moderator','super_admin']}><Admin /></ProtectedRoute>} />
+              <Route path="/dashboard" element={<ProtectedRoute roles={['moderator','super_admin']}><Dashboard /></ProtectedRoute>} />
+              <Route path="/moderation" element={<ProtectedRoute roles={['moderator','super_admin']}><Moderation /></ProtectedRoute>} />
+              <Route path="/logs" element={<ProtectedRoute roles={['moderator','super_admin']}><Logs /></ProtectedRoute>} />
+              <Route path="/bans" element={<ProtectedRoute roles={['moderator','super_admin']}><Bans /></ProtectedRoute>} />
+              <Route path="/theme-demo" element={<ThemeDemo />} />
+            </Routes>
+          )}
+        </main>
         <Toaster position="top-right" richColors />
       </div>
     </Router>

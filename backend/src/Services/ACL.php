@@ -17,6 +17,7 @@ final class ACL
                 'like:toggle', 'comment:approve', 'comment:reject',
                 'user:read', 'user:update', 'user:ban', 'user:unban',
                 'audit:read', 'ban:manage',
+                'announcement:read', 'announcement:manage',
             ],
             'user' => [
                 'message:read', 'message:create', 'message:update:own', 'message:delete:own',

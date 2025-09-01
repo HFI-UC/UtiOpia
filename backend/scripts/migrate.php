@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-require __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/../vendor/autoload.php';
 
 use Dotenv\Dotenv;
 
@@ -135,11 +135,36 @@ foreach ($sql as $q) {
 }
 
 // Online migration: add slot column and switch unique index to (type,value,active,slot) to preserve history
-try { $pdo->exec("ALTER TABLE bans ADD COLUMN slot BIGINT UNSIGNED NOT NULL DEFAULT 0"); } catch (\Throwable $e) {}
-try { $pdo->exec("ALTER TABLE bans DROP INDEX uniq_type_value_active"); } catch (\Throwable $e) {}
-try { $pdo->exec("ALTER TABLE bans ADD UNIQUE KEY uniq_type_value_active_slot (type, value, active, slot)"); } catch (\Throwable $e) {}
+try { $pdo->exec("ALTER TABLE bans ADD COLUMN slot BIGINT UNSIGNED NOT NULL DEFAULT 0"); } catch (\Throwable $e) { $__ = $e; }
+try { $pdo->exec("ALTER TABLE bans DROP INDEX uniq_type_value_active"); } catch (\Throwable $e) { $__ = $e; }
+try { $pdo->exec("ALTER TABLE bans ADD UNIQUE KEY uniq_type_value_active_slot (type, value, active, slot)"); } catch (\Throwable $e) { $__ = $e; }
 // Backfill: ensure inactive rows have distinct slot to avoid future conflicts
-try { $pdo->exec("UPDATE bans SET slot = id WHERE active = 0 AND slot = 0"); } catch (\Throwable $e) {}
+try { $pdo->exec("UPDATE bans SET slot = id WHERE active = 0 AND slot = 0"); } catch (\Throwable $e) { $__ = $e; }
+
+// Announcements table (id, title, content, type, priority, visible, start_at, end_at, link_url, created_by, created_at, updated_at)
+try {
+    $pdo->exec(<<<SQL
+CREATE TABLE IF NOT EXISTS announcements (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  title VARCHAR(200) NOT NULL,
+  content TEXT NOT NULL,
+  type VARCHAR(50) NOT NULL DEFAULT 'info',
+  priority TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  visible TINYINT(1) NOT NULL DEFAULT 1,
+  start_at DATETIME NULL,
+  end_at DATETIME NULL,
+  link_url VARCHAR(500) NULL,
+  created_by INT UNSIGNED NULL,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NULL,
+  INDEX idx_visible (visible),
+  INDEX idx_priority (priority),
+  INDEX idx_time_range (start_at, end_at),
+  INDEX idx_created_by (created_by),
+  CONSTRAINT fk_ann_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+SQL);
+} catch (\Throwable $e) { $__ = $e; }
 
 // Seed super admin if not exists
 $adminEmail = $_ENV['ADMIN_EMAIL'] ?? '';

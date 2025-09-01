@@ -3,7 +3,7 @@
         'name' => 'utiopia/backend',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '4be7947884dae8ef2be3318531376c2aa9b3500b',
+        'reference' => 'fa1d8c6f88441ae4a6474fee518baa27806dac24',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -588,7 +588,7 @@
         'utiopia/backend' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '4be7947884dae8ef2be3318531376c2aa9b3500b',
+            'reference' => 'fa1d8c6f88441ae4a6474fee518baa27806dac24',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTheme } from '../contexts/ThemeContext';
 import api from '../lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,7 @@ import {
 import { toast } from 'sonner';
 
 const Moderation = () => {
+  const { isLiquidGlass } = useTheme();
   const [allMessages, setAllMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [detail, setDetail] = useState(null);
@@ -399,7 +401,7 @@ const Moderation = () => {
   );
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className={`max-w-6xl mx-auto space-y-8 ${isLiquidGlass ? 'glass-wrapper' : ''}`}>
       {/* Header */}
       <div className="space-y-2">
         <h1 className="text-3xl font-bold">内容审核</h1>

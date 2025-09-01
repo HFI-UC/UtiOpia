@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useSearchParams, useNavigate, Link } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,19 +19,22 @@ import {
 import { toast } from 'sonner';
 import { search } from '../lib/api';
 import useAuthStore from '../stores/authStore';
+import { useTheme } from '../contexts/ThemeContext';
 
 const Search = () => {
+  const { isLiquidGlass } = useTheme();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user, token } = useAuthStore();
-  const isAuthed = !!token;
+  const { user } = useAuthStore();
   
   const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '');
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
+  // 分页目前由后端控制，这里不保留本地 page 状态
   const [hasSearched, setHasSearched] = useState(false);
+  // 控制每条纸条的评论展开/收起（默认展开）
+  const [expandedMessages, setExpandedMessages] = useState({}); // { [messageId]: boolean }
   const searchInputRef = useRef(null);
 
   const formatTime = (dateStr) => {
@@ -72,7 +75,7 @@ const Search = () => {
       
       setResults(data.items || []);
       setTotal(data.total || 0);
-      setPage(pageNum);
+  // 本地不保存 page 状态，交由 URL 与请求参数驱动
       setHasSearched(true);
       
       // 更新URL参数
@@ -134,6 +137,8 @@ const Search = () => {
     const isComment = item.result_type === 'comment';
     
     if (isMessage) {
+      const hasComments = (item.comments?.items || []).length > 0;
+      const isExpanded = expandedMessages[item.id] ?? true;
       return (
         <Card key={`message-${item.id}`} className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
@@ -193,6 +198,15 @@ const Search = () => {
                   <MessageCircle className="w-4 h-4" />
                   <span className="text-sm">{item.comments?.total || 0}</span>
                 </div>
+                {hasComments && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setExpandedMessages(prev => ({ ...prev, [item.id]: !isExpanded }))}
+                  >
+                    {isExpanded ? '收起评论' : '展开评论'}
+                  </Button>
+                )}
                 <Button 
                   variant="outline" 
                   size="sm"
@@ -202,6 +216,39 @@ const Search = () => {
                 </Button>
               </div>
             </div>
+
+            {/* 评论区域（默认展开）*/}
+            {hasComments && isExpanded && (
+              <div className="mt-3 space-y-3">
+                {item.comments.items.map((c) => {
+                  const isReply = !!c.parent_id;
+                  return (
+                    <div key={c.id} className={`p-3 border rounded-md ${isReply ? 'ml-4' : ''}`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+                          <Avatar className="w-6 h-6">
+                            <AvatarFallback className="text-xs bg-gradient-to-br from-green-500 to-blue-500 text-white">
+                              {c.user_email ? c.user_email.charAt(0).toUpperCase() : <User className="w-3 h-3" />}
+                            </AvatarFallback>
+                          </Avatar>
+                          {c.is_anonymous ? (<Badge variant="secondary" className="text-[10px]">匿名</Badge>) : null}
+                          {isReply && <Badge variant="outline" className="text-[10px]">回复</Badge>}
+                          <span>{formatTime(c.created_at)}</span>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {c.user_nickname || ''}
+                          {(c.user_nickname && c.user_email) ? ' · ' : ''}
+                          {c.user_email || ''}
+                        </div>
+                      </div>
+                      <div className="mt-2 text-sm whitespace-pre-wrap break-words">
+                        {highlightSearchTerm(c.content, searchTerm)}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
       );
@@ -286,7 +333,7 @@ const Search = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className={`max-w-4xl mx-auto space-y-6 ${isLiquidGlass ? 'glass-wrapper' : ''}`}>
       {/* 头部和搜索框 */}
       <div className="space-y-6">
         <div className="flex items-center space-x-4">

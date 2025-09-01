@@ -41,6 +41,16 @@ export const search = {
   searchAll: (params) => api.get('/search', { params }),
 };
 
+// 公告 API
+export const announcements = {
+  listPublic: (params) => api.get('/announcements', { params }),
+  latest: () => api.get('/announcements/latest'),
+  adminList: () => api.get('/admin/announcements'),
+  create: (data) => api.post('/admin/announcements', data),
+  update: (id, data) => api.put(`/admin/announcements/${id}`, data),
+  remove: (id) => api.delete(`/admin/announcements/${id}`),
+};
+
 export default api;
 export { API_BASE };
 

@@ -9,7 +9,7 @@ use Slim\Factory\AppFactory;
 use UtiOpia\Middleware\ErrorMiddleware as UErrorMiddleware;
 use UtiOpia\Middleware\RequestLogMiddleware;
 
-require __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/../vendor/autoload.php';
 
 $dotenv = Dotenv::createImmutable(__DIR__ . '/../');
 $dotenv->safeLoad();
@@ -82,11 +82,10 @@ $container->set('settings', function () {
 
 $container->set(PDO::class, function ($c) {
     $settings = $c->get('settings')['db'];
-    $pdo = new PDO($settings['dsn'], $settings['user'], $settings['pass'], [
+    return new PDO($settings['dsn'], $settings['user'], $settings['pass'], [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
     ]);
-    return $pdo;
 });
 
 // Domain services
@@ -129,10 +128,17 @@ $container->set(\UtiOpia\Services\CommentService::class, function ($c) {
 $container->set(\UtiOpia\Services\SearchService::class, function ($c) {
     return new \UtiOpia\Services\SearchService($c->get(PDO::class), $c->get(\UtiOpia\Services\ACL::class));
 });
+$container->set(\UtiOpia\Services\AnnouncementService::class, function ($c) {
+    return new \UtiOpia\Services\AnnouncementService(
+        $c->get(PDO::class),
+        $c->get(\UtiOpia\Services\ACL::class),
+        $c->get(\UtiOpia\Services\AuditLogger::class),
+    );
+});
 
 // Global container accessor for services
-if (!function_exists('app_container_get')) {
-    function app_container_get(string $id) {
+if (!function_exists('appContainerGet')) {
+    function appContainerGet(string $id) {
         global $container;
         return $container->get($id);
     }

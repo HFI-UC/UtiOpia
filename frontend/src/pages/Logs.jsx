@@ -1,16 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTheme } from '../contexts/ThemeContext';
 import api from '../lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { 
   Search, 
-  Filter, 
+  
   Download, 
   Calendar,
+  CalendarIcon,
   User,
   Activity,
   Shield,
@@ -19,24 +20,17 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
-  Eye,
-  Edit,
-  Trash2,
   ChevronDown,
   ChevronRight,
   Copy,
-  Clock,
   Globe,
   Key,
   RefreshCw,
-  Hash
+  
 } from 'lucide-react';
 import { toast } from 'sonner';
-import JsonViewer from '../components/JsonViewer';
 import EnhancedLogViewer from '../components/EnhancedLogViewer';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon } from 'lucide-react';
-import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { format, subDays } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 
@@ -121,6 +115,7 @@ const getCategoryIcon = (category) => {
 };
 
 const Logs = () => {
+  const { isLiquidGlass } = useTheme();
   const [logs, setLogs] = useState([]);
   const [filteredLogs, setFilteredLogs] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -280,7 +275,7 @@ const Logs = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8">
+    <div className={`max-w-7xl mx-auto space-y-8 ${isLiquidGlass ? 'glass-wrapper' : ''}`}>
       {/* Header */}
       <div className="space-y-2">
         <h1 className="text-3xl font-bold">操作日志</h1>

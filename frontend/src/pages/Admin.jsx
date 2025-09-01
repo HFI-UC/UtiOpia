@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTheme } from '../contexts/ThemeContext';
 import api from '../lib/api';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -17,11 +18,16 @@ import {
   XCircle,
   Clock,
   TrendingUp,
-  TrendingDown
+  TrendingDown,
+  Megaphone,
+  Plus,
+  Trash2,
+  Save
 } from 'lucide-react';
 import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 const Admin = () => {
+  const { isLiquidGlass } = useTheme();
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalMessages: 0,
@@ -40,6 +46,9 @@ const Admin = () => {
   const [series, setSeries] = useState([]);
   const [reporting, setReporting] = useState(false);
   const [maintaining, setMaintaining] = useState(false);
+  const [annList, setAnnList] = useState([]);
+  const [annForm, setAnnForm] = useState({ title: '', content: '', type: 'info', priority: 0, visible: true, start_at: '', end_at: '', link_url: '' });
+  const [annLoading, setAnnLoading] = useState(false);
 
   // 真实统计数据
   useEffect(() => {
@@ -71,6 +80,16 @@ const Admin = () => {
       }
     };
     fetchStats();
+  }, []);
+
+  useEffect(() => {
+    const loadAnns = async () => {
+      try {
+        const r = await api.get('/admin/announcements');
+        setAnnList(r?.data?.items || []);
+      } catch {}
+    };
+    loadAnns();
   }, []);
 
   useEffect(() => {
@@ -134,7 +153,7 @@ const Admin = () => {
   );
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8">
+    <div className={`max-w-7xl mx-auto space-y-8 ${isLiquidGlass ? 'glass-wrapper' : ''}`}>
       {/* Header */}
       <div className="space-y-2">
         <h1 className="text-3xl font-bold">系统管理</h1>
@@ -213,11 +232,12 @@ const Admin = () => {
 
       {/* Management Tabs */}
       <Tabs defaultValue="system" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="system">系统设置</TabsTrigger>
           <TabsTrigger value="users">用户管理</TabsTrigger>
           <TabsTrigger value="security">安全设置</TabsTrigger>
           <TabsTrigger value="maintenance">维护工具</TabsTrigger>
+          <TabsTrigger value="announcements">公告管理</TabsTrigger>
         </TabsList>
 
         <TabsContent value="system" className="space-y-6">
@@ -305,6 +325,147 @@ const Admin = () => {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="announcements" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Megaphone className="w-5 h-5" /> 公告列表</CardTitle>
+              <CardDescription>创建、编辑和发布站内公告</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Create form */}
+              <div className="space-y-3 border rounded-lg p-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">标题</p>
+                    <Input value={annForm.title} onChange={e=>setAnnForm(v=>({...v,title:e.target.value}))} placeholder="例如：系统维护通知" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">类型</p>
+                    <Select value={annForm.type} onValueChange={v=>setAnnForm(s=>({...s,type:v}))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="info">info</SelectItem>
+                        <SelectItem value="success">success</SelectItem>
+                        <SelectItem value="warning">warning</SelectItem>
+                        <SelectItem value="danger">danger</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">内容</p>
+                  <textarea className="w-full rounded-md border p-2 min-h-[80px]" value={annForm.content} onChange={e=>setAnnForm(v=>({...v,content:e.target.value}))} placeholder="公告正文，支持多行" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">优先级（越大越靠前）</p>
+                    <Input type="number" value={annForm.priority} onChange={e=>setAnnForm(v=>({...v,priority:parseInt(e.target.value||'0',10)}))} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">开始时间</p>
+                    <Input type="datetime-local" value={annForm.start_at} onChange={e=>setAnnForm(v=>({...v,start_at:e.target.value}))} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">结束时间</p>
+                    <Input type="datetime-local" value={annForm.end_at} onChange={e=>setAnnForm(v=>({...v,end_at:e.target.value}))} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">链接</p>
+                    <Input value={annForm.link_url} onChange={e=>setAnnForm(v=>({...v,link_url:e.target.value}))} placeholder="可选，点击查看更多" />
+                  </div>
+                  <div className="flex items-end">
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={!!annForm.visible} onChange={e=>setAnnForm(v=>({...v,visible:e.target.checked}))} /> 可见
+                    </label>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button disabled={annLoading} onClick={async()=>{
+                    if (!annForm.title.trim() || !annForm.content.trim()) return;
+                    setAnnLoading(true);
+                    try {
+                      await api.post('/admin/announcements', annForm);
+                      const r = await api.get('/admin/announcements');
+                      setAnnList(r?.data?.items || []);
+                      setAnnForm({ title: '', content: '', type: 'info', priority: 0, visible: true, start_at: '', end_at: '', link_url: '' });
+                    } finally { setAnnLoading(false);} 
+                  }}>
+                    <Plus className="w-4 h-4 mr-1" /> 新建公告
+                  </Button>
+                </div>
+              </div>
+
+              {/* List */}
+              <div className="overflow-auto rounded-md border">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left p-3">ID</th>
+                      <th className="text-left p-3">标题</th>
+                      <th className="text-left p-3">类型</th>
+                      <th className="text-left p-3">优先级</th>
+                      <th className="text-left p-3">可见</th>
+                      <th className="text-left p-3">时间</th>
+                      <th className="text-left p-3">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {annList.map(a => (
+                      <tr key={a.id} className="border-t align-top">
+                        <td className="p-3">{a.id}</td>
+                        <td className="p-3 min-w-[220px]">
+                          <Input defaultValue={a.title} onBlur={async(e)=>{ const v=e.target.value; if(v!==a.title){ await api.put(`/admin/announcements/${a.id}`,{ title:v }); const r=await api.get('/admin/announcements'); setAnnList(r?.data?.items||[]);} }} />
+                          <textarea className="w-full rounded-md border p-2 mt-2" defaultValue={a.content} onBlur={async(e)=>{ const v=e.target.value; if(v!==a.content){ await api.put(`/admin/announcements/${a.id}`,{ content:v }); const r=await api.get('/admin/announcements'); setAnnList(r?.data?.items||[]);} }} />
+                        </td>
+                        <td className="p-3">
+                          <Select defaultValue={a.type} onValueChange={async(v)=>{ await api.put(`/admin/announcements/${a.id}`,{ type:v }); const r=await api.get('/admin/announcements'); setAnnList(r?.data?.items||[]);} }>
+                            <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="info">info</SelectItem>
+                              <SelectItem value="success">success</SelectItem>
+                              <SelectItem value="warning">warning</SelectItem>
+                              <SelectItem value="danger">danger</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </td>
+                        <td className="p-3">
+                          <Input type="number" defaultValue={a.priority} onBlur={async(e)=>{ const v=parseInt(e.target.value||'0',10); if(v!==a.priority){ await api.put(`/admin/announcements/${a.id}`,{ priority:v }); const r=await api.get('/admin/announcements'); setAnnList(r?.data?.items||[]);} }} />
+                        </td>
+                        <td className="p-3">
+                          <label className="inline-flex items-center gap-2 text-sm">
+                            <input type="checkbox" defaultChecked={!!a.visible} onChange={async(e)=>{ await api.put(`/admin/announcements/${a.id}`,{ visible:e.target.checked }); const r=await api.get('/admin/announcements'); setAnnList(r?.data?.items||[]);} } />
+                            <span>{a.visible ? '可见' : '隐藏'}</span>
+                          </label>
+                        </td>
+                        <td className="p-3 text-xs text-muted-foreground">
+                          <div>开始：<Input type="datetime-local" defaultValue={a.start_at?.slice(0,16) || ''} onBlur={async(e)=>{ await api.put(`/admin/announcements/${a.id}`,{ start_at:e.target.value }); const r=await api.get('/admin/announcements'); setAnnList(r?.data?.items||[]);} } /></div>
+                          <div className="mt-1">结束：<Input type="datetime-local" defaultValue={a.end_at?.slice(0,16) || ''} onBlur={async(e)=>{ await api.put(`/admin/announcements/${a.id}`,{ end_at:e.target.value }); const r=await api.get('/admin/announcements'); setAnnList(r?.data?.items||[]);} } /></div>
+                          <div className="mt-1">链接：<Input defaultValue={a.link_url || ''} onBlur={async(e)=>{ await api.put(`/admin/announcements/${a.id}`,{ link_url:e.target.value }); const r=await api.get('/admin/announcements'); setAnnList(r?.data?.items||[]);} } /></div>
+                        </td>
+                        <td className="p-3 whitespace-nowrap">
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline" onClick={async()=>{ await api.put(`/admin/announcements/${a.id}`,{}); const r=await api.get('/admin/announcements'); setAnnList(r?.data?.items||[]);} }>
+                              <Save className="w-4 h-4 mr-1" /> 刷新
+                            </Button>
+                            <Button size="sm" variant="destructive" onClick={async()=>{ await api.delete(`/admin/announcements/${a.id}`); const r=await api.get('/admin/announcements'); setAnnList(r?.data?.items||[]);} }>
+                              <Trash2 className="w-4 h-4 mr-1" /> 删除
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {annList.length === 0 && (
+                      <tr><td colSpan="7" className="p-4 text-center text-muted-foreground">暂无公告</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="users" className="space-y-6">

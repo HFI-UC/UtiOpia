@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-require __DIR__ . '/vendor/autoload.php';
+require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/tests/BaseWebTestCase.php';
 
 use Dotenv\Dotenv;
@@ -68,10 +68,39 @@ $container->set(PDO::class, function ($c) {
             $pdo->exec('CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT UNIQUE, password_hash TEXT, nickname TEXT, student_id TEXT, role TEXT, banned INTEGER, created_at TEXT)');
             $pdo->exec('CREATE TABLE messages (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NULL, is_anonymous INTEGER, anon_email TEXT, anon_student_id TEXT, anon_passphrase_hash TEXT, content TEXT, image_url TEXT, status TEXT, reject_reason TEXT, reviewed_by INTEGER, reviewed_at TEXT, created_at TEXT, deleted_at TEXT)');
             $pdo->exec('CREATE TABLE audit_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, action TEXT, user_id INTEGER, meta TEXT, created_at TEXT)');
-            $pdo->exec('CREATE TABLE bans (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT, value TEXT, reason TEXT, created_by INTEGER, created_at TEXT, updated_at TEXT, active INTEGER, stage INTEGER, expires_at TEXT, UNIQUE(type,value,active))');
+            // 与生产一致：包含 slot 列，并以 (type,value,active,slot) 建唯一约束，便于保留历史
+            $pdo->exec('CREATE TABLE bans (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                type TEXT,
+                value TEXT,
+                reason TEXT,
+                created_by INTEGER,
+                created_at TEXT,
+                updated_at TEXT,
+                active INTEGER,
+                stage INTEGER,
+                expires_at TEXT,
+                slot INTEGER NOT NULL DEFAULT 0,
+                UNIQUE(type, value, active, slot)
+            )');
             $pdo->exec('CREATE TABLE message_likes (id INTEGER PRIMARY KEY AUTOINCREMENT, message_id INTEGER, user_id INTEGER, deleted_at TEXT, created_at TEXT)');
             $pdo->exec('CREATE UNIQUE INDEX uniq_message_user ON message_likes(message_id, user_id)');
             $pdo->exec('CREATE TABLE message_comments (id INTEGER PRIMARY KEY AUTOINCREMENT, message_id INTEGER, user_id INTEGER, is_anonymous INTEGER DEFAULT 0, content TEXT, parent_id INTEGER NULL, root_id INTEGER NULL, status TEXT, reject_reason TEXT, reviewed_by INTEGER, reviewed_at TEXT, deleted_at TEXT, created_at TEXT)');
+            // announcements 表（与生产字段一致，移除外键）
+            $pdo->exec('CREATE TABLE announcements (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                content TEXT NOT NULL,
+                type TEXT NOT NULL DEFAULT "info",
+                priority INTEGER NOT NULL DEFAULT 0,
+                visible INTEGER NOT NULL DEFAULT 1,
+                start_at TEXT NULL,
+                end_at TEXT NULL,
+                link_url TEXT NULL,
+                created_by INTEGER NULL,
+                created_at TEXT,
+                updated_at TEXT
+            )');
             return $pdo;
         }
         throw $e;
@@ -92,11 +121,12 @@ $container->set(\UtiOpia\Services\MessageService::class, function ($c) {
 // Dummy mailer to avoid network/SMTP in tests
 if (!class_exists('DummyMailer')) {
 class DummyMailer {
-    public function __construct() {}
-    public function send(string|array $to, string $subject, string $htmlBody, bool $isHtml = true): bool { return true; }
-    public function sendMessageStatusChange(string $to, string $nickname, int $messageId, string $status, string $reason = ''): bool { return true; }
-    public function sendUserRoleChanged(string $to, string $nickname, string $newRole): bool { return true; }
-    public function sendUserBanStatus(string $to, string $nickname, bool $banned): bool { return true; }
+    // 测试桩：忽略所有参数，仅返回 true，避免发真实邮件
+    public function __construct() { /* noop in tests */ }
+    public function send(): bool { return true; }
+    public function sendMessageStatusChange(): bool { return true; }
+    public function sendUserRoleChanged(): bool { return true; }
+    public function sendUserBanStatus(): bool { return true; }
 }
 }
 $container->set(\UtiOpia\Services\Mailer::class, function ($c) {
@@ -130,6 +160,14 @@ $container->set(\UtiOpia\Services\LikeService::class, function ($c) {
 });
 $container->set(\UtiOpia\Services\CommentService::class, function ($c) {
     return new \UtiOpia\Services\CommentService($c->get(PDO::class), $c->get(\UtiOpia\Services\AuditLogger::class), $c->get(\UtiOpia\Services\ACL::class));
+});
+// Announcements
+$container->set(\UtiOpia\Services\AnnouncementService::class, function ($c) {
+    return new \UtiOpia\Services\AnnouncementService(
+        $c->get(PDO::class),
+        $c->get(\UtiOpia\Services\ACL::class),
+        $c->get(\UtiOpia\Services\AuditLogger::class)
+    );
 });
 
 \UtiOpia\Routes::register($app);

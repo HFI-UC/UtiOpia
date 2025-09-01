@@ -10,8 +10,10 @@ import api from '../lib/api';
 import { toast } from 'sonner';
 import useAuthStore from '../stores/authStore';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { useTheme } from '../contexts/ThemeContext';
 
 const MessageDetail = () => {
+  const { isLiquidGlass } = useTheme();
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, token } = useAuthStore();
@@ -96,7 +98,7 @@ const MessageDetail = () => {
   if (!detail) return <div className="text-center text-muted-foreground">不存在或不可见</div>;
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className={`max-w-3xl mx-auto space-y-6 ${isLiquidGlass ? 'glass-wrapper' : ''}`}>
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">

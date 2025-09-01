@@ -5,8 +5,7 @@ import StableGlass from './StableGlass';
 
 /**
  * Wraps its children in a LiquidGlass component when the current theme is
- * 'liquid'.  The LiquidGlass component from the `liquid-glass-react` library
- * provides Apple's trademark frosted glass effect.  When other themes are
+ * 'ios-glass'（iOS 毛玻璃模式）。当其他主题
  * active the children are rendered directly without any wrapper to avoid
  * unnecessary DOM nesting.
  *

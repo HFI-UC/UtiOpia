@@ -83,9 +83,9 @@ final class MessageService
 
         // 将 image_url 替换为短期 GET 预签名，便于前端直接展示
         try {
-            if (function_exists('app_container_get')) {
+            if (function_exists('appContainerGet')) {
                 /** @var COSService $cos */
-                $cos = app_container_get(COSService::class);
+                $cos = appContainerGet(COSService::class);
                 foreach ($items as &$item) {
                     $url = (string)($item['image_url'] ?? '');
                     if ($url !== '') {
@@ -184,16 +184,16 @@ final class MessageService
         $this->logger->log('message.create', $userId, ['message_id' => $id]);
         // 发送“已公开展示但可能被隐藏”的提示邮件
         try {
-            if (function_exists('app_container_get')) {
+            if (function_exists('appContainerGet')) {
                 /** @var Mailer $mailer */
-                $mailer = app_container_get(Mailer::class);
+                $mailer = appContainerGet(Mailer::class);
                 if ($userId > 0) {
                     $stmt = $this->pdo->prepare('SELECT email, nickname FROM users WHERE id = ?');
                     $stmt->execute([$userId]);
                     if ($u = $stmt->fetch()) {
                         $mailer->sendMessagePublishedNotice((string)$u['email'], (string)$u['nickname'], $id, $content);
                     }
-                } else if ($isAnonymous && $anonEmail !== '') {
+                } elseif ($isAnonymous && $anonEmail !== '') {
                     $mailer->sendMessagePublishedNotice($anonEmail, '同学', $id, $content);
                 }
             }
@@ -216,7 +216,7 @@ final class MessageService
             if ($pass === '' || !password_verify($pass, (string)$msg['anon_passphrase_hash'])) {
                 return ['error' => '匿名口令错误'];
             }
-        } else if ($isOwner) {
+    } elseif ($isOwner) {
             $this->acl->ensure($user['role'], 'message:update:own');
         } else {
             $this->acl->ensure($user['role'], 'message:update');
@@ -243,7 +243,7 @@ final class MessageService
             if ($pass === '' || !password_verify($pass, (string)$msg['anon_passphrase_hash'])) {
                 return ['error' => '匿名口令错误'];
             }
-        } else if ($isOwner) {
+    } elseif ($isOwner) {
             $this->acl->ensure($user['role'], 'message:delete:own');
         } else {
             $this->acl->ensure($user['role'], 'message:delete');
@@ -303,9 +303,9 @@ final class MessageService
         $item = $stmt->fetch();
         if (!$item) return ['error' => '不存在或不可见'];
         try {
-            if (function_exists('app_container_get')) {
+            if (function_exists('appContainerGet')) {
                 /** @var COSService $cos */
-                $cos = app_container_get(COSService::class);
+                $cos = appContainerGet(COSService::class);
                 $url = (string)($item['image_url'] ?? '');
                 if ($url !== '') {
                     $item['image_url'] = $cos->generatePresignedGetUrl($url, 30);

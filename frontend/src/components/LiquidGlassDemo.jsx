@@ -9,10 +9,10 @@ const LiquidGlassDemo = () => {
       <div className="text-center mb-8">
         <h2 className="text-3xl font-bold mb-4 flex items-center justify-center gap-2">
           <Sparkles className="w-8 h-8 text-blue-500" />
-          液态玻璃效果
+          iOS 毛玻璃效果
         </h2>
         <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-          体验苹果风格的液态玻璃效果，感受真实的玻璃质感和动态光线折射
+          体验原生 iOS 风格的毛玻璃视觉与柔和动效，呈现通透、精致的层级感
         </p>
       </div>
 
@@ -23,7 +23,7 @@ const LiquidGlassDemo = () => {
               <Sparkles className="w-6 h-6 text-white" />
             </div>
             <h3 className="font-semibold mb-2">基础效果</h3>
-            <p className="text-sm text-muted-foreground">默认液态玻璃设置</p>
+            <p className="text-sm text-muted-foreground">默认毛玻璃设置</p>
           </div>
         </LiquidGlassCard>
 
@@ -33,7 +33,7 @@ const LiquidGlassDemo = () => {
               <Sparkles className="w-6 h-6 text-white" />
             </div>
             <h3 className="font-semibold mb-2">高弹性</h3>
-            <p className="text-sm text-muted-foreground">更强的液态感</p>
+            <p className="text-sm text-muted-foreground">更强的流动感</p>
           </div>
         </LiquidGlassCard>
 

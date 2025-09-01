@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTheme } from '../contexts/ThemeContext';
 import api from '../lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,7 @@ import { toast } from 'sonner';
  
 
 const Bans = () => {
+  const { isLiquidGlass } = useTheme();
   const [bans, setBans] = useState([]);
   const [filteredBans, setFilteredBans] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -220,7 +222,7 @@ const Bans = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8">
+    <div className={`max-w-7xl mx-auto space-y-8 ${isLiquidGlass ? 'glass-wrapper' : ''}`}>
       {/* Header */}
       <div className="space-y-2">
         <h1 className="text-3xl font-bold">封禁管理</h1>

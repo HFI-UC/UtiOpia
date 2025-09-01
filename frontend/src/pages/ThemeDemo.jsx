@@ -19,7 +19,7 @@ const ThemeDemo = () => {
   const themes = [
     { id: 'light', name: '浅色主题', icon: Sun, description: '明亮清晰的界面设计' },
     { id: 'dark', name: '深色主题', icon: Moon, description: '护眼的深色界面' },
-    { id: 'liquid-glass', name: '液态玻璃', icon: Sparkles, description: '苹果风格的液态玻璃效果' }
+    { id: 'ios-glass', name: 'iOS 毛玻璃', icon: Sparkles, description: '原生 iOS 毛玻璃视觉与柔和动效' }
   ];
 
   return (
@@ -34,12 +34,12 @@ const ThemeDemo = () => {
           主题演示
         </h1>
         <p className="text-muted-foreground mt-2">
-          体验不同的主题效果和液态玻璃组件的魅力
+          体验不同的主题效果与 iOS 毛玻璃组件的魅力
         </p>
       </div>
 
       {/* Current Theme Display */}
-      <div className="mb-8">
+      <div className={`mb-8 ${isLiquidGlass ? 'glass-wrapper' : ''}`}>
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -50,10 +50,10 @@ const ThemeDemo = () => {
           <CardContent>
             <div className="flex items-center gap-4">
               <Badge variant="secondary" className="text-lg px-4 py-2">
-                {isLiquidGlass ? '液态玻璃' : (theme === 'light' ? '浅色' : '深色')}
+                {isLiquidGlass ? 'iOS 毛玻璃' : (theme === 'light' ? '浅色' : '深色')}
               </Badge>
               <span className="text-muted-foreground">
-                主题ID: {isLiquidGlass ? 'liquid-glass' : theme}
+                主题ID: {isLiquidGlass ? 'ios-glass' : theme}
               </span>
             </div>
           </CardContent>
@@ -61,10 +61,11 @@ const ThemeDemo = () => {
       </div>
 
       {/* Theme Controls */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+      <div className={isLiquidGlass ? 'glass-wrapper mb-12' : 'mb-12'}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {themes.map((themeOption) => {
           const Icon = themeOption.icon;
-          const isActive = (themeOption.id === 'liquid-glass' && isLiquidGlass) || 
+          const isActive = (themeOption.id === 'ios-glass' && isLiquidGlass) || 
                           (themeOption.id === theme && !isLiquidGlass);
           
           return (
@@ -74,7 +75,7 @@ const ThemeDemo = () => {
                 isActive ? 'ring-2 ring-primary' : ''
               }`}
               onClick={() => {
-                if (themeOption.id === 'liquid-glass') {
+                if (themeOption.id === 'ios-glass') {
                   toggleLiquidGlass();
                 } else {
                   setSpecificTheme(themeOption.id);
@@ -98,17 +99,18 @@ const ThemeDemo = () => {
             </Card>
           );
         })}
+        </div>
       </div>
 
-      {/* Liquid Glass Demo */}
-      <div className="mb-12">
-        <h2 className="text-2xl font-bold mb-6">液态玻璃效果演示</h2>
+      {/* iOS Glass Demo */}
+      <div className={isLiquidGlass ? 'glass-wrapper mb-12' : 'mb-12'}>
+        <h2 className="text-2xl font-bold mb-6">iOS 毛玻璃效果演示</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Basic Card */}
           <LiquidGlassCard>
             <div className="text-center">
               <h3 className="text-lg font-semibold mb-2">基础卡片</h3>
-              <p className="text-muted-foreground">默认液态玻璃效果</p>
+              <p className="text-muted-foreground">默认毛玻璃效果</p>
             </div>
           </LiquidGlassCard>
 
@@ -158,7 +160,7 @@ const ThemeDemo = () => {
       </div>
 
       {/* Theme Features */}
-      <div className="mb-12">
+      <div className={isLiquidGlass ? 'glass-wrapper mb-12' : 'mb-12'}>
         <h2 className="text-2xl font-bold mb-6">主题特性</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card>
@@ -229,7 +231,7 @@ const ThemeDemo = () => {
       </div>
 
       {/* Quick Actions */}
-      <div className="text-center">
+      <div className={isLiquidGlass ? 'glass-wrapper text-center' : 'text-center'}>
         <div className="flex flex-wrap justify-center gap-4">
           <Button onClick={toggleTheme} variant="outline">
             <Palette className="w-4 h-4 mr-2" />

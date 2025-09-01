@@ -37,10 +37,10 @@ const ThemeProvider = ({ children }) => {
     localStorage.setItem('liquidGlass', String(isLiquidGlass));
 
     // 解析最终主题：liquid 或 system 情况下跟随 systemTheme
-    const resolved = (isLiquidGlass || localStorage.getItem('theme') === 'system') ? systemTheme : theme;
-    const root = document.documentElement;
-    root.classList.remove('light', 'dark', 'liquid-glass');
-    if (isLiquidGlass) root.classList.add('liquid-glass');
+  const resolved = (isLiquidGlass || localStorage.getItem('theme') === 'system') ? systemTheme : theme;
+  const root = document.documentElement;
+  root.classList.remove('light', 'dark', 'ios-glass');
+  if (isLiquidGlass) root.classList.add('ios-glass');
     root.classList.add(resolved);
   }, [theme, isLiquidGlass, systemTheme]);
 

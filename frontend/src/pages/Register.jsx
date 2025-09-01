@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { useTheme } from '../contexts/ThemeContext';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,6 +13,7 @@ import Turnstile from '../components/Turnstile';
 
 const Register = () => {
   const navigate = useNavigate();
+  const { isLiquidGlass } = useTheme();
   const { register, login, isLoading, error, clearError } = useAuthStore();
   
   const [formData, setFormData] = useState({
@@ -241,51 +243,53 @@ const Register = () => {
           </Card>
         </div>
 
-        {/* Info Card */}
-        <Card className="bg-gradient-to-br from-blue-50 to-purple-50 border-0 h-fit">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white text-sm">📋</span>
+  {/* Info Card → iOS 毛玻璃风格 */}
+  <div className={isLiquidGlass ? "glass-wrapper h-fit" : "h-fit"}>
+          <Card className="border bg-gradient-to-br from-blue-500/10 to-purple-500/10 dark:from-blue-400/15 dark:to-purple-400/15 backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                  <span className="text-white text-sm">📋</span>
+                </div>
+                <span>注册须知</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex items-start space-x-3">
+                  <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-muted-foreground">仅限学校师生注册使用</p>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-muted-foreground">邮箱格式需符合学校规范</p>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-muted-foreground">学生号格式：GJ + 年份 + 4位数字</p>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-muted-foreground">注册成功后可选择匿名或实名发布</p>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-muted-foreground">请遵守社区规范，文明发言</p>
+                </div>
               </div>
-              <span>注册须知</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-3">
-              <div className="flex items-start space-x-3">
-                <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-muted-foreground">仅限学校师生注册使用</p>
+              
+              <div className="mt-6 p-4 rounded-lg border border-white/20 bg-white/50 dark:bg-white/5 backdrop-blur">
+                <h4 className="font-medium text-sm mb-2 flex items-center space-x-2">
+                  <span className="text-blue-500">🛡️</span>
+                  <span>隐私保护</span>
+                </h4>
+                <p className="text-xs text-muted-foreground">
+                  我们严格保护您的个人信息，所有数据都经过加密处理，绝不会泄露给第三方。
+                </p>
               </div>
-              <div className="flex items-start space-x-3">
-                <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-muted-foreground">邮箱格式需符合学校规范</p>
-              </div>
-              <div className="flex items-start space-x-3">
-                <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-muted-foreground">学生号格式：GJ + 年份 + 4位数字</p>
-              </div>
-              <div className="flex items-start space-x-3">
-                <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-muted-foreground">注册成功后可选择匿名或实名发布</p>
-              </div>
-              <div className="flex items-start space-x-3">
-                <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-muted-foreground">请遵守社区规范，文明发言</p>
-              </div>
-            </div>
-            
-            <div className="mt-6 p-4 bg-white/50 rounded-lg">
-              <h4 className="font-medium text-sm mb-2 flex items-center space-x-2">
-                <span className="text-blue-500">🛡️</span>
-                <span>隐私保护</span>
-              </h4>
-              <p className="text-xs text-muted-foreground">
-                我们严格保护您的个人信息，所有数据都经过加密处理，绝不会泄露给第三方。
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

@@ -24,7 +24,7 @@ function getClientIP() {
 /**
  * 简易容器访问助手，便于在非注入类中获取服务实例
  */
-function app_container_get(string $class) {
+function appContainerGet(string $class) {
     global $app;
     if (isset($app) && method_exists($app, 'getContainer')) {
         return $app->getContainer()->get($class);

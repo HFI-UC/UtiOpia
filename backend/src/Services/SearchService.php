@@ -315,9 +315,9 @@ final class SearchService
     private function processImageUrls(array &$items): void
     {
         try {
-            if (function_exists('app_container_get')) {
+            if (function_exists('appContainerGet')) {
                 /** @var COSService $cos */
-                $cos = app_container_get(COSService::class);
+                $cos = appContainerGet(COSService::class);
                 foreach ($items as &$item) {
                     $url = (string)($item['image_url'] ?? '');
                     if ($url !== '') {

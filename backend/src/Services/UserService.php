@@ -113,7 +113,7 @@ final class UserService
         // 邮件通知：如果是 email 封禁，直接发通知（匿名邮箱或普通邮箱）
         if ($type === 'email') {
             try { $this->mailer->sendUserBanStatus($value, '同学', true); } catch (\Throwable) {}
-        } else if ($type === 'student_id') {
+    } elseif ($type === 'student_id') {
             // 若按学号封禁，尝试给已注册用户发信
             try {
                 $stmt = $this->pdo->prepare('SELECT email, nickname FROM users WHERE student_id = ? LIMIT 1');
@@ -139,7 +139,7 @@ final class UserService
             // 邮件通知：解除封禁
             if ($type === 'email') {
                 try { $this->mailer->sendUserBanStatus($value, '同学', false); } catch (\Throwable) {}
-            } else if ($type === 'student_id') {
+            } elseif ($type === 'student_id') {
                 try {
                     $stmt = $this->pdo->prepare('SELECT email, nickname FROM users WHERE student_id = ? LIMIT 1');
                     $stmt->execute([$value]);

@@ -26,8 +26,10 @@ import useMessagesStore from '../stores/messagesStore';
 import useAuthStore from '../stores/authStore';
 import Turnstile from '../components/Turnstile';
 import api from '../lib/api';
+import { useTheme } from '../contexts/ThemeContext';
 
 const Write = () => {
+  const { isLiquidGlass } = useTheme();
   const navigate = useNavigate();
   const { createMessage, isLoading, error, clearError } = useMessagesStore();
   const { token } = useAuthStore();
@@ -287,6 +289,8 @@ const Write = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Form */}
         <div className="lg:col-span-2">
+          {/* 在 iOS 毛玻璃模式下提升可读性，不影响非玻璃主题 */}
+          <div className={isLiquidGlass ? "glass-wrapper" : undefined}>
           <Card>
             <CardHeader>
               <CardTitle>创建新纸条</CardTitle>
@@ -306,7 +310,7 @@ const Write = () => {
                 
                 {/* Anonymous Option for Authenticated Users */}
                 {isAuthenticated && (
-                  <div className="flex items-center space-x-2 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="flex items-center space-x-2 p-4 rounded-lg border bg-muted/40 border-border">
                     <Checkbox
                       id="anonymous"
                       checked={formData.isAnonymous}
@@ -324,7 +328,7 @@ const Write = () => {
                 
                 {/* Anonymous User Info */}
                 {formData.isAnonymous && !isAuthenticated && (
-                  <div className="space-y-4 p-4 bg-gray-50 rounded-lg border">
+                  <div className="space-y-4 p-4 rounded-lg border bg-muted/40 border-border">
                     <div className="flex items-center space-x-2 mb-3">
                       <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
                         <span className="text-white text-xs">👤</span>
@@ -443,21 +447,21 @@ const Write = () => {
                     <div
                       className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
                         isDragOver 
-                          ? 'border-blue-500 bg-blue-50' 
-                          : 'border-gray-300 hover:border-gray-400'
+                          ? 'border-primary bg-primary/10' 
+                          : 'border-border hover:border-foreground/30'
                       }`}
                       onDragOver={handleDragOver}
                       onDragLeave={handleDragLeave}
                       onDrop={handleDrop}
                     >
                       <div className="space-y-4">
-                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto">
-                          <ImageIcon className="w-6 h-6 text-gray-400" />
+                        <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto">
+                          <ImageIcon className="w-6 h-6 text-muted-foreground" />
                         </div>
                         <div>
                           <p className="text-sm text-muted-foreground mb-2">
                             拖拽图片到这里或{' '}
-                            <Label htmlFor="image-upload" className="text-blue-500 hover:text-blue-600 cursor-pointer underline">
+                            <Label htmlFor="image-upload" className="text-primary hover:text-primary/80 cursor-pointer underline">
                               点击选择
                             </Label>
                           </p>
@@ -476,17 +480,17 @@ const Write = () => {
                     </div>
                   ) : (
                     <div className="relative">
-                      <div className="relative rounded-lg overflow-hidden border">
+                      <div className="relative rounded-lg overflow-hidden border border-border">
                         <img
                           src={imagePreview}
                           alt="预览"
                           className="w-full h-64 object-cover"
                         />
                         {uploadingImage && (
-                          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                            <div className="flex items-center space-x-2 text-white">
+                          <div className="absolute inset-0 backdrop-blur-md bg-white/20 dark:bg-black/20 border border-white/30 dark:border-white/10 flex items-center justify-center rounded-lg">
+                            <div className="flex items-center space-x-2 text-white drop-shadow-lg">
                               <Loader2 className="w-5 h-5 animate-spin" />
-                              <span>上传中...</span>
+                              <span className="font-medium">上传中...</span>
                             </div>
                           </div>
                         )}
@@ -557,11 +561,13 @@ const Write = () => {
               </CardFooter>
             </form>
           </Card>
+          </div>
         </div>
 
         {/* Tips Sidebar */}
         <div className="space-y-6">
-          <Card className="bg-gradient-to-br from-blue-50 to-purple-50 border-0">
+          <div className={isLiquidGlass ? "glass-wrapper" : undefined}>
+          <Card className="border bg-gradient-to-br from-blue-500/10 to-purple-500/10 dark:from-blue-400/15 dark:to-purple-400/15 backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
@@ -580,21 +586,19 @@ const Write = () => {
                 <p className="text-sm text-muted-foreground">支持换行和简单的文本格式</p>
               </div>
               <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-pink-500 rounded-full mt-2 flex-shrink-0"></div>
-                <p className="text-sm text-muted-foreground">图片会自动压缩到合适大小</p>
-              </div>
-              <div className="flex items-start space-x-3">
                 <div className="w-2 h-2 bg-orange-500 rounded-full mt-2 flex-shrink-0"></div>
-                <p className="text-sm text-muted-foreground">匿名发布时请记住身份口令</p>
+                <p className="text-sm text-muted-foreground">匿名发布时请记住口令凭据</p>
               </div>
               <div className="flex items-start space-x-3">
                 <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
-                <p className="text-sm text-muted-foreground">所有内容都会经过审核</p>
+                <p className="text-sm text-muted-foreground">不合适的纸条可能会被隐藏</p>
               </div>
             </CardContent>
           </Card>
+          </div>
           
-          <Card>
+          <div className={isLiquidGlass ? "glass-wrapper" : undefined}>
+          <Card className="border border-border">
             <CardHeader>
               <CardTitle className="text-lg">发布统计</CardTitle>
             </CardHeader>
@@ -613,6 +617,7 @@ const Write = () => {
               </div>
             </CardContent>
           </Card>
+          </div>
         </div>
       </div>
       {/* Confirm Modal */}

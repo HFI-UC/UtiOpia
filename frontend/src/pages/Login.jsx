@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { useTheme } from '../contexts/ThemeContext';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,6 +13,7 @@ import Turnstile from '../components/Turnstile';
 
 const Login = () => {
   const navigate = useNavigate();
+  const { isLiquidGlass } = useTheme();
   const { login, isLoading, error, clearError } = useAuthStore();
   
   const [formData, setFormData] = useState({
@@ -136,37 +138,39 @@ const Login = () => {
           </form>
         </Card>
 
-        {/* Info Card */}
-        <Card className="bg-gradient-to-br from-blue-50 to-purple-50 border-0">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white text-sm">💡</span>
+  {/* Info Card → iOS 毛玻璃风格 */}
+  <div className={isLiquidGlass ? "glass-wrapper" : undefined}>
+          <Card className="border bg-gradient-to-br from-blue-500/10 to-purple-500/10 dark:from-blue-400/15 dark:to-purple-400/15 backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                  <span className="text-white text-sm">💡</span>
+                </div>
+                <span>登录说明</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                  <p className="text-sm text-muted-foreground">请使用学校邮箱登录</p>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
+                  <p className="text-sm text-muted-foreground">忘记密码请联系管理员</p>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-pink-500 rounded-full mt-2 flex-shrink-0"></div>
+                  <p className="text-sm text-muted-foreground">首次使用需要先注册</p>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-orange-500 rounded-full mt-2 flex-shrink-0"></div>
+                  <p className="text-sm text-muted-foreground">登录后可以实名发布纸条</p>
+                </div>
               </div>
-              <span>登录说明</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-3">
-              <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                <p className="text-sm text-muted-foreground">请使用学校邮箱登录</p>
-              </div>
-              <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
-                <p className="text-sm text-muted-foreground">忘记密码请联系管理员</p>
-              </div>
-              <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-pink-500 rounded-full mt-2 flex-shrink-0"></div>
-                <p className="text-sm text-muted-foreground">首次使用需要先注册</p>
-              </div>
-              <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-orange-500 rounded-full mt-2 flex-shrink-0"></div>
-                <p className="text-sm text-muted-foreground">登录后可以实名发布纸条</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

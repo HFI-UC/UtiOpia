@@ -82,6 +82,16 @@ final class Routes
             // Public counts (no auth)
             $group->get('/stats/public-counts', [self::class, 'publicCounts']);
 
+            // Announcements (public)
+            $group->get('/announcements', [self::class, 'listPublicAnnouncements']);
+            $group->get('/announcements/latest', [self::class, 'latestAnnouncement']);
+
+            // Announcements (admin)
+            $group->get('/admin/announcements', [self::class, 'adminListAnnouncements']);
+            $group->post('/admin/announcements', [self::class, 'adminCreateAnnouncement']);
+            $group->put('/admin/announcements/{id}', [self::class, 'adminUpdateAnnouncement']);
+            $group->delete('/admin/announcements/{id}', [self::class, 'adminDeleteAnnouncement']);
+
             // Admin utilities (read-oriented; guarded by audit:read)
             $group->get('/admin/settings', [self::class, 'adminSettings']);
             $group->post('/admin/report', [self::class, 'adminExportReport']);
@@ -150,8 +160,12 @@ final class Routes
         $filename = (string)($body['filename'] ?? '');
         $size = (int)($body['size'] ?? 0);
         $max = 5 * 1024 * 1024;
-        if ($filename === '') return self::json($response, ['error' => '缺少文件名']);
-        if ($size <= 0 || $size > $max) return self::json($response, ['error' => '文件大小不合法']);
+        if ($filename === '') {
+            return self::json($response, ['error' => '缺少文件名']);
+        }
+        if ($size <= 0 || $size > $max) {
+            return self::json($response, ['error' => '文件大小不合法']);
+        }
         /** @var COSService $cos */
         $cos = $container->get(COSService::class);
         $res = $cos->issueTempCredentials((int)($user['id'] ?? 0), $filename, $max);
@@ -463,6 +477,60 @@ final class Routes
         return self::json($response, ['settings' => $safe, 'overview' => $overview]);
     }
 
+    // Announcements handlers
+    public static function listPublicAnnouncements(Request $request, Response $response): Response
+    {
+        [$query, $container] = self::ctx($request, true);
+        $svc = $container->get(\UtiOpia\Services\AnnouncementService::class);
+        $result = $svc->listPublic($query);
+        return self::json($response, $result);
+    }
+
+    public static function latestAnnouncement(Request $request, Response $response): Response
+    {
+        [$query, $container] = self::ctx($request, true);
+        $svc = $container->get(\UtiOpia\Services\AnnouncementService::class);
+        $result = $svc->listPublic(['limit' => 1] + $query);
+        $latest = $result['items'][0] ?? null;
+        return self::json($response, ['item' => $latest]);
+    }
+
+    public static function adminListAnnouncements(Request $request, Response $response): Response
+    {
+        [, $container, $user] = self::ctxAuth($request);
+        $svc = $container->get(\UtiOpia\Services\AnnouncementService::class);
+        try {
+            $result = $svc->listAll($user);
+            return self::json($response, $result);
+        } catch (\Throwable $e) {
+            return self::json($response, ['error' => $e->getMessage()], 403);
+        }
+    }
+
+    public static function adminCreateAnnouncement(Request $request, Response $response): Response
+    {
+        [$body, $container, $user] = self::ctxAuth($request);
+        $svc = $container->get(\UtiOpia\Services\AnnouncementService::class);
+        $result = $svc->create($user, $body);
+        return self::json($response, $result);
+    }
+
+    public static function adminUpdateAnnouncement(Request $request, Response $response, array $args): Response
+    {
+        [$body, $container, $user] = self::ctxAuth($request);
+        $svc = $container->get(\UtiOpia\Services\AnnouncementService::class);
+        $result = $svc->update((int)$args['id'], $user, $body);
+        return self::json($response, $result);
+    }
+
+    public static function adminDeleteAnnouncement(Request $request, Response $response, array $args): Response
+    {
+        [, $container, $user] = self::ctxAuth($request);
+        $svc = $container->get(\UtiOpia\Services\AnnouncementService::class);
+        $result = $svc->delete((int)$args['id'], $user);
+        return self::json($response, $result);
+    }
+
     public static function adminExportReport(Request $request, Response $response): Response
     {
         [, $container, $user] = self::ctxAuth($request);
@@ -494,7 +562,7 @@ final class Routes
             $driver = (string)$pdo->getAttribute(\PDO::ATTR_DRIVER_NAME);
             if ($driver === 'sqlite') {
                 @$pdo->exec('VACUUM');
-            } else if ($driver === 'mysql') {
+            } elseif ($driver === 'mysql') {
                 // noop; real optimize would need table list and privileges
             }
         } catch (\Throwable) { $ok = false; }
