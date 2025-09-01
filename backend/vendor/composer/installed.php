@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'utiopia/backend',
-        'pretty_version' => 'dev-main',
-        'version' => 'dev-main',
-        'reference' => 'fa1d8c6f88441ae4a6474fee518baa27806dac24',
+        'pretty_version' => 'dev-copilot/fix-0b58d570-a15f-444f-8d0d-569674f0940d',
+        'version' => 'dev-copilot/fix-0b58d570-a15f-444f-8d0d-569674f0940d',
+        'reference' => 'e316e2ca926e2a86db5055ce1f4ca9268791e979',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -586,9 +586,9 @@
             'dev_requirement' => true,
         ),
         'utiopia/backend' => array(
-            'pretty_version' => 'dev-main',
-            'version' => 'dev-main',
-            'reference' => 'fa1d8c6f88441ae4a6474fee518baa27806dac24',
+            'pretty_version' => 'dev-copilot/fix-0b58d570-a15f-444f-8d0d-569674f0940d',
+            'version' => 'dev-copilot/fix-0b58d570-a15f-444f-8d0d-569674f0940d',
+            'reference' => 'e316e2ca926e2a86db5055ce1f4ca9268791e979',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

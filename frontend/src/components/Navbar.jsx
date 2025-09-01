@@ -19,7 +19,8 @@ import {
   BarChart3,
   FileText,
   Ban,
-  Search
+  Search,
+  Info
 } from 'lucide-react';
 import useAuthStore from '../stores/authStore';
 import ThemeToggle from './ThemeToggle';
@@ -74,6 +75,13 @@ const Navbar = () => {
             >
               <Search className="w-4 h-4" />
               <span>搜索</span>
+            </Link>
+            <Link 
+              to="/about" 
+              className="flex items-center space-x-2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Info className="w-4 h-4" />
+              <span>关于</span>
             </Link>
           </div>
 
