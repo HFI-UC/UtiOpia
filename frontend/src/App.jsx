@@ -13,6 +13,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Write from './pages/Write';
 import Search from './pages/Search';
+import About from './pages/About';
 import Admin from './pages/Admin';
 import Moderation from './pages/Moderation';
 import Dashboard from './pages/Dashboard';
@@ -50,6 +51,7 @@ function App() {
               <Route path="/register" element={<Register />} />
               <Route path="/write" element={<GlassWrite />} />
               <Route path="/search" element={<GlassSearch />} />
+              <Route path="/about" element={<About />} />
               <Route path="/messages/:id" element={<MessageDetail />} />
               <Route path="/admin" element={<ProtectedRoute roles={['moderator','super_admin']}><Admin /></ProtectedRoute>} />
               <Route path="/dashboard" element={<ProtectedRoute roles={['moderator','super_admin']}><Dashboard /></ProtectedRoute>} />
@@ -65,6 +67,7 @@ function App() {
               <Route path="/register" element={<Register />} />
               <Route path="/write" element={<Write />} />
               <Route path="/search" element={<Search />} />
+              <Route path="/about" element={<About />} />
               <Route path="/messages/:id" element={<MessageDetail />} />
               <Route path="/admin" element={<ProtectedRoute roles={['moderator','super_admin']}><Admin /></ProtectedRoute>} />
               <Route path="/dashboard" element={<ProtectedRoute roles={['moderator','super_admin']}><Dashboard /></ProtectedRoute>} />
