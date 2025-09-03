@@ -16,10 +16,7 @@ import {
   Upload,
   AlertCircle,
   Eye,
-  EyeOff,
-  Smile,
-  Heart,
-  Star
+  EyeOff
 } from 'lucide-react';
 import { toast } from 'sonner';
 import useMessagesStore from '../stores/messagesStore';
@@ -154,7 +151,10 @@ const Write = () => {
     }));
   };
 
+  // （已由 label+input 方案原生支持点击与键盘，无需额外触发器）
+
   useEffect(() => {
+    // eslint-disable-next-line sonarjs/cognitive-complexity
     const fetchPublishStats = async () => {
       setLoadingStats(true);
       try {
@@ -301,6 +301,16 @@ const Write = () => {
             
             <form onSubmit={handleSubmit}>
               <CardContent className="space-y-6">
+                {/* Unauthenticated Notice */}
+                {!isAuthenticated && (
+                  <Alert className="border-sky-300/60 bg-sky-50/60 dark:bg-sky-900/30 dark:border-sky-700/60 backdrop-blur-sm">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      未有登入之使用者，仅可透过匿名方式发布内容。有关所记录之资料，将严格予以保密，仅为遵循法例备存，除法律规定外概不披露。
+                    </AlertDescription>
+                  </Alert>
+                )}
+
                 {error && (
                   <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
@@ -444,40 +454,43 @@ const Write = () => {
                   <Label>图片 (可选)</Label>
                   
                   {!imagePreview ? (
-                    <div
-                      className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                        isDragOver 
-                          ? 'border-primary bg-primary/10' 
-                          : 'border-border hover:border-foreground/30'
-                      }`}
-                      onDragOver={handleDragOver}
-                      onDragLeave={handleDragLeave}
-                      onDrop={handleDrop}
-                    >
-                      <div className="space-y-4">
-                        <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto">
-                          <ImageIcon className="w-6 h-6 text-muted-foreground" />
+                    <>
+                      <label
+                        htmlFor="image-upload"
+                        className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${
+                          isDragOver 
+                            ? 'border-primary bg-primary/10' 
+                            : 'border-border hover:border-foreground/30'
+                        }`}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        aria-label="拖拽或点击选择图片上传"
+                      >
+                        <div className="space-y-4">
+                          <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto">
+                            <ImageIcon className="w-6 h-6 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground mb-2">
+                              拖拽图片到这里或{' '}
+                              <span className="text-primary hover:text-primary/80 underline">点击选择</span>
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              支持 JPG、PNG 格式，最大 5MB
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground mb-2">
-                            拖拽图片到这里或{' '}
-                            <Label htmlFor="image-upload" className="text-primary hover:text-primary/80 cursor-pointer underline">
-                              点击选择
-                            </Label>
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            支持 JPG、PNG 格式，最大 5MB
-                          </p>
-                        </div>
-                        <Input
-                          id="image-upload"
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => handleImageSelect(e.target.files[0])}
-                          className="hidden"
-                        />
-                      </div>
-                    </div>
+                      </label>
+                      
+                      <Input
+                        id="image-upload"
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleImageSelect(e.target.files[0])}
+                        className="hidden"
+                      />
+                    </>
                   ) : (
                     <div className="relative">
                       <div className="relative rounded-lg overflow-hidden border border-border">
