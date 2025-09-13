@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { useTheme } from '../contexts/ThemeContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -91,6 +92,7 @@ const masonryStyles = `
 `;
 
 const Home = () => {
+  const { isLiquidGlass } = useTheme();
   const navigate = useNavigate();
   const {
     messages,
@@ -322,9 +324,14 @@ const Home = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className={`max-w-6xl mx-auto space-y-8 ${isLiquidGlass ? 'glass-wrapper' : ''}`}>
       {/* 瀑布流布局样式 */}
-      <style dangerouslySetInnerHTML={{ __html: masonryStyles }} />
+          <style dangerouslySetInnerHTML={{ __html: `${masonryStyles}
+          .glass-wrapper { padding: 0 1rem; }
+          @supports ((-webkit-backdrop-filter: none) or (backdrop-filter: none)) {
+            .glass-wrapper .glass-card { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+          }
+          ` }} />
       
       {/* Hero Section */}
       <div className="text-center space-y-6 py-12">
@@ -346,15 +353,19 @@ const Home = () => {
 
       {/* Stats（移除“待审批”） */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="text-center">
+        <Card className="text-center backdrop-blur-md bg-white/55 dark:bg-white/5 border border-white/30 dark:border-white/10 shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-blue-600">{pubCounts.approved}</div>
+            <div className="text-3xl font-extrabold bg-gradient-to-r from-sky-600 to-violet-600 bg-clip-text text-transparent dark:from-sky-400 dark:to-violet-400">
+              {pubCounts.approved}
+            </div>
             <p className="text-sm text-muted-foreground">已通过</p>
           </CardContent>
         </Card>
-        <Card className="text-center">
+        <Card className="text-center backdrop-blur-md bg-white/55 dark:bg-white/5 border border-white/30 dark:border-white/10 shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-pink-600">{pubCounts.rejected}</div>
+            <div className="text-3xl font-extrabold bg-gradient-to-r from-rose-600 to-amber-600 bg-clip-text text-transparent dark:from-rose-400 dark:to-amber-400">
+              {pubCounts.rejected}
+            </div>
             <p className="text-sm text-muted-foreground">已隐藏</p>
           </CardContent>
         </Card>
@@ -382,8 +393,10 @@ const Home = () => {
               data-message-id={message.id}
               ref={(el) => (cardRefs.current[message.id] = el)}
               style={{ gridRowEnd: `span ${rowSpans[message.id] || 1}` }}
-              className={`message-card group hover:shadow-lg transition-all duration-500 ease-out h-fit ${
-                index < 3 ? 'ring-2 ring-yellow-200 bg-gradient-to-br from-yellow-50 to-orange-50' : ''
+              className={`message-card group h-fit transition-all duration-500 ease-out backdrop-blur-md border shadow-sm hover:shadow-md ${
+                index < 3
+                  ? 'relative overflow-hidden bg-white/60 dark:bg-white/5 border-white/30 dark:border-white/10 ring-1 ring-inset ring-amber-300/40 dark:ring-amber-300/20 before:content-[""] before:absolute before:inset-0 before:pointer-events-none before:bg-gradient-to-br before:from-amber-200/25 before:to-pink-200/10 dark:before:from-amber-400/10 dark:before:to-pink-400/5'
+                  : 'bg-white/55 dark:bg-white/5 border-white/30 dark:border-white/10'
               }`}
             >
               <CardHeader className="pb-3">
@@ -393,7 +406,7 @@ const Home = () => {
                     <span className="text-sm text-muted-foreground">
                       {formatTime(message.created_at)}
                     </span>
-                    {index < 3 && <Star className="w-4 h-4 text-yellow-500 fill-current" />}
+                    {index < 3 && <Star className="w-4 h-4 text-amber-500 dark:text-amber-300" />}
                   </div>
                   <div className="flex items-center space-x-2">
                     {canEdit(message) && (
@@ -419,7 +432,7 @@ const Home = () => {
               </CardHeader>
               
               <CardContent className="space-y-4">
-                <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                <p className="text-sm leading-relaxed whitespace-pre-wrap break-words text-foreground">
                   {message.content}
                 </p>
                 
@@ -524,7 +537,7 @@ const Home = () => {
                                   <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">回复</Badge>
                                 )}
                               </div>
-                              <p className="text-sm text-gray-700 break-words whitespace-pre-wrap">
+                              <p className="text-sm text-foreground break-words whitespace-pre-wrap">
                                 {comment.content}
                               </p>
                               <div className="flex items-center mt-1">
