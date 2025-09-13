@@ -38,7 +38,7 @@ const Moderation = () => {
   const [banSubmitting, setBanSubmitting] = useState(false);
   const [expanded, setExpanded] = useState({}); // messageId -> boolean
   const [activeTab, setActiveTab] = useState('displayed'); // 'displayed' or 'hidden'
-  const [, setCommentsByMsg] = useState({});
+  // 移除 setCommentsByMsg，评论状态直接更新 allMessages
   const PREVIEW_LIMIT = 3;
 
   // 加载真实数据
@@ -139,16 +139,26 @@ const Moderation = () => {
 
 
 
+  // 评论操作只显示一个按钮，操作后直接更新 allMessages
+  const updateCommentStatusInState = (messageId, commentId, status, rejectReason = '') => {
+    setAllMessages(prev => prev.map(m => {
+      if (m.id !== messageId) return m;
+      return {
+        ...m,
+        comments: {
+          ...m.comments,
+          items: (m.comments?.items || []).map(c =>
+            c.id === commentId ? { ...c, status, reject_reason: status==='rejected'?rejectReason:undefined } : c
+          )
+        }
+      };
+    }));
+  };
+
   const approveComment = async (commentId, messageId) => {
     try {
       await api.post(`/comments/${commentId}/approve`);
-      setCommentsByMsg(prev => ({
-        ...prev,
-        [messageId]: {
-          ...(prev[messageId]||{ loading:false, items:[] }),
-          items: (prev[messageId]?.items||[]).map(c => c.id === commentId ? { ...c, status: 'approved' } : c)
-        }
-      }));
+      updateCommentStatusInState(messageId, commentId, 'approved');
       toast.success('评论已展示');
     } catch (e) {
       toast.error(e.response?.data?.error || e.message || '操作失败');
@@ -159,13 +169,7 @@ const Moderation = () => {
     const reason = window.prompt('请输入隐藏原因（可留空）', '');
     try {
       await api.post(`/comments/${commentId}/reject`, { reason });
-      setCommentsByMsg(prev => ({
-        ...prev,
-        [messageId]: {
-          ...(prev[messageId]||{ loading:false, items:[] }),
-          items: (prev[messageId]?.items||[]).map(c => c.id === commentId ? { ...c, status: 'rejected', reject_reason: reason } : c)
-        }
-      }));
+      updateCommentStatusInState(messageId, commentId, 'rejected', reason);
       toast.success('评论已隐藏');
     } catch (e) {
       toast.error(e.response?.data?.error || e.message || '操作失败');
@@ -314,12 +318,21 @@ const Moderation = () => {
                         </div>
                       </div>
                       <div className="mt-2 flex items-center space-x-2">
-                        <Button size="sm" variant={c.status==='approved'?'outline':'default'} onClick={()=>approveComment(c.id, message.id)}>
-                          <Eye className="w-3 h-3 mr-1" />展示
-                        </Button>
-                        <Button size="sm" variant="destructive" onClick={()=>rejectComment(c.id, message.id)}>
-                          <EyeOff className="w-3 h-3 mr-1" />隐藏
-                        </Button>
+                        {c.status === 'pending' && (
+                          <Button size="sm" variant="default" onClick={()=>approveComment(c.id, message.id)}>
+                            <Eye className="w-3 h-3 mr-1" />展示
+                          </Button>
+                        )}
+                        {c.status === 'approved' && (
+                          <Button size="sm" variant="destructive" onClick={()=>rejectComment(c.id, message.id)}>
+                            <EyeOff className="w-3 h-3 mr-1" />隐藏
+                          </Button>
+                        )}
+                        {c.status === 'rejected' && (
+                          <Button size="sm" variant="default" onClick={()=>approveComment(c.id, message.id)}>
+                            <Eye className="w-3 h-3 mr-1" />展示
+                          </Button>
+                        )}
                         {(c.user_email || c.user_student_id) && (
                           <Button size="sm" variant="outline" onClick={()=> handleQuickBan({ user_email: c.user_email, anon_student_id: c.user_student_id })}>
                             <Ban className="w-3 h-3 mr-1" />封禁
