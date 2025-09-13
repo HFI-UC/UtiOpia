@@ -39,7 +39,7 @@ const Moderation = () => {
   const [expanded, setExpanded] = useState({}); // messageId -> boolean
   const [activeTab, setActiveTab] = useState('displayed'); // 'displayed' or 'hidden'
   const [, setCommentsByMsg] = useState({});
-  const PREVIEW_LIMIT = 2;
+  const PREVIEW_LIMIT = 3;
 
   // 加载真实数据
   useEffect(() => {
@@ -270,91 +270,88 @@ const Moderation = () => {
           </div>
         )}
 
-        {/* 评论区域：默认展示前几条；卡片 hover 自动展开更多，移出收起 */}
-        <div className="pt-2" onMouseEnter={()=> setExpanded(prev => ({ ...prev, [message.id]: true }))} onMouseLeave={()=> setExpanded(prev => ({ ...prev, [message.id]: false }))}>
-          {!expanded[message.id] && (
-            <div className="text-xs text-muted-foreground mb-2">鼠标移入查看更多评论</div>
-          )}
-          {expanded[message.id] && (
-            <div className="mt-3 space-y-2">
-
-              {(() => {
-                  const items = message.comments?.items || [];
-                  const display = expanded[message.id] ? items : items.slice(0, PREVIEW_LIMIT);
-
-                  if (items.length === 0) {
-                    return <div className="text-xs text-muted-foreground">暂无评论</div>;
-                  }
-                
-                return display.map((c) => (
-                <div key={c.id} className="p-2 border rounded-md">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start space-x-2">
-                      <Avatar className="w-6 h-6 mt-0.5">
-                        <AvatarFallback className="text-[10px] bg-muted">
-                          {(c.user_email || '').slice(0,1).toUpperCase() || 'U'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-                          <span className="font-medium text-sm text-foreground">{c.user_nickname || c.user_email || '用户'}</span>
-                          {c.user_student_id && <Badge variant="outline">{c.user_student_id}</Badge>}
-                          {c.is_anonymous ? (<Badge variant="secondary">匿名</Badge>) : null}
+        {/* 评论区域：默认展示前 3 条，点击展开全部/收起；移除 hover 行为以避免闪烁 */}
+        <div className="pt-2">
+          <div className="mt-3 space-y-2">
+            {(() => {
+              const items = message.comments?.items || [];
+              const total = message.comments?.total || items.length;
+              if (items.length === 0) {
+                return <div className="text-xs text-muted-foreground">暂无评论</div>;
+              }
+              const display = expanded[message.id] ? items : items.slice(0, PREVIEW_LIMIT);
+              return (
+                <>
+                  {display.map((c) => (
+                    <div key={c.id} className="p-2 border rounded-md">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start space-x-2">
+                          <Avatar className="w-6 h-6 mt-0.5">
+                            <AvatarFallback className="text-[10px] bg-muted">
+                              {(c.user_email || '').slice(0,1).toUpperCase() || 'U'}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+                              <span className="font-medium text-sm text-foreground">{c.user_nickname || c.user_email || '用户'}</span>
+                              {c.user_student_id && <Badge variant="outline">{c.user_student_id}</Badge>}
+                              {c.is_anonymous ? (<Badge variant="secondary">匿名</Badge>) : null}
+                            </div>
+                            <Tooltip delayDuration={150}>
+                              <TooltipTrigger asChild>
+                                <div className="text-sm break-words line-clamp-2 cursor-default">{c.content}</div>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" sideOffset={6}>
+                                <div className="max-w-[60ch] whitespace-pre-wrap text-sm">{c.content}</div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
                         </div>
-                        <Tooltip delayDuration={150}>
-                          <TooltipTrigger asChild>
-                            <div className="text-sm break-words line-clamp-2 cursor-default">{c.content}</div>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" sideOffset={6}>
-                            <div className="max-w-[60ch] whitespace-pre-wrap text-sm">{c.content}</div>
-                          </TooltipContent>
-                        </Tooltip>
+                        <div className="flex items-center space-x-2">
+                          {c.status === 'approved' && (<Badge variant="outline">已展示</Badge>)}
+                          {c.status === 'rejected' && (<Badge variant="destructive">已隐藏</Badge>)}
+                          {c.status === 'pending' && (<Badge variant="secondary">待审核</Badge>)}
+                        </div>
+                      </div>
+                      <div className="mt-2 flex items-center space-x-2">
+                        <Button size="sm" variant={c.status==='approved'?'outline':'default'} onClick={()=>approveComment(c.id, message.id)}>
+                          <Eye className="w-3 h-3 mr-1" />展示
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={()=>rejectComment(c.id, message.id)}>
+                          <EyeOff className="w-3 h-3 mr-1" />隐藏
+                        </Button>
+                        {(c.user_email || c.user_student_id) && (
+                          <Button size="sm" variant="outline" onClick={()=> handleQuickBan({ user_email: c.user_email, anon_student_id: c.user_student_id })}>
+                            <Ban className="w-3 h-3 mr-1" />封禁
+                          </Button>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      {c.status === 'approved' && (<Badge variant="outline">已展示</Badge>)}
-                      {c.status === 'rejected' && (<Badge variant="destructive">已隐藏</Badge>)}
-                      {c.status === 'pending' && (<Badge variant="secondary">待审核</Badge>)}
-                    </div>
-                  </div>
-                  <div className="mt-2 flex items-center space-x-2">
-                    <Button size="sm" variant={c.status==='approved'?'outline':'default'} onClick={()=>approveComment(c.id, message.id)}>
-                      <Eye className="w-3 h-3 mr-1" />展示
+                  ))}
+                  {total > PREVIEW_LIMIT && (
+                    <Button
+                      size="sm"
+                      variant="link"
+                      className="h-auto p-0 text-xs"
+                      onClick={()=> setExpanded(prev => ({ ...prev, [message.id]: !prev[message.id] }))}
+                    >
+                      {expanded[message.id] ? (
+                        <>
+                          <ChevronUp className="w-3 h-3 mr-1" />
+                          收起
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="w-3 h-3 mr-1" />
+                          查看全部 {total} 条评论
+                        </>
+                      )}
                     </Button>
-                    <Button size="sm" variant="destructive" onClick={()=>rejectComment(c.id, message.id)}>
-                      <EyeOff className="w-3 h-3 mr-1" />隐藏
-                    </Button>
-                    {(c.user_email || c.user_student_id) && (
-                      <Button size="sm" variant="outline" onClick={()=> handleQuickBan({ user_email: c.user_email, anon_student_id: c.user_student_id })}>
-                        <Ban className="w-3 h-3 mr-1" />封禁
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              )); })()}
-              {(() => {
-                const items = message.comments?.items || [];
-                const total = message.comments?.total || items.length;
-                const hasMore = (items.length > PREVIEW_LIMIT || total > PREVIEW_LIMIT) && !expanded[message.id];
-                if (!hasMore) return null;
-                return (
-                  <Button size="sm" variant="link" className="h-auto p-0 text-xs" onClick={()=> setExpanded(prev => ({ ...prev, [message.id]: !prev[message.id] }))}>
-                    {expanded[message.id] ? (
-                      <>
-                        <ChevronUp className="w-3 h-3 mr-1" />
-                        收起
-                      </>
-                    ) : (
-                      <>
-                        <ChevronDown className="w-3 h-3 mr-1" />
-                        查看全部 {total} 条评论
-                      </>
-                    )}
-                  </Button>
-                );
-              })()}
-            </div>
-          )}
+                  )}
+                </>
+              );
+            })()}
+          </div>
         </div>
         
         {
