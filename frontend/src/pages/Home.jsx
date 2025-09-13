@@ -329,8 +329,15 @@ const Home = () => {
           <style dangerouslySetInnerHTML={{ __html: `${masonryStyles}
           .glass-wrapper { padding: 0 1rem; }
           @supports ((-webkit-backdrop-filter: none) or (backdrop-filter: none)) {
-            .glass-wrapper .glass-card { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+            .glass-wrapper .glass-card { backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
           }
+          /* 增强毛玻璃效果的全局样式 */
+          .backdrop-blur-xl { backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+          .backdrop-blur-lg { backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+          .backdrop-blur-md { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+          /* 前三张纸条特殊效果 */
+          .message-card:nth-child(-n+3) { transform-style: preserve-3d; }
+          .message-card:nth-child(-n+3):hover { transform: rotate(0deg) translateY(-4px) translateZ(10px); }
           ` }} />
       
       {/* Hero Section */}
@@ -353,7 +360,7 @@ const Home = () => {
 
       {/* Stats（移除“待审批”） */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="text-center backdrop-blur-md bg-white/55 dark:bg-white/5 border border-white/30 dark:border-white/10 shadow-sm hover:shadow-md transition-shadow">
+        <Card className="text-center backdrop-blur-xl bg-white/15 dark:bg-white/5 border border-white/15 dark:border-white/10 shadow-lg hover:shadow-xl transition-all duration-300 hover:bg-white/25 dark:hover:bg-white/8">
           <CardContent className="pt-6">
             <div className="text-3xl font-extrabold bg-gradient-to-r from-sky-600 to-violet-600 bg-clip-text text-transparent dark:from-sky-400 dark:to-violet-400">
               {pubCounts.approved}
@@ -361,7 +368,7 @@ const Home = () => {
             <p className="text-sm text-muted-foreground">已通过</p>
           </CardContent>
         </Card>
-        <Card className="text-center backdrop-blur-md bg-white/55 dark:bg-white/5 border border-white/30 dark:border-white/10 shadow-sm hover:shadow-md transition-shadow">
+        <Card className="text-center backdrop-blur-xl bg-white/15 dark:bg-white/5 border border-white/15 dark:border-white/10 shadow-lg hover:shadow-xl transition-all duration-300 hover:bg-white/25 dark:hover:bg-white/8">
           <CardContent className="pt-6">
             <div className="text-3xl font-extrabold bg-gradient-to-r from-rose-600 to-amber-600 bg-clip-text text-transparent dark:from-rose-400 dark:to-amber-400">
               {pubCounts.rejected}
@@ -393,10 +400,10 @@ const Home = () => {
               data-message-id={message.id}
               ref={(el) => (cardRefs.current[message.id] = el)}
               style={{ gridRowEnd: `span ${rowSpans[message.id] || 1}` }}
-              className={`message-card group h-fit transition-all duration-500 ease-out backdrop-blur-md border shadow-sm hover:shadow-md ${
+              className={`message-card group h-fit transition-all duration-500 ease-out backdrop-blur-xl border shadow-lg hover:shadow-xl ${
                 index < 3
-                  ? 'relative overflow-hidden bg-white/60 dark:bg-white/5 border-white/30 dark:border-white/10 ring-1 ring-inset ring-amber-300/40 dark:ring-amber-300/20 before:content-[""] before:absolute before:inset-0 before:pointer-events-none before:bg-gradient-to-br before:from-amber-200/25 before:to-pink-200/10 dark:before:from-amber-400/10 dark:before:to-pink-400/5'
-                  : 'bg-white/55 dark:bg-white/5 border-white/30 dark:border-white/10'
+                  ? 'relative overflow-hidden bg-gradient-to-br from-amber-100/40 via-yellow-50/30 to-orange-100/35 dark:from-amber-900/25 dark:via-yellow-900/20 dark:to-orange-900/25 border-amber-200/50 dark:border-amber-700/40 ring-2 ring-inset ring-amber-400/50 dark:ring-amber-300/30 shadow-amber-200/20 dark:shadow-amber-900/30 before:content-[""] before:absolute before:inset-0 before:pointer-events-none before:bg-gradient-to-br before:from-amber-300/20 before:via-yellow-200/15 before:to-pink-200/10 dark:before:from-amber-400/15 dark:before:via-yellow-400/10 dark:before:to-pink-400/8 hover:shadow-2xl hover:shadow-amber-200/30 dark:hover:shadow-amber-900/40'
+                  : 'bg-white/10 dark:bg-white/3 border-white/15 dark:border-white/8 hover:bg-white/20 dark:hover:bg-white/6'
               }`}
             >
               <CardHeader className="pb-3">
@@ -406,7 +413,7 @@ const Home = () => {
                     <span className="text-sm text-muted-foreground">
                       {formatTime(message.created_at)}
                     </span>
-                    {index < 3 && <Star className="w-4 h-4 text-amber-500 dark:text-amber-300" />}
+                    {index < 3 && <Star className="w-4 h-4 text-amber-600 dark:text-amber-200 fill-current drop-shadow-sm" />}
                   </div>
                   <div className="flex items-center space-x-2">
                     {canEdit(message) && (

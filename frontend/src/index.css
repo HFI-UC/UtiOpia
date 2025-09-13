@@ -200,20 +200,27 @@ html, body, #root { height: 100%; }
 /* Light iOS glass: prefer dark text for contrast; keep shadows subtle */
 .light.ios-glass .glass-wrapper { text-shadow: 0 1px 1px rgba(255, 255, 255, 0.4); }
 .light.ios-glass .glass-wrapper .text-muted-foreground { color: rgba(15,23,42,0.72) !important; }
-.light.ios-glass .glass-wrapper h1,
-.light.ios-glass .glass-wrapper h2,
-.light.ios-glass .glass-wrapper h3 { color: #0f172a; }
-.light.ios-glass .glass-wrapper .text-2xl,
-.light.ios-glass .glass-wrapper .font-bold { color: #0f172a; }
+.light.ios-glass .glass-wrapper h1:not(.text-transparent),
+.light.ios-glass .glass-wrapper h2:not(.text-transparent),
+.light.ios-glass .glass-wrapper h3:not(.text-transparent) { color: #0f172a; }
+.light.ios-glass .glass-wrapper .text-2xl:not(.text-transparent),
+.light.ios-glass .glass-wrapper .font-bold:not(.text-transparent) { color: #0f172a; }
 
 /* Dark iOS glass: keep white text and stronger shadow for clarity */
 .dark.ios-glass .glass-wrapper { text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45); }
 .dark.ios-glass .glass-wrapper .text-muted-foreground { color: rgba(255,255,255,0.82) !important; }
-.dark.ios-glass .glass-wrapper h1,
-.dark.ios-glass .glass-wrapper h2,
-.dark.ios-glass .glass-wrapper h3 { color: #fff; }
-.dark.ios-glass .glass-wrapper .text-2xl,
-.dark.ios-glass .glass-wrapper .font-bold { color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.6); }
+.dark.ios-glass .glass-wrapper h1:not(.text-transparent),
+.dark.ios-glass .glass-wrapper h2:not(.text-transparent),
+.dark.ios-glass .glass-wrapper h3:not(.text-transparent) { color: #fff; }
+.dark.ios-glass .glass-wrapper .text-2xl:not(.text-transparent),
+.dark.ios-glass .glass-wrapper .font-bold:not(.text-transparent) { color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.6); }
+
+/* Ensure gradient text works properly in glass mode - add Safari support */
+.ios-glass .glass-wrapper .text-transparent {
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
 
 /* Badges in glass: improved contrast */
 .light.ios-glass .glass-wrapper [data-slot="badge"] { color: #0f172a; }

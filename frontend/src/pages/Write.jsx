@@ -457,7 +457,7 @@ const Write = () => {
                     <>
                       <label
                         htmlFor="image-upload"
-                        className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${
+                        className={`block w-full border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${
                           isDragOver 
                             ? 'border-primary bg-primary/10' 
                             : 'border-border hover:border-foreground/30'
