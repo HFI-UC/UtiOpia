@@ -228,6 +228,153 @@ html, body, #root { height: 100%; }
 .ios-glass .glass-wrapper [data-slot="badge"][class*="bg-"],
 .ios-glass .glass-wrapper [data-slot="badge"][class*="border"] { box-shadow: 0 1px 2px rgba(0,0,0,0.35); }
 
+/* ==================== */
+/* 现代纸条卡片设计 */
+/* ==================== */
+
+/* 基础纸条样式 - 扁平化现代设计 */
+.message-card-normal {
+  border-radius: 0.75rem;
+  border: 1px solid rgba(var(--border), 0.5);
+  background: rgba(var(--card), 0.8);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease-out;
+}
+
+.message-card-normal:hover {
+  transform: translateY(-2px);
+  border-color: rgba(var(--border), 0.7);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.message-card-featured {
+  border-radius: 0.75rem;
+  border: 2px solid rgba(251, 191, 36, 0.6);
+  background: linear-gradient(135deg, rgba(255, 251, 235, 0.8), rgba(255, 237, 213, 0.6));
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease-out;
+  position: relative;
+  overflow: hidden;
+}
+
+.message-card-featured:hover {
+  transform: translateY(-4px);
+  border-color: rgba(251, 191, 36, 0.7);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* 深色模式 */
+.dark .message-card-normal {
+  background: rgba(var(--card), 0.6);
+  border-color: rgba(var(--border), 0.3);
+}
+
+.dark .message-card-normal:hover {
+  border-color: rgba(var(--border), 0.5);
+}
+
+.dark .message-card-featured {
+  background: linear-gradient(135deg, rgba(120, 53, 15, 0.3), rgba(154, 52, 18, 0.2));
+  border-color: rgba(180, 83, 9, 0.5);
+}
+
+.dark .message-card-featured:hover {
+  border-color: rgba(180, 83, 9, 0.6);
+}
+
+/* 特色卡片装饰 */
+.message-card-featured::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 2rem;
+  height: 2rem;
+  background: linear-gradient(135deg, #fbbf24, #f97316);
+  opacity: 0.1;
+  pointer-events: none;
+  clip-path: polygon(100% 0%, 0% 0%, 100% 100%);
+}
+
+/* iOS 毛玻璃主题增强 */
+.ios-glass .glass-wrapper .message-card-normal {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  backdrop-filter: blur(25px) saturate(2.0) brightness(1.05);
+  -webkit-backdrop-filter: blur(25px) saturate(2.0) brightness(1.05);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.15),
+    0 2px 16px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  
+  /* iOS 动画曲线 */
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.ios-glass .glass-wrapper .message-card-featured {
+  background: linear-gradient(135deg, 
+    rgba(255, 215, 0, 0.18), 
+    rgba(255, 165, 0, 0.12),
+    rgba(255, 255, 255, 0.08)) !important;
+  border: 1px solid rgba(255, 215, 0, 0.35) !important;
+  backdrop-filter: blur(30px) saturate(2.2) brightness(1.15);
+  -webkit-backdrop-filter: blur(30px) saturate(2.2) brightness(1.15);
+  box-shadow: 
+    0 16px 48px rgba(255, 165, 0, 0.25),
+    0 8px 24px rgba(255, 165, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 0 0 0.5px rgba(255, 215, 0, 0.25);
+  
+  /* iOS 弹性动画 */
+  transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* 深色模式下的毛玻璃 */
+.dark.ios-glass .glass-wrapper .message-card-normal {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(25px) saturate(1.8) brightness(0.85);
+  -webkit-backdrop-filter: blur(25px) saturate(1.8) brightness(0.85);
+}
+
+.dark.ios-glass .glass-wrapper .message-card-featured {
+  background: linear-gradient(135deg, 
+    rgba(255, 215, 0, 0.12), 
+    rgba(255, 165, 0, 0.08),
+    rgba(255, 255, 255, 0.03)) !important;
+  border: 1px solid rgba(255, 215, 0, 0.18) !important;
+  backdrop-filter: blur(30px) saturate(2.0) brightness(0.9);
+  -webkit-backdrop-filter: blur(30px) saturate(2.0) brightness(0.9);
+}
+
+/* Hover 效果 - iOS 风格 */
+.ios-glass .glass-wrapper .message-card-normal:hover {
+  transform: translateY(-4px) scale(1.02);
+  background: rgba(255, 255, 255, 0.16) !important;
+  backdrop-filter: blur(30px) saturate(2.2) brightness(1.12);
+  -webkit-backdrop-filter: blur(30px) saturate(2.2) brightness(1.12);
+  box-shadow: 
+    0 20px 40px rgba(0, 0, 0, 0.18),
+    0 8px 20px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.ios-glass .glass-wrapper .message-card-featured:hover {
+  transform: translateY(-6px) scale(1.03);
+  background: linear-gradient(135deg, 
+    rgba(255, 215, 0, 0.22), 
+    rgba(255, 165, 0, 0.16),
+    rgba(255, 255, 255, 0.12)) !important;
+  backdrop-filter: blur(35px) saturate(2.4) brightness(1.22);
+  -webkit-backdrop-filter: blur(35px) saturate(2.4) brightness(1.22);
+  box-shadow: 
+    0 24px 60px rgba(255, 165, 0, 0.3),
+    0 12px 30px rgba(255, 165, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 0 0 1px rgba(255, 215, 0, 0.35);
+}
+
 /* ======================== */
 /* Highlight styles (cards) */
 /* ======================== */
@@ -271,12 +418,19 @@ html, body, #root { height: 100%; }
 	}
 }
 
+/* Touch devices: always show per-card edit/delete actions */
+@media (hover: none), (pointer: coarse) {
+  .message-card .card-actions { opacity: 1 !important; }
+	.message-card .comment-inline-action { opacity: 1 !important; }
+}
+
 /* Non-liquid themes: set background images for light/dark as well */
 .light:not(.ios-glass) .min-h-screen {
 	background-image: url('/backgrounds/liquid-light.png');
 	background-size: var(--liquid-bg-img-size, cover);
 	background-position: var(--liquid-bg-img-position, center);
 	background-repeat: no-repeat;
+	background-attachment: fixed;
 	/* keep background color via Tailwind's bg-background; image will render on top */
 }
 
@@ -285,4 +439,5 @@ html, body, #root { height: 100%; }
 	background-size: var(--liquid-bg-img-size, cover);
 	background-position: var(--liquid-bg-img-position, center);
 	background-repeat: no-repeat;
+	background-attachment: fixed;
 }

@@ -79,8 +79,16 @@ const masonryStyles = `
     line-height: 1.6;
   }
 
+  /* 移动端竖屏：禁用 Masonry 行高与旋转，改为单列正常流，避免重叠 */
+  @media (max-width: 640px) and (orientation: portrait) {
+    .messages-container { grid-template-columns: 1fr; gap: 0.875rem; grid-auto-rows: auto; }
+    .messages-container .message-card { transform: none !important; }
+  }
+  /* 额外兜底（更窄屏幕） */
   @media (max-width: 480px) {
     .messages-container { gap: 0.75rem; grid-template-columns: 1fr; }
+    .messages-container { grid-auto-rows: auto; }
+    .messages-container .message-card { transform: none !important; }
   }
 
   /* 评论展开动画：淡入 + 轻微下滑 */
@@ -125,6 +133,7 @@ const Home = () => {
   const commentInputRefs = useRef({}); // messageId -> ref
   // Masonry: 行跨度计算用
   const [rowSpans, setRowSpans] = useState({}); // messageId -> rows
+  const [disableMasonry, setDisableMasonry] = useState(false);
   const cardRefs = useRef({}); // messageId -> element
 
   useEffect(() => {
@@ -173,8 +182,9 @@ const Home = () => {
     };
   }, [isLoading, isDone]);
 
-  // 计算每张卡片的行跨度
+  // 计算每张卡片的行跨度（在需要时）
   useEffect(() => {
+    if (disableMasonry) return; // 移动端竖屏关闭 Masonry 行跨度计算
     const ROW_HEIGHT = 8;   // 与 CSS grid-auto-rows 一致
     const GAP = 16;         // 与 CSS gap 一致（1rem）
 
@@ -203,7 +213,18 @@ const Home = () => {
       window.removeEventListener('resize', onResize);
       resizeObservers.forEach((ro) => ro.disconnect());
     };
-  }, [messages]);
+  }, [messages, disableMasonry]);
+
+  // 监听窗口尺寸与方向，移动端竖屏禁用 Masonry
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 640px) and (orientation: portrait)');
+    const apply = () => setDisableMasonry(mq.matches);
+    apply();
+    mq.addEventListener ? mq.addEventListener('change', apply) : mq.addListener(apply);
+    return () => {
+      mq.removeEventListener ? mq.removeEventListener('change', apply) : mq.removeListener(apply);
+    };
+  }, []);
 
   const formatTime = (dateStr) => {
     const date = new Date(dateStr);
@@ -387,7 +408,7 @@ const Home = () => {
           </div>
         </div>
 
-        <div className="messages-container">
+  <div className="messages-container" data-layout={disableMasonry ? 'stack' : 'masonry'}>
           {messages.map((message, index) => {
             const mergedComments = message.comments?.items || [];
             const totalCount = message.comments?.total ?? mergedComments.length;
@@ -399,11 +420,11 @@ const Home = () => {
               key={message.id}
               data-message-id={message.id}
               ref={(el) => (cardRefs.current[message.id] = el)}
-              style={{ gridRowEnd: `span ${rowSpans[message.id] || 1}` }}
-              className={`message-card group h-fit transition-all duration-500 ease-out backdrop-blur-xl border shadow-lg hover:shadow-xl ${
+              style={disableMasonry ? undefined : { gridRowEnd: `span ${rowSpans[message.id] || 1}` }}
+              className={`message-card group h-fit transition-all duration-300 ease-out ${
                 index < 3
-                  ? 'relative overflow-hidden bg-gradient-to-br from-amber-100/40 via-yellow-50/30 to-orange-100/35 dark:from-amber-900/25 dark:via-yellow-900/20 dark:to-orange-900/25 border-amber-200/50 dark:border-amber-700/40 ring-2 ring-inset ring-amber-400/50 dark:ring-amber-300/30 shadow-amber-200/20 dark:shadow-amber-900/30 before:content-[""] before:absolute before:inset-0 before:pointer-events-none before:bg-gradient-to-br before:from-amber-300/20 before:via-yellow-200/15 before:to-pink-200/10 dark:before:from-amber-400/15 dark:before:via-yellow-400/10 dark:before:to-pink-400/8 hover:shadow-2xl hover:shadow-amber-200/30 dark:hover:shadow-amber-900/40'
-                  : 'bg-white/10 dark:bg-white/3 border-white/15 dark:border-white/8 hover:bg-white/20 dark:hover:bg-white/6'
+                  ? 'message-card-featured'
+                  : 'message-card-normal'
               }`}
             >
               <CardHeader className="pb-3">
@@ -417,7 +438,7 @@ const Home = () => {
                   </div>
                   <div className="flex items-center space-x-2">
                     {canEdit(message) && (
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity card-actions">
                         <Button 
                           variant="ghost" 
                           size="sm"
@@ -554,7 +575,7 @@ const Home = () => {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="ml-2 h-5 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                                  className="ml-2 h-5 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity comment-inline-action"
                                   onClick={() => {
                                     if (!isAuthed) {
                                       navigate(`/login?redirect=${encodeURIComponent(location.pathname)}`);
