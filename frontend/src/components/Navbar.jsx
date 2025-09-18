@@ -23,10 +23,12 @@ import {
 } from 'lucide-react';
 import useAuthStore from '../stores/authStore';
 import ThemeToggle from './ThemeToggle';
+import { useTheme } from '../contexts/ThemeContext';
 
 const Navbar = () => {
   const { token, user, logout } = useAuthStore();
   const navigate = useNavigate();
+  const { isLiquidGlass } = useTheme();
 
   const handleLogout = () => {
     logout();
@@ -35,8 +37,12 @@ const Navbar = () => {
 
   const isAdmin = user?.role === 'moderator' || user?.role === 'super_admin';
 
+  const navClass = isLiquidGlass
+    ? 'glass-nav'
+    : 'border-b bg-white/80 dark:bg-black/40 backdrop-blur-md';
+
   return (
-    <nav className="sticky top-0 z-50 w-full border-b bg-white/80 dark:bg-black/40 backdrop-blur-md">
+    <nav className={`sticky top-0 z-50 w-full ${navClass}`}>
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
